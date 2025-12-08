@@ -36,6 +36,7 @@ import { LeadAttachments } from '../components/team/LeadAttachments';
 import { useAuthStore } from '../stores/authStore';
 import { AddActivityModal } from '../components/team/AddActivityModal';
 import { loadPipelineStages } from '../services/pipelineService';
+import { useFetchAvatar } from '../hooks/useFetchAvatar';
 
 interface MinimalConversation {
   id?: string;
@@ -76,6 +77,8 @@ export default function ConversationsPage() {
   const { integration: activeIntegration } = useActiveIntegration();
   const { isRecording, recordingDuration, startRecording, stopRecording, cancelRecording, audioBlob, clearAudio } = useAudioRecorder();
   const { deleteConversation, loading: deletingConversation } = useDeleteConversation();
+  const { fetchAvatar } = useFetchAvatar();
+  const [localAvatars, setLocalAvatars] = useState<Record<string, string>>({});
 
   const selectedConversa = conversations.find(c => c.id === selectedId);
 
@@ -93,12 +96,30 @@ export default function ConversationsPage() {
     fetchEtapas();
   }, [tenant?.id]);
 
-  // Buscar avatar do Z-API se necessário
+  // Buscar avatar do Z-API quando conversa é selecionada e não tem avatar
   useEffect(() => {
-    if (selectedConversa && !selectedConversa.avatar && !selectedConversa.avatar_url && selectedConversa.contact_name) {
-      // Lógica de avatar simplificada ou placeholder
-    }
-  }, [selectedConversa]);
+    const loadAvatar = async () => {
+      if (!selectedConversa) return;
+
+      // Já tem avatar na conversa ou no cache local?
+      if (selectedConversa.avatar || selectedConversa.avatar_url || localAvatars[selectedConversa.id]) return;
+
+      // Precisa do número de telefone
+      const phone = selectedConversa.contact_number;
+      if (!phone) return;
+
+      console.log('[AVATAR] Buscando avatar para:', selectedConversa.contact_name);
+
+      const avatarUrl = await fetchAvatar(selectedConversa.id, phone);
+
+      if (avatarUrl) {
+        console.log('[AVATAR] Avatar encontrado:', avatarUrl);
+        setLocalAvatars(prev => ({ ...prev, [selectedConversa.id]: avatarUrl }));
+      }
+    };
+
+    loadAvatar();
+  }, [selectedConversa?.id, fetchAvatar, localAvatars]);
 
   // Scroll automático para o fim
   useEffect(() => {
@@ -298,22 +319,28 @@ export default function ConversationsPage() {
                   <div className="flex items-start gap-3">
                     {/* Avatar */}
                     <div className="relative flex-shrink-0">
-                      {((conversa.avatar || conversa.avatar_url) && (conversa.avatar || conversa.avatar_url)?.startsWith('http')) ? (
-                        <img
-                          src={conversa.avatar || conversa.avatar_url}
-                          alt={conversa.contact_name}
-                          className="w-10 h-10 rounded-full object-cover ring-2 ring-white dark:ring-gray-700"
-                        />
-                      ) : (
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm bg-gradient-to-br ${conversa.channel === 'instagram'
-                          ? 'from-[#833AB4] via-[#FD1D1D] to-[#FCAF45]' // Instagram Gradient
-                          : selectedId === conversa.id
-                            ? 'from-emerald-500 to-emerald-700'
-                            : 'from-gray-400 to-gray-600'
-                          }`}>
-                          {conversa.contact_name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                        </div>
-                      )}
+                      {(() => {
+                        const avatarSrc = conversa.avatar || conversa.avatar_url || localAvatars[conversa.id];
+                        if (avatarSrc && avatarSrc.startsWith('http')) {
+                          return (
+                            <img
+                              src={avatarSrc}
+                              alt={conversa.contact_name}
+                              className="w-10 h-10 rounded-full object-cover ring-2 ring-white dark:ring-gray-700"
+                            />
+                          );
+                        }
+                        return (
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm bg-gradient-to-br ${conversa.channel === 'instagram'
+                            ? 'from-[#833AB4] via-[#FD1D1D] to-[#FCAF45]'
+                            : selectedId === conversa.id
+                              ? 'from-emerald-500 to-emerald-700'
+                              : 'from-gray-400 to-gray-600'
+                            }`}>
+                            {conversa.contact_name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </div>
+                        );
+                      })()}
                       {conversa.channel === 'whatsapp' && (
                         <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center">
                           <MessageCircle className="w-3 h-3 text-emerald-500 fill-current" />
@@ -457,13 +484,17 @@ export default function ConversationsPage() {
                           {/* Avatar for Incoming Messages */}
                           {!isOutbound && !isSequence && (
                             <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 mb-1">
-                              {(selectedConversa?.avatar || selectedConversa?.avatar_url) ? (
-                                <img src={selectedConversa?.avatar || selectedConversa?.avatar_url} className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 text-xs font-bold">
-                                  {selectedConversa?.contact_name?.charAt(0)}
-                                </div>
-                              )}
+                              {(() => {
+                                const msgAvatar = selectedConversa?.avatar || selectedConversa?.avatar_url || (selectedConversa?.id ? localAvatars[selectedConversa.id] : null);
+                                if (msgAvatar) {
+                                  return <img src={msgAvatar} className="w-full h-full object-cover" />;
+                                }
+                                return (
+                                  <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 text-xs font-bold">
+                                    {selectedConversa?.contact_name?.charAt(0)}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           )}
                           {!isOutbound && isSequence && <div className="w-8 flex-shrink-0" />}
@@ -652,13 +683,17 @@ export default function ConversationsPage() {
               </button>
 
               <div className="w-20 h-20 rounded-full mx-auto mb-3 relative">
-                {(selectedConversa?.avatar || selectedConversa?.avatar_url) ? (
-                  <img src={selectedConversa?.avatar || selectedConversa?.avatar_url} className="w-full h-full object-cover rounded-full shadow-lg" />
-                ) : (
-                  <div className="w-full h-full bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 text-2xl font-bold">
-                    {selectedConversa?.contact_name?.charAt(0)}
-                  </div>
-                )}
+                {(() => {
+                  const detailAvatar = selectedConversa?.avatar || selectedConversa?.avatar_url || (selectedConversa?.id ? localAvatars[selectedConversa.id] : null);
+                  if (detailAvatar) {
+                    return <img src={detailAvatar} className="w-full h-full object-cover rounded-full shadow-lg" />;
+                  }
+                  return (
+                    <div className="w-full h-full bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 text-2xl font-bold">
+                      {selectedConversa?.contact_name?.charAt(0)}
+                    </div>
+                  );
+                })()}
               </div>
               <h3 className="font-bold text-lg text-slate-800 dark:text-white">{selectedConversa?.contact_name || lead?.nome}</h3>
               <p className="text-sm text-gray-500">{lead?.email || t('conversations.visitor')}</p>
