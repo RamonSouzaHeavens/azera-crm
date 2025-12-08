@@ -1,0 +1,2945 @@
+TAG
+Admininstração
+Endpoints para administração geral do sistema. Requerem um admintoken para autenticação.
+
+POST
+Criar Instancia
+GET
+Listar todas as instâncias
+POST
+Atualizar campos administrativos
+GET
+Ver Webhook Global
+POST
+Configurar Webhook Global
+
+POST
+/instance/init
+Criar Instancia
+Cria uma nova instância do WhatsApp. Para criar uma instância você precisa:
+
+Ter um admintoken válido
+Enviar pelo menos o nome da instância
+A instância será criada desconectada
+Será gerado um token único para autenticação
+Após criar a instância, guarde o token retornado pois ele será necessário para todas as outras operações.
+
+Estados possíveis da instância:
+
+disconnected: Desconectado do WhatsApp
+connecting: Em processo de conexão
+connected: Conectado e autenticado
+Campos administrativos (adminField01/adminField02) são opcionais e podem ser usados para armazenar metadados personalizados. OS valores desses campos são vísiveis para o dono da instancia via token, porém apenas o administrador da api (via admin token) pode editá-los.
+
+Request
+Body
+name
+string
+required
+Nome da instância
+
+Example: "minha-instancia"
+
+systemName
+string
+Nome do sistema (opcional, padrão 'uazapiGO' se não informado)
+
+Example: "apilocal"
+
+adminField01
+string
+Campo administrativo 1 para metadados personalizados (opcional)
+
+Example: "custom-metadata-1"
+
+adminField02
+string
+Campo administrativo 2 para metadados personalizados (opcional)
+
+Example: "custom-metadata-2"
+
+GET
+/instance/all
+Listar todas as instâncias
+Retorna uma lista completa de todas as instâncias do sistema, incluindo:
+
+ID e nome de cada instância
+Status atual (disconnected, connecting, connected)
+Data de criação
+Última desconexão e motivo
+Informações de perfil (se conectado)
+Requer permissões de administrador.
+
+Responses
+
+200
+Lista de instâncias retornada com sucesso
+
+401
+Token inválido ou expirado
+
+403
+Token de administrador inválido
+
+500
+Erro interno do servidor
+
+POST
+/instance/updateAdminFields
+Atualizar campos administrativos
+Atualiza os campos administrativos (adminField01/adminField02) de uma instância.
+
+Campos administrativos são opcionais e podem ser usados para armazenar metadados personalizados. Estes campos são persistidos no banco de dados e podem ser utilizados para integrações com outros sistemas ou para armazenamento de informações internas. OS valores desses campos são vísiveis para o dono da instancia via token, porém apenas o administrador da api (via admin token) pode editá-los.
+
+Request
+Body
+id
+string
+required
+ID da instância
+
+Example: "inst_123456"
+
+adminField01
+string
+Campo administrativo 1
+
+Example: "clientId_456"
+
+adminField02
+string
+Campo administrativo 2
+
+Example: "integration_xyz"
+
+Responses
+
+200
+Campos atualizados com sucesso
+
+401
+Token de administrador inválido
+
+404
+Instância não encontrada
+
+500
+Erro interno
+
+GET
+/globalwebhook
+Ver Webhook Global
+Retorna a configuração atual do webhook global, incluindo:
+
+URL configurada
+Eventos ativos
+Filtros aplicados
+Configurações adicionais
+Exemplo de resposta:
+
+{
+  "enabled": true,
+  "url": "https://example.com/webhook",
+  "events": ["messages", "messages_update"],
+  "excludeMessages": ["wasSentByApi", "isGroupNo"],
+  "addUrlEvents": true,
+  "addUrlTypesMessages": true
+}
+Responses
+
+200
+Configuração atual do webhook global
+
+401
+Token de administrador não fornecido
+
+403
+Token de administrador inválido ou servidor demo
+
+404
+Webhook global não encontrado
+
+🚀 Configuração Simples (Recomendada)
+Para a maioria dos casos de uso:
+
+Configure apenas URL e eventos desejados
+Modo simples por padrão (sem complexidade)
+Recomendado: Sempre use "excludeMessages": ["wasSentByApi"] para evitar loops
+Exemplo: {"url": "https://webhook.cool/global", "events": ["messages", "connection"], "excludeMessages": ["wasSentByApi"]}
+🧪 Sites para Testes (ordenados por qualidade)
+Para testar webhooks durante desenvolvimento:
+
+https://webhook.cool/ - ⭐ Melhor opção (sem rate limit, interface limpa)
+https://rbaskets.in/ - ⭐ Boa alternativa (confiável, baixo rate limit)
+https://webhook.site/ - ⚠️ Evitar se possível (rate limit agressivo)
+Funcionalidades Principais:
+Configuração de URL para recebimento de eventos
+Seleção granular de tipos de eventos
+Filtragem avançada de mensagens
+Parâmetros adicionais na URL
+Eventos Disponíveis:
+
+connection: Alterações no estado da conexão
+history: Recebimento de histórico de mensagens
+messages: Novas mensagens recebidas
+messages_update: Atualizações em mensagens existentes
+call: Eventos de chamadas VoIP
+contacts: Atualizações na agenda de contatos
+presence: Alterações no status de presença
+groups: Modificações em grupos
+labels: Gerenciamento de etiquetas
+chats: Eventos de conversas
+chat_labels: Alterações em etiquetas de conversas
+blocks: Bloqueios/desbloqueios
+leads: Atualizações de leads
+sender: Atualizações de campanhas, quando inicia, e quando completa
+Remover mensagens com base nos filtros:
+
+wasSentByApi: Mensagens originadas pela API ⚠️ IMPORTANTE: Use sempre este filtro para evitar loops em automações
+wasNotSentByApi: Mensagens não originadas pela API
+fromMeYes: Mensagens enviadas pelo usuário
+fromMeNo: Mensagens recebidas de terceiros
+isGroupYes: Mensagens em grupos
+isGroupNo: Mensagens em conversas individuais
+💡 Prevenção de Loops Globais: O webhook global recebe eventos de TODAS as instâncias. Se você tem automações que enviam mensagens via API, sempre inclua "excludeMessages": ["wasSentByApi"]. Caso prefira receber esses eventos, certifique-se de que sua automação detecta mensagens enviadas pela própria API para não criar loops infinitos em múltiplas instâncias.
+
+Parâmetros de URL:
+
+addUrlEvents (boolean): Quando ativo, adiciona o tipo do evento como path parameter na URL. Exemplo: https://api.example.com/webhook/{evento}
+addUrlTypesMessages (boolean): Quando ativo, adiciona o tipo da mensagem como path parameter na URL. Exemplo: https://api.example.com/webhook/{tipo_mensagem}
+Combinações de Parâmetros:
+
+Ambos ativos: https://api.example.com/webhook/{evento}/{tipo_mensagem} Exemplo real: https://api.example.com/webhook/message/conversation
+Apenas eventos: https://api.example.com/webhook/message
+Apenas tipos: https://api.example.com/webhook/conversation
+Notas Técnicas:
+
+Os parâmetros são adicionados na ordem: evento → tipo mensagem
+A URL deve ser configurada para aceitar esses parâmetros dinâmicos
+Funciona com qualquer combinação de eventos/mensagens
+Request
+Body
+url
+string
+required
+URL para receber os eventos
+
+Example: "https://webhook.cool/global"
+
+events
+array
+required
+Lista de eventos monitorados
+
+Example: ["messages","connection"]
+
+excludeMessages
+array
+Filtros para excluir tipos de mensagens
+
+Example: ["wasSentByApi"]
+
+addUrlEvents
+boolean
+Adiciona o tipo do evento como parâmetro na URL.
+
+false (padrão): URL normal
+true: Adiciona evento na URL (ex: /webhook/message)
+addUrlTypesMessages
+boolean
+Adiciona o tipo da mensagem como parâmetro na URL.
+
+false (padrão): URL normal
+true: Adiciona tipo da mensagem (ex: /webhook/conversation)
+Responses
+
+200
+Webhook global configurado com sucesso
+
+400
+Payload inválido
+
+401
+Token de administrador não fornecido
+
+403
+Token de administrador inválido ou servidor demo
+
+500
+Erro interno do servidor
+
+POST
+/instance/connect
+Conectar instância ao WhatsApp
+Inicia o processo de conexão de uma instância ao WhatsApp. Este endpoint:
+
+Requer o token de autenticação da instância
+Recebe o número de telefone associado à conta WhatsApp
+Gera um QR code caso não passe o campo phone
+Ou Gera código de pareamento se passar o o campo phone
+Atualiza o status da instância para "connecting"
+O processo de conexão permanece pendente até que:
+
+O QR code seja escaneado no WhatsApp do celular, ou
+O código de pareamento seja usado no WhatsApp
+Timeout de 2 minutos para QRCode seja atingido ou 5 minutos para o código de pareamento
+Use o endpoint /instance/status para monitorar o progresso da conexão.
+
+Estados possíveis da instância:
+
+disconnected: Desconectado do WhatsApp
+connecting: Em processo de conexão
+connected: Conectado e autenticado
+Exemplo de requisição:
+
+{
+  "phone": "5511999999999"
+}
+Request
+Body
+phone
+string
+required
+Número de telefone no formato internacional (ex: 5511999999999)
+
+Example: "5511999999999"
+
+Responses
+
+200
+Sucesso
+
+401
+Token inválido/expirado
+
+404
+Instância não encontrada
+
+429
+Limite de conexões simultâneas atingido
+
+500
+Erro interno
+
+POST
+/instance/disconnect
+Desconectar instância
+Desconecta a instância do WhatsApp, encerrando a sessão atual. Esta operação:
+
+Encerra a conexão ativa
+
+Requer novo QR code para reconectar
+
+Diferenças entre desconectar e hibernar:
+
+Desconectar: Encerra completamente a sessão, exigindo novo login
+
+Hibernar: Mantém a sessão ativa, apenas pausa a conexão
+
+Use este endpoint para:
+
+Encerrar completamente uma sessão
+
+Forçar uma nova autenticação
+
+Limpar credenciais de uma instância
+
+Reiniciar o processo de conexão
+
+Estados possíveis após desconectar:
+
+disconnected: Desconectado do WhatsApp
+
+connecting: Em processo de reconexão (após usar /instance/connect)
+
+GET
+/instance/status
+Verificar status da instância
+Retorna o status atual de uma instância, incluindo:
+
+Estado da conexão (disconnected, connecting, connected)
+QR code atualizado (se em processo de conexão)
+Código de pareamento (se disponível)
+Informações da última desconexão
+Detalhes completos da instância
+Este endpoint é particularmente útil para:
+
+Monitorar o progresso da conexão
+Obter QR codes atualizados durante o processo de conexão
+Verificar o estado atual da instância
+Identificar problemas de conexão
+Estados possíveis:
+
+disconnected: Desconectado do WhatsApp
+connecting: Em processo de conexão (aguardando QR code ou código de pareamento)
+connected: Conectado e autenticado com sucesso
+Responses
+
+200
+Sucesso
+
+401
+Token inválido/expirado
+
+404
+Instância não encontrada
+
+500
+Erro interno
+
+POST
+/profile/name
+Altera o nome do perfil do WhatsApp
+Altera o nome de exibição do perfil da instância do WhatsApp.
+
+O endpoint realiza:
+
+Atualiza o nome do perfil usando o WhatsApp AppState
+Sincroniza a mudança com o servidor do WhatsApp
+Retorna confirmação da alteração
+Importante:
+
+A instância deve estar conectada ao WhatsApp
+O nome será visível para todos os contatos
+Pode haver um limite de alterações por período (conforme WhatsApp)
+Request
+Body
+name
+string
+required
+Novo nome do perfil do WhatsApp
+
+Example: "Minha Empresa - Atendimento"
+
+Responses
+
+200
+Nome do perfil alterado com sucesso
+
+400
+Dados inválidos na requisição
+
+401
+Sem sessão ativa
+
+403
+Ação não permitida
+
+500
+Erro interno do servidor
+
+POST
+/profile/image
+Altera a imagem do perfil do WhatsApp
+Altera a imagem de perfil da instância do WhatsApp.
+
+O endpoint realiza:
+
+Atualiza a imagem do perfil usando
+Processa a imagem (URL, base64 ou comando de remoção)
+Sincroniza a mudança com o servidor do WhatsApp
+Retorna confirmação da alteração
+Importante:
+
+A instância deve estar conectada ao WhatsApp
+A imagem será visível para todos os contatos
+A imagem deve estar em formato JPEG e tamanho 640x640 pixels
+Request
+Body
+image
+string
+required
+Imagem do perfil. Pode ser:
+
+URL da imagem (http/https)
+String base64 da imagem
+"remove" ou "delete" para remover a imagem atual
+Example: "https://picsum.photos/640/640.jpg"
+
+Responses
+
+200
+Imagem do perfil alterada com sucesso
+
+400
+Dados inválidos na requisição
+
+401
+Sem sessão ativa
+
+403
+Ação não permitida
+
+413
+Imagem muito grande
+
+500
+Erro interno do servidor
+
+GET
+/webhook
+Ver Webhook da Instância
+Retorna a configuração atual do webhook da instância, incluindo:
+
+URL configurada
+Eventos ativos
+Filtros aplicados
+Configurações adicionais
+Exemplo de resposta:
+
+[
+  {
+    "id": "123e4567-e89b-12d3-a456-426614174000",
+    "enabled": true,
+    "url": "https://example.com/webhook",
+    "events": ["messages", "messages_update"],
+    "excludeMessages": ["wasSentByApi", "isGroupNo"],
+    "addUrlEvents": true,
+    "addUrlTypesMessages": true
+  },
+  {
+    "id": "987fcdeb-51k3-09j8-x543-864297539100",
+    "enabled": true,
+    "url": "https://outro-endpoint.com/webhook",
+    "events": ["connection", "presence"],
+    "excludeMessages": [],
+    "addUrlEvents": false,
+    "addUrlTypesMessages": false
+  }
+]
+A resposta é sempre um array, mesmo quando há apenas um webhook configurado.
+
+Responses
+
+200
+Configuração do webhook retornada com sucesso
+
+401
+Token inválido ou não fornecido
+
+500
+Erro interno do servidor
+
+POST
+/webhook
+Configurar Webhook da Instância
+Gerencia a configuração de webhooks para receber eventos em tempo real da instância. Permite gerenciar múltiplos webhooks por instância através do campo ID e action.
+
+🚀 Modo Simples (Recomendado)
+Uso mais fácil - sem complexidade de IDs:
+
+Não inclua action nem id no payload
+Gerencia automaticamente um único webhook por instância
+Cria novo ou atualiza o existente automaticamente
+Recomendado: Sempre use "excludeMessages": ["wasSentByApi"] para evitar loops
+Exemplo: {"url": "https://meusite.com/webhook", "events": ["messages"], "excludeMessages": ["wasSentByApi"]}
+🧪 Sites para Testes (ordenados por qualidade)
+Para testar webhooks durante desenvolvimento:
+
+https://webhook.cool/ - ⭐ Melhor opção (sem rate limit, interface limpa)
+https://rbaskets.in/ - ⭐ Boa alternativa (confiável, baixo rate limit)
+https://webhook.site/ - ⚠️ Evitar se possível (rate limit agressivo)
+⚙️ Modo Avançado (Para múltiplos webhooks)
+Para usuários que precisam de múltiplos webhooks por instância:
+
+💡 Dica: Mesmo precisando de múltiplos webhooks, considere usar addUrlEvents no modo simples. Um único webhook pode receber diferentes tipos de eventos em URLs específicas (ex: /webhook/message, /webhook/connection), eliminando a necessidade de múltiplos webhooks.
+
+Criar Novo Webhook:
+
+Use action: "add"
+Não inclua id no payload
+O sistema gera ID automaticamente
+Atualizar Webhook Existente:
+
+Use action: "update"
+Inclua o id do webhook no payload
+Todos os campos serão atualizados
+Remover Webhook:
+
+Use action: "delete"
+Inclua apenas o id do webhook
+Outros campos são ignorados
+Eventos Disponíveis
+connection: Alterações no estado da conexão
+history: Recebimento de histórico de mensagens
+messages: Novas mensagens recebidas
+messages_update: Atualizações em mensagens existentes
+call: Eventos de chamadas VoIP
+contacts: Atualizações na agenda de contatos
+presence: Alterações no status de presença
+groups: Modificações em grupos
+labels: Gerenciamento de etiquetas
+chats: Eventos de conversas
+chat_labels: Alterações em etiquetas de conversas
+blocks: Bloqueios/desbloqueios
+leads: Atualizações de leads
+sender: Atualizações de campanhas, quando inicia, e quando completa
+Remover mensagens com base nos filtros:
+
+wasSentByApi: Mensagens originadas pela API ⚠️ IMPORTANTE: Use sempre este filtro para evitar loops em automações
+wasNotSentByApi: Mensagens não originadas pela API
+fromMeYes: Mensagens enviadas pelo usuário
+fromMeNo: Mensagens recebidas de terceiros
+isGroupYes: Mensagens em grupos
+isGroupNo: Mensagens em conversas individuais
+💡 Prevenção de Loops: Se você tem automações que enviam mensagens via API, sempre inclua "excludeMessages": ["wasSentByApi"] no seu webhook. Caso prefira receber esses eventos, certifique-se de que sua automação detecta mensagens enviadas pela própria API para não criar loops infinitos.
+
+Ações Suportadas:
+
+add: Registrar novo webhook
+delete: Remover webhook existente
+Parâmetros de URL:
+
+addUrlEvents (boolean): Quando ativo, adiciona o tipo do evento como path parameter na URL. Exemplo: https://api.example.com/webhook/{evento}
+addUrlTypesMessages (boolean): Quando ativo, adiciona o tipo da mensagem como path parameter na URL. Exemplo: https://api.example.com/webhook/{tipo_mensagem}
+Combinações de Parâmetros:
+
+Ambos ativos: https://api.example.com/webhook/{evento}/{tipo_mensagem} Exemplo real: https://api.example.com/webhook/message/conversation
+Apenas eventos: https://api.example.com/webhook/message
+Apenas tipos: https://api.example.com/webhook/conversation
+Notas Técnicas:
+
+Os parâmetros são adicionados na ordem: evento → tipo mensagem
+A URL deve ser configurada para aceitar esses parâmetros dinâmicos
+Funciona com qualquer combinação de eventos/mensagens
+Request
+Body
+id
+string
+ID único do webhook (necessário para update/delete)
+
+Example: "123e4567-e89b-12d3-a456-426614174000"
+
+enabled
+boolean
+Habilita/desabilita o webhook
+
+Example: true
+
+url
+string
+required
+URL para receber os eventos
+
+Example: "https://example.com/webhook"
+
+events
+array
+Lista de eventos monitorados
+
+excludeMessages
+array
+Filtros para excluir tipos de mensagens
+
+addUrlEvents
+boolean
+Adiciona o tipo do evento como parâmetro na URL.
+
+false (padrão): URL normal
+true: Adiciona evento na URL (ex: /webhook/message)
+addUrlTypesMessages
+boolean
+Adiciona o tipo da mensagem como parâmetro na URL.
+
+false (padrão): URL normal
+true: Adiciona tipo da mensagem (ex: /webhook/conversation)
+action
+string
+Ação a ser executada:
+
+add: criar novo webhook
+update: atualizar webhook existente (requer id)
+delete: remover webhook (requer apenas id) Se não informado, opera no modo simples (único webhook)
+Responses
+
+200
+Webhook configurado ou atualizado com sucesso
+
+400
+Requisição inválida
+
+401
+Token inválido ou não fornecido
+
+500
+Erro interno do servidor
+
+GET
+/sse
+Server-Sent Events (SSE)
+Receber eventos em tempo real via Server-Sent Events (SSE)
+
+Funcionalidades Principais:
+Configuração de URL para recebimento de eventos
+Seleção granular de tipos de eventos
+Filtragem avançada de mensagens
+Parâmetros adicionais na URL
+Gerenciamento múltiplo de webhooks
+Eventos Disponíveis:
+
+connection: Alterações no estado da conexão
+history: Recebimento de histórico de mensagens
+messages: Novas mensagens recebidas
+messages_update: Atualizações em mensagens existentes
+call: Eventos de chamadas VoIP
+contacts: Atualizações na agenda de contatos
+presence: Alterações no status de presença
+groups: Modificações em grupos
+labels: Gerenciamento de etiquetas
+chats: Eventos de conversas
+chat_labels: Alterações em etiquetas de conversas
+blocks: Bloqueios/desbloqueios
+leads: Atualizações de leads
+Estabelece uma conexão persistente para receber eventos em tempo real. Este endpoint:
+
+Requer autenticação via token
+
+Mantém uma conexão HTTP aberta com o cliente
+
+Envia eventos conforme ocorrem no servidor
+
+Suporta diferentes tipos de eventos
+
+Exemplo de uso:
+
+
+const eventSource = new
+EventSource('/sse?token=SEU_TOKEN&events=chats,messages');
+
+
+eventSource.onmessage = function(event) {
+  const data = JSON.parse(event.data);
+  console.log('Novo evento:', data);
+};
+
+
+eventSource.onerror = function(error) {
+  console.error('Erro na conexão SSE:', error);
+};
+
+Estrutura de um evento:
+
+
+{
+  "type": "message",
+  "data": {
+    "id": "3EB0538DA65A59F6D8A251",
+    "from": "5511999999999@s.whatsapp.net",
+    "to": "5511888888888@s.whatsapp.net",
+    "text": "Olá!",
+    "timestamp": 1672531200000
+  }
+}
+
+Parameters
+Query Parameters
+token
+string
+required
+Token de autenticação da instância
+
+events
+string
+required
+Tipos de eventos a serem recebidos (separados por vírgula)
+
+TAG
+Enviar Mensagem
+Endpoints para envio de mensagens do WhatsApp com diferentes tipos de conteúdo.
+
+Campos Opcionais Comuns
+Todos os endpoints de envio de mensagem suportam os seguintes campos opcionais:
+
+delay (integer): Atraso em milissegundos antes do envio
+
+Durante o atraso aparecerá "Digitando..." ou "Gravando áudio..." dependendo do tipo
+Exemplo: 5000 (5 segundos)
+readchat (boolean): Marcar chat como lido após envio
+
+Remove o contador de mensagens não lidas do chat
+Exemplo: true
+readmessages (boolean): Marcar últimas mensagens recebidas como lidas
+
+Marca as últimas 10 mensagens recebidas (não enviadas por você) como lidas
+Útil para confirmar leitura de mensagens pendentes antes de responder
+Diferente do readchat que apenas remove contador de não lidas
+Exemplo: true
+replyid (string): ID da mensagem para responder
+
+Cria uma resposta vinculada à mensagem original
+Suporte varia por tipo de mensagem
+Exemplo: "3A12345678901234567890123456789012"
+mentions (string): Números para mencionar (apenas para envio em grupos)
+
+Números específicos: "5511999999999,5511888888888"
+Mencionar todos: "all"
+forward (boolean): Marca a mensagem como encaminhada no WhatsApp
+
+Adiciona o indicador "Encaminhada" na mensagem
+Exemplo: true
+track_source (string): Origem do rastreamento da mensagem
+
+Identifica o sistema ou fonte que está enviando a mensagem
+Útil para integrações (ex: "chatwoot", "crm", "chatbot")
+Exemplo: "chatwoot"
+track_id (string): ID para rastreamento da mensagem
+
+Identificador livre para acompanhar a mensagem em sistemas externos
+Permite correlacionar mensagens entre diferentes plataformas
+Nota: O sistema aceita valores duplicados - não há validação de unicidade
+Use o mesmo ID em várias mensagens se fizer sentido para sua integração
+Exemplo: "msg_123456789"
+Envio para Grupos
+number (string): Para enviar mensagem para grupo, use o ID do grupo que termina com @g.us
+Exemplo: "120363012345678901@g.us"
+Como obter o ID do grupo:
+Use o chatid do webhook recebido quando alguém envia mensagem no grupo
+Use o endpoint GET /group/list para listar todos os grupos e seus IDs
+Placeholders Disponíveis
+Todos os endpoints de envio de mensagem suportam placeholders dinâmicos para personalização automática:
+
+Campos de Nome
+{{name}}: Nome consolidado do chat, usando a primeira opção disponível:
+
+Nome do lead (lead_name)
+Nome completo do lead (lead_fullName)
+Nome do contato no WhatsApp (wa_contactName)
+Nome do perfil do WhatsApp (wa_name)
+{{first_name}}: Primeira palavra válida do nome consolidado (mínimo 2 caracteres)
+
+Campos do WhatsApp
+{{wa_name}}: Nome do perfil do WhatsApp
+{{wa_contactName}}: Nome do contato como salvo no WhatsApp
+Campos do Lead
+{{lead_name}}: Nome do lead
+{{lead_fullName}}: Nome completo do lead
+{{lead_personalid}}: ID pessoal (CPF, CNPJ, etc)
+{{lead_email}}: Email do lead
+{{lead_status}}: Status atual do lead
+{{lead_notes}}: Anotações do lead
+{{lead_assignedAttendant_id}}: ID do atendente designado
+Campos Personalizados
+Campos adicionados via custom fields são acessíveis usando {{lead_field01}} à {{lead_field20}} ou usar {{nomedocampo}} definido em /instance/updateFieldsMap.
+
+Exemplo de Uso
+Olá {{name}}! Vi que você trabalha na {{company}}.
+Seu email {{lead_email}} está correto?
+💡 Dica: Use /chat/find para buscar dados do chat e ver os campos disponíveis antes de enviar mensagens com placeholders.
+
+POST
+Enviar mensagem de texto
+POST
+Enviar mídia (imagem, vídeo, áudio ou documento)
+POST
+Enviar cartão de contato (vCard)
+POST
+Enviar localização geográfica
+POST
+Enviar atualização de presença
+POST
+Enviar Stories (Status)
+POST
+Enviar menu interativo (botões, carrosel, lista ou enquete)
+POST
+Enviar carrossel de mídia com botões
+POST
+Solicitar localização do usuário
+POST
+Solicitar pagamento
+POST
+Enviar botão PIX
+
+POST
+/send/text
+Enviar mensagem de texto
+Envia uma mensagem de texto para um contato ou grupo.
+
+Recursos Específicos
+Preview de links com suporte a personalização automática ou customizada
+Formatação básica do texto
+Substituição automática de placeholders dinâmicos
+Campos Comuns
+Este endpoint suporta todos os campos opcionais comuns documentados na tag "Enviar Mensagem", incluindo: delay, readchat, readmessages, replyid, mentions, forward, track_source, track_id, placeholders e envio para grupos.
+
+Preview de Links
+Preview Automático
+{
+  "number": "5511999999999",
+  "text": "Confira: https://exemplo.com",
+  "linkPreview": true
+}
+Preview Personalizado
+{
+  "number": "5511999999999",
+  "text": "Confira nosso site! https://exemplo.com",
+  "linkPreview": true,
+  "linkPreviewTitle": "Título Personalizado",
+  "linkPreviewDescription": "Uma descrição personalizada do link",
+  "linkPreviewImage": "https://exemplo.com/imagem.jpg",
+  "linkPreviewLarge": true
+}
+Request
+Body
+number
+string
+required
+Número do destinatário (formato internacional)
+
+Example: "5511999999999"
+
+text
+string
+required
+Texto da mensagem (aceita placeholders)
+
+Example: "Olá {{name}}! Como posso ajudar?"
+
+linkPreview
+boolean
+Ativa/desativa preview de links. Se true, procura automaticamente um link no texto para gerar preview.
+
+Comportamento:
+
+Se apenas linkPreview=true: gera preview automático do primeiro link encontrado no texto
+Se fornecidos campos personalizados (title, description, image): usa os valores fornecidos
+Se campos personalizados parciais: combina com dados automáticos do link como fallback
+Example: true
+
+linkPreviewTitle
+string
+Define um título personalizado para o preview do link
+
+Example: "Título Personalizado"
+
+linkPreviewDescription
+string
+Define uma descrição personalizada para o preview do link
+
+Example: "Descrição personalizada do link"
+
+linkPreviewImage
+string
+URL ou Base64 da imagem para usar no preview do link
+
+Example: "https://exemplo.com/imagem.jpg"
+
+linkPreviewLarge
+boolean
+Se true, gera um preview grande com upload da imagem. Se false, gera um preview pequeno sem upload
+
+Example: true
+
+replyid
+string
+ID da mensagem para responder
+
+Example: "3EB0538DA65A59F6D8A251"
+
+mentions
+string
+Números para mencionar (separados por vírgula)
+
+Example: "5511999999999,5511888888888"
+
+readchat
+boolean
+Marca conversa como lida após envio
+
+Example: true
+
+readmessages
+boolean
+Marca últimas mensagens recebidas como lidas
+
+Example: true
+
+delay
+integer
+Atraso em milissegundos antes do envio, durante o atraso apacerá 'Digitando...'
+
+Example: 1000
+
+forward
+boolean
+Marca a mensagem como encaminhada no WhatsApp
+
+Example: true
+
+track_source
+string
+Origem do rastreamento da mensagem
+
+Example: "chatwoot"
+
+track_id
+string
+ID para rastreamento da mensagem (aceita valores duplicados)
+
+Example: "msg_123456789"
+
+Responses
+
+200
+Mensagem enviada com sucesso
+
+400
+Requisição inválida
+
+401
+Não autorizado
+
+429
+Limite de requisições excedido
+
+500
+Erro interno do servidor
+
+Enviar mídia (imagem, vídeo, áudio ou documento)
+Envia diferentes tipos de mídia para um contato ou grupo. Suporta URLs ou arquivos base64.
+
+Tipos de Mídia Suportados
+image: Imagens (JPG preferencialmente)
+video: Vídeos (apenas MP4)
+document: Documentos (PDF, DOCX, XLSX, etc)
+audio: Áudio comum (MP3 ou OGG)
+myaudio: Mensagem de voz (alternativa ao PTT)
+ptt: Mensagem de voz (Push-to-Talk)
+sticker: Figurinha/Sticker
+Recursos Específicos
+Upload por URL ou base64
+Caption/legenda opcional com suporte a placeholders
+Nome personalizado para documentos (docName)
+Geração automática de thumbnails
+Compressão otimizada conforme o tipo
+Campos Comuns
+Este endpoint suporta todos os campos opcionais comuns documentados na tag "Enviar Mensagem", incluindo: delay, readchat, readmessages, replyid, mentions, forward, track_source, track_id, placeholders e envio para grupos.
+
+Exemplos Básicos
+Imagem Simples
+{
+  "number": "5511999999999",
+  "type": "image",
+  "file": "https://exemplo.com/foto.jpg"
+}
+Documento com Nome
+{
+  "number": "5511999999999",
+  "type": "document",
+  "file": "https://exemplo.com/contrato.pdf",
+  "docName": "Contrato.pdf",
+  "text": "Segue o documento solicitado"
+}
+Request
+Body
+number
+string
+required
+Número do destinatário (formato internacional)
+
+Example: "5511999999999"
+
+type
+string
+required
+Tipo de mídia (image, video, document, audio, myaudio, ptt, sticker)
+
+Example: "image"
+
+file
+string
+required
+URL ou base64 do arquivo
+
+Example: "https://exemplo.com/imagem.jpg"
+
+text
+string
+Texto descritivo (caption) - aceita placeholders
+
+Example: "Veja esta foto!"
+
+docName
+string
+Nome do arquivo (apenas para documents)
+
+Example: "relatorio.pdf"
+
+replyid
+string
+ID da mensagem para responder
+
+Example: "3EB0538DA65A59F6D8A251"
+
+mentions
+string
+Números para mencionar (separados por vírgula)
+
+Example: "5511999999999,5511888888888"
+
+readchat
+boolean
+Marca conversa como lida após envio
+
+Example: true
+
+readmessages
+boolean
+Marca últimas mensagens recebidas como lidas
+
+Example: true
+
+delay
+integer
+Atraso em milissegundos antes do envio, durante o atraso apacerá 'Digitando...' ou 'Gravando áudio...'
+
+Example: 1000
+
+forward
+boolean
+Marca a mensagem como encaminhada no WhatsApp
+
+Example: true
+
+track_source
+string
+Origem do rastreamento da mensagem
+
+Example: "chatwoot"
+
+track_id
+string
+ID para rastreamento da mensagem (aceita valores duplicados)
+
+Example: "msg_123456789"
+
+Responses
+
+200
+Mídia enviada com sucesso
+
+400
+Requisição inválida
+
+401
+Não autorizado
+
+413
+Arquivo muito grande
+
+415
+Formato de mídia não suportado
+
+500
+Erro interno do servidor
+
+
+POST
+/send/contact
+Enviar cartão de contato (vCard)
+Envia um cartão de contato (vCard) para um contato ou grupo.
+
+Recursos Específicos
+vCard completo com nome, telefones, organização, email e URL
+Múltiplos números de telefone (separados por vírgula)
+Cartão clicável no WhatsApp para salvar na agenda
+Informações profissionais (organização/empresa)
+Campos Comuns
+Este endpoint suporta todos os campos opcionais comuns documentados na tag "Enviar Mensagem", incluindo: delay, readchat, readmessages, replyid, mentions, forward, track_source, track_id, placeholders e envio para grupos.
+
+Exemplo Básico
+{
+  "number": "5511999999999",
+  "fullName": "João Silva",
+  "phoneNumber": "5511999999999,5511888888888",
+  "organization": "Empresa XYZ",
+  "email": "joao.silva@empresa.com",
+  "url": "https://empresa.com/joao"
+}
+Request
+Body
+number
+string
+required
+Número do destinatário (formato internacional)
+
+Example: "5511999999999"
+
+fullName
+string
+required
+Nome completo do contato
+
+Example: "João Silva"
+
+phoneNumber
+string
+required
+Números de telefone (separados por vírgula)
+
+Example: "5511999999999,5511888888888"
+
+organization
+string
+Nome da organização/empresa
+
+Example: "Empresa XYZ"
+
+email
+string
+Endereço de email
+
+Example: "joao@empresa.com"
+
+url
+string
+URL pessoal ou da empresa
+
+Example: "https://empresa.com/joao"
+
+replyid
+string
+ID da mensagem para responder
+
+Example: "3EB0538DA65A59F6D8A251"
+
+mentions
+string
+Números para mencionar (separados por vírgula)
+
+Example: "5511999999999,5511888888888"
+
+readchat
+boolean
+Marca conversa como lida após envio
+
+Example: true
+
+readmessages
+boolean
+Marca últimas mensagens recebidas como lidas
+
+Example: true
+
+delay
+integer
+Atraso em milissegundos antes do envio, durante o atraso apacerá 'Digitando...'
+
+Example: 1000
+
+forward
+boolean
+Marca a mensagem como encaminhada no WhatsApp
+
+Example: true
+
+track_source
+string
+Origem do rastreamento da mensagem
+
+Example: "chatwoot"
+
+track_id
+string
+ID para rastreamento da mensagem (aceita valores duplicados)
+
+Example: "msg_123456789"
+
+Responses
+
+200
+Cartão de contato enviado com sucesso
+
+400
+Requisição inválida
+
+401
+Não autorizado
+
+429
+Limite de requisições excedido
+
+500
+Erro interno do servidor
+
+POST
+/message/download
+Baixar arquivo de uma mensagem
+Baixa o arquivo associado a uma mensagem de mídia (imagem, vídeo, áudio, documento ou sticker).
+
+Parâmetros
+id (string, obrigatório): ID da mensagem
+return_base64 (boolean, default: false): Retorna arquivo em base64
+generate_mp3 (boolean, default: true): Para áudios, define formato de retorno
+true: Retorna MP3
+false: Retorna OGG
+return_link (boolean, default: true): Retorna URL pública do arquivo
+transcribe (boolean, default: false): Transcreve áudios para texto
+openai_apikey (string, opcional): Chave OpenAI para transcrição
+Se não informada, usa a chave salva na instância
+Se informada, atualiza e salva na instância para próximas chamadas
+download_quoted (boolean, default: false): Baixa mídia da mensagem citada
+Útil para baixar conteúdo original de status do WhatsApp
+Quando uma mensagem é resposta a um status, permite baixar a mídia do status original
+Contextualização: Ao baixar a mídia citada, você identifica o contexto da conversa
+Exemplo: Se alguém responde a uma promoção, baixando a mídia você saberá que a pergunta é sobre aquela promoção específica
+Exemplos
+Baixar áudio como MP3:
+{
+  "id": "7EB0F01D7244B421048F0706368376E0",
+  "generate_mp3": true
+}
+Transcrever áudio:
+{
+  "id": "7EB0F01D7244B421048F0706368376E0",
+  "transcribe": true
+}
+Apenas base64 (sem salvar):
+{
+  "id": "7EB0F01D7244B421048F0706368376E0",
+  "return_base64": true,
+  "return_link": false
+}
+Baixar mídia de status (mensagem citada):
+{
+  "id": "7EB0F01D7244B421048F0706368376E0",
+  "download_quoted": true
+}
+Útil quando o cliente responde a uma promoção/status - você baixa a mídia original para entender sobre qual produto/oferta ele está perguntando.
+
+Resposta
+{
+  "fileURL": "https://api.exemplo.com/files/arquivo.mp3",
+  "mimetype": "audio/mpeg",
+  "base64Data": "UklGRkj...",
+  "transcription": "Texto transcrito"
+}
+Nota:
+
+Por padrão, se não definido o contrário:
+áudios são retornados como MP3.
+E todos os pedidos de download são retornados com URL pública.
+Transcrição requer chave OpenAI válida. A chave pode ser configurada uma vez na instância e será reutilizada automaticamente.
+Request
+Body
+id
+string
+required
+ID da mensagem contendo o arquivo
+
+Example: "7EB0F01D7244B421048F0706368376E0"
+
+return_base64
+boolean
+Se verdadeiro, retorna o conteúdo em base64
+
+generate_mp3
+boolean
+Para áudios, define formato de retorno (true=MP3, false=OGG)
+
+return_link
+boolean
+Salva e retorna URL pública do arquivo
+
+transcribe
+boolean
+Se verdadeiro, transcreve áudios para texto
+
+openai_apikey
+string
+Chave da API OpenAI para transcrição (opcional)
+
+Example: "sk-..."
+
+download_quoted
+boolean
+Se verdadeiro, baixa mídia da mensagem citada ao invés da mensagem principal
+
+Responses
+
+200
+Successful file download
+
+400
+Bad Request
+
+401
+Unauthorized
+
+404
+Not Found
+
+500
+Internal Server Error
+
+POST
+/message/find
+Buscar mensagens em um chat
+Busca mensagens com múltiplos filtros disponíveis. Este endpoint permite:
+
+Busca por ID específico: Use id para encontrar uma mensagem exata
+Filtrar por chat: Use chatid para mensagens de uma conversa específica
+Filtrar por rastreamento: Use track_source e track_id para mensagens com dados de tracking
+Limitar resultados: Use limit para controlar quantas mensagens retornar
+Ordenação: Resultados ordenados por data (mais recentes primeiro)
+Request
+Body
+id
+string
+ID específico da mensagem para busca exata
+
+Example: "user123:r3EB0538"
+
+chatid
+string
+ID do chat no formato internacional
+
+Example: "5511999999999@s.whatsapp.net"
+
+track_source
+string
+Origem do rastreamento para filtrar mensagens
+
+Example: "chatwoot"
+
+track_id
+string
+ID de rastreamento para filtrar mensagens
+
+Example: "msg_123456789"
+
+limit
+integer
+Numero maximo de mensagens a retornar (padrao 100)
+
+Example: 20
+
+offset
+integer
+Deslocamento para paginacao (0 retorna as mensagens mais recentes)
+
+POST
+/message/markread
+Marcar mensagens como lidas
+Marca uma ou mais mensagens como lidas. Este endpoint permite:
+
+Marcar múltiplas mensagens como lidas de uma vez
+Atualizar o status de leitura no WhatsApp
+Sincronizar o status de leitura entre dispositivos
+Exemplo de requisição básica:
+
+{
+  "id": [
+    "62AD1AD844E518180227BF68DA7ED710",
+    "ECB9DE48EB41F77BFA8491BFA8D6EF9B"  
+  ]
+}
+Exemplo de resposta:
+
+{
+  "success": true,
+  "message": "Messages marked as read",
+  "markedMessages": [
+    {
+      "id": "62AD1AD844E518180227BF68DA7ED710",
+      "timestamp": 1672531200000
+    },
+    {
+      "id": "ECB9DE48EB41F77BFA8491BFA8D6EF9B",
+      "timestamp": 1672531300000
+    }
+  ]
+}
+Parâmetros disponíveis:
+
+id: Lista de IDs das mensagens a serem marcadas como lidas
+Erros comuns:
+
+401: Token inválido ou expirado
+400: Lista de IDs vazia ou inválida
+404: Uma ou mais mensagens não encontradas
+500: Erro ao marcar mensagens como lidas
+Request
+Body
+id
+array
+required
+Lista de IDs das mensagens a serem marcadas como lidas
+
+Example: ["62AD1AD844E518180227BF68DA7ED710","ECB9DE48EB41F77BFA8491BFA8D6EF9B"]
+
+POST
+/message/react
+Enviar reação a uma mensagem
+Envia uma reação (emoji) a uma mensagem específica. Este endpoint permite:
+
+Adicionar ou remover reações em mensagens
+
+Usar qualquer emoji Unicode válido
+
+Reagir a mensagens em chats individuais ou grupos
+
+Remover reações existentes
+
+Verificar o status da reação enviada
+
+Tipos de reações suportados:
+
+Qualquer emoji Unicode válido (👍, ❤️, 😂, etc)
+
+String vazia para remover reação
+
+Exemplo de requisição básica:
+
+
+{
+  "number": "5511999999999@s.whatsapp.net",
+  "text": "👍",
+  "id": "3EB0538DA65A59F6D8A251"
+}
+
+Exemplo de requisição para remover reação:
+
+
+{
+  "number": "5511999999999@s.whatsapp.net",
+  "text": "",
+  "id": "3EB0538DA65A59F6D8A251"
+}
+
+Exemplo de resposta:
+
+
+{
+  "success": true,
+  "message": "Reaction sent",
+  "reaction": {
+    "id": "3EB0538DA65A59F6D8A251",
+    "emoji": "👍",
+    "timestamp": 1672531200000,
+    "status": "sent"
+  }
+}
+
+Exemplo de resposta ao remover reação:
+
+
+{
+  "success": true,
+  "message": "Reaction removed",
+  "reaction": {
+    "id": "3EB0538DA65A59F6D8A251",
+    "emoji": null,
+    "timestamp": 1672531200000,
+    "status": "removed"
+  }
+}
+
+Parâmetros disponíveis:
+
+number: Número do chat no formato internacional (ex: 5511999999999@s.whatsapp.net)
+
+text: Emoji Unicode da reação (ou string vazia para remover reação)
+
+id: ID da mensagem que receberá a reação
+
+Erros comuns:
+
+401: Token inválido ou expirado
+
+400: Número inválido ou emoji não suportado
+
+404: Mensagem não encontrada
+
+500: Erro ao enviar reação
+
+Limitações:
+
+Só é possível reagir a mensagens enviadas por outros usuários
+
+Não é possível reagir a mensagens antigas (mais de 7 dias)
+
+O mesmo usuário só pode ter uma reação ativa por mensagem
+
+Request
+Body
+number
+string
+required
+Número do chat no formato internacional
+
+Example: "5511999999999@s.whatsapp.net"
+
+text
+string
+required
+Emoji Unicode da reação (ou string vazia para remover reação)
+
+Example: "👍"
+
+id
+string
+required
+ID da mensagem que receberá a reação
+
+Example: "3EB0538DA65A59F6D8A251"
+
+POST
+/message/delete
+Apagar Mensagem Para Todos
+Apaga uma mensagem para todos os participantes da conversa.
+
+Funcionalidades:
+Apaga mensagens em conversas individuais ou grupos
+Funciona com mensagens enviadas pelo usuário ou recebidas
+Atualiza o status no banco de dados
+Envia webhook de atualização
+Notas Técnicas:
+
+O ID da mensagem pode ser fornecido em dois formatos:
+ID completo (contém ":"): usado diretamente
+ID curto: concatenado com o owner para busca
+Gera evento webhook do tipo "messages_update"
+Atualiza o status da mensagem para "Deleted"
+Request
+Body
+id
+string
+required
+ID da mensagem a ser apagada
+
+POST
+/message/edit
+Edita uma mensagem enviada
+Edita o conteúdo de uma mensagem já enviada usando a funcionalidade nativa do WhatsApp.
+
+O endpoint realiza:
+
+Busca a mensagem original no banco de dados usando o ID fornecido
+Edita o conteúdo da mensagem para o novo texto no WhatsApp
+Gera um novo ID para a mensagem editada
+Retorna objeto de mensagem completo seguindo o padrão da API
+Dispara eventos SSE/Webhook automaticamente
+Importante:
+
+Só é possível editar mensagens enviadas pela própria instância
+A mensagem deve existir no banco de dados
+O ID pode ser fornecido no formato completo (owner:messageid) ou apenas messageid
+A mensagem deve estar dentro do prazo permitido pelo WhatsApp para edição
+Request
+Body
+id
+string
+required
+ID único da mensagem que será editada (formato owner:messageid ou apenas messageid)
+
+Example: "3A12345678901234567890123456789012"
+
+text
+string
+required
+Novo conteúdo de texto da mensagem
+
+Example: "Texto editado da mensagem"
+
+POST
+/chat/delete
+Deleta chat
+Deleta um chat e/ou suas mensagens do WhatsApp e/ou banco de dados. Você pode escolher deletar:
+
+Apenas do WhatsApp
+Apenas do banco de dados
+Apenas as mensagens do banco de dados
+Qualquer combinação das opções acima
+Request
+Body
+number
+string
+required
+Número do chat no formato internacional. Para grupos use o ID completo do grupo.
+
+Example: "5511999999999"
+
+deleteChatDB
+boolean
+Se true, deleta o chat do banco de dados
+
+Example: true
+
+deleteMessagesDB
+boolean
+Se true, deleta todas as mensagens do chat do banco de dados
+
+Example: true
+
+deleteChatWhatsApp
+boolean
+Se true, deleta o chat do WhatsApp
+
+Example: true
+
+POST
+/chat/archive
+Arquivar/desarquivar chat
+Altera o estado de arquivamento de um chat do WhatsApp.
+
+Quando arquivado, o chat é movido para a seção de arquivados no WhatsApp
+A ação é sincronizada entre todos os dispositivos conectados
+Não afeta as mensagens ou o conteúdo do chat
+Request
+Body
+number
+string
+required
+Número do telefone (formato E.164) ou ID do grupo
+
+Example: "5511999999999"
+
+archive
+boolean
+required
+true para arquivar, false para desarquivar
+
+Example: true
+
+POST
+/chat/read
+Marcar chat como lido/não lido
+Atualiza o status de leitura de um chat no WhatsApp.
+
+Quando um chat é marcado como lido:
+
+O contador de mensagens não lidas é zerado
+O indicador visual de mensagens não lidas é removido
+O remetente recebe confirmação de leitura (se ativado)
+Quando marcado como não lido:
+
+O chat aparece como pendente de leitura
+Não afeta as confirmações de leitura já enviadas
+Request
+Body
+number
+string
+required
+Identificador do chat no formato:
+
+Para usuários: [número]@s.whatsapp.net (ex: 5511999999999@s.whatsapp.net)
+Para grupos: [id-grupo]@g.us (ex: 123456789-987654321@g.us)
+Example: "5511999999999@s.whatsapp.net"
+
+read
+boolean
+required
+true: marca o chat como lido
+false: marca o chat como não lido
+
+POST
+/chat/find
+Busca chats com filtros
+Busca chats com diversos filtros e ordenação. Suporta filtros em todos os campos do chat, paginação e ordenação customizada.
+
+Operadores de filtro:
+
+~ : LIKE (contém)
+!~ : NOT LIKE (não contém)
+!= : diferente
+>= : maior ou igual
+> : maior que
+<= : menor ou igual
+< : menor que
+Sem operador: LIKE (contém)
+Request
+Body
+operator
+string
+Operador lógico entre os filtros
+
+sort
+string
+Campo para ordenação (+/-campo). Ex -wa_lastMsgTimestamp
+
+limit
+integer
+Limite de resultados por página
+
+offset
+integer
+Offset para paginação
+
+wa_fastid
+string
+wa_chatid
+string
+wa_archived
+boolean
+wa_contactName
+string
+wa_name
+string
+name
+string
+wa_isBlocked
+boolean
+wa_isGroup
+boolean
+wa_isGroup_admin
+boolean
+wa_isGroup_announce
+boolean
+wa_isGroup_member
+boolean
+wa_isPinned
+boolean
+wa_label
+string
+lead_tags
+string
+lead_isTicketOpen
+boolean
+lead_assignedAttendant_id
+string
+lead_status
+string
+
+POST
+/chat/labels
+Gerencia labels de um chat
+Atualiza as labels associadas a um chat específico. Este endpoint oferece três modos de operação:
+
+Definir todas as labels (labelids): Define o conjunto completo de labels para o chat, substituindo labels existentes
+Adicionar uma label (add_labelid): Adiciona uma única label ao chat sem afetar as existentes
+Remover uma label (remove_labelid): Remove uma única label do chat sem afetar as outras
+Importante: Use apenas um dos três parâmetros por requisição. Labels inexistentes serão rejeitadas.
+
+As labels devem ser fornecidas no formato id ou labelid encontradas na função get labels.
+
+Request
+Body
+number
+string
+required
+Número do chat ou grupo
+
+Example: "5511999999999"
+
+labelids
+array
+Lista de IDs das labels a serem aplicadas ao chat (define todas as labels)
+
+Example: ["10","20"]
+
+add_labelid
+string
+ID da label a ser adicionada ao chat
+
+Example: "10"
+
+remove_labelid
+string
+ID da label a ser removida do chat
+
+Example: "20"
+
+Responses
+
+200
+Labels atualizadas com sucesso
+
+400
+Erro na requisição
+
+404
+Chat não encontrado
+
+POST
+/label/edit
+Editar etiqueta
+Edita uma etiqueta existente na instância. Permite alterar nome, cor ou deletar a etiqueta.
+
+Request
+Body
+labelid
+string
+required
+ID da etiqueta a ser editada
+
+Example: "25"
+
+name
+string
+Novo nome da etiqueta
+
+Example: "responder editado"
+
+color
+integer
+Código numérico da nova cor (0-19)
+
+Example: 2
+
+delete
+boolean
+Indica se a etiqueta deve ser deletada
+
+Responses
+
+200
+Etiqueta editada com sucesso
+
+400
+Payload inválido
+
+500
+Erro interno do servidor ou sessão inválida
+
+GET
+/labels
+Buscar todas as etiquetas
+Retorna a lista completa de etiquetas da instância.
+
+Responses
+
+200
+Lista de etiquetas retornada com sucesso
+
+500
+Erro interno do servidor
+
+POST
+/instance/updateFieldsMap
+Atualizar campos personalizados de leads
+Atualiza os campos personalizados (custom fields) de uma instância. Permite configurar até 20 campos personalizados para armazenamento de informações adicionais sobre leads.
+
+Cada campo pode armazenar até 255 caracteres e aceita qualquer tipo de dado.
+
+Campos disponíveis:
+
+lead_field01 a lead_field20
+Exemplo de uso:
+
+Armazenar informações adicionais sobre leads
+Criar campos personalizados para integração com outros sistemas
+Armazenar tags ou categorias personalizadas
+Manter histórico de interações com o lead
+Exemplo de requisição:
+
+{
+  "lead_field01": "nome",
+  "lead_field02": "email",
+  "lead_field03": "telefone",
+  "lead_field04": "cidade",
+  "lead_field05": "estado",
+  "lead_field06": "idade",
+  "lead_field07": "interesses",
+  "lead_field08": "origem",
+  "lead_field09": "status",
+  "lead_field10": "valor",
+  "lead_field11": "observacoes",
+  "lead_field12": "ultima_interacao",
+  "lead_field13": "proximo_contato",
+  "lead_field14": "vendedor",
+  "lead_field15": "produto_interesse",
+  "lead_field16": "fonte_captacao",
+  "lead_field17": "score",
+  "lead_field18": "tags",
+  "lead_field19": "historico",
+  "lead_field20": "custom"
+}
+Exemplo de resposta:
+
+{
+  "success": true,
+  "message": "Custom fields updated successfully",
+  "instance": {
+    "id": "r183e2ef9597845",
+    "name": "minha-instancia",
+    "fieldsMap": {
+      "lead_field01": "nome",
+      "lead_field02": "email",
+      "lead_field03": "telefone",
+      "lead_field04": "cidade",
+      "lead_field05": "estado",
+      "lead_field06": "idade",
+      "lead_field07": "interesses",
+      "lead_field08": "origem",
+      "lead_field09": "status",
+      "lead_field10": "valor",
+      "lead_field11": "observacoes",
+      "lead_field12": "ultima_interacao",
+      "lead_field13": "proximo_contato",
+      "lead_field14": "vendedor",
+      "lead_field15": "produto_interesse",
+      "lead_field16": "fonte_captacao",
+      "lead_field17": "score",
+      "lead_field18": "tags",
+      "lead_field19": "historico",
+      "lead_field20": "custom"
+    }
+  }
+}
+Erros comuns:
+
+400: Campos inválidos ou payload mal formatado
+401: Token inválido ou expirado
+404: Instância não encontrada
+500: Erro ao atualizar campos no banco de dados
+Restrições:
+
+Cada campo pode ter no máximo 255 caracteres
+Campos vazios serão mantidos com seus valores atuais
+Apenas os campos enviados serão atualizados
+Request
+Body
+lead_field01
+string
+Campo personalizado 01
+
+lead_field02
+string
+Campo personalizado 02
+
+lead_field03
+string
+Campo personalizado 03
+
+lead_field04
+string
+Campo personalizado 04
+
+lead_field05
+string
+Campo personalizado 05
+
+lead_field06
+string
+Campo personalizado 06
+
+lead_field07
+string
+Campo personalizado 07
+
+lead_field08
+string
+Campo personalizado 08
+
+lead_field09
+string
+Campo personalizado 09
+
+lead_field10
+string
+Campo personalizado 10
+
+lead_field11
+string
+Campo personalizado 11
+
+lead_field12
+string
+Campo personalizado 12
+
+lead_field13
+string
+Campo personalizado 13
+
+lead_field14
+string
+Campo personalizado 14
+
+lead_field15
+string
+Campo personalizado 15
+
+lead_field16
+string
+Campo personalizado 16
+
+lead_field17
+string
+Campo personalizado 17
+
+lead_field18
+string
+Campo personalizado 18
+
+lead_field19
+string
+Campo personalizado 19
+
+lead_field20
+string
+Campo personalizado 20
+
+Responses
+
+200
+Sucesso
+
+401
+Token inválido/expirado
+
+404
+Instância não encontrada
+
+500
+Erro interno
+
+POST
+/chat/editLead
+Edita informações de lead
+Atualiza as informações de lead associadas a um chat. Permite modificar status do ticket, atribuição de atendente, posição no kanban, tags e outros campos customizados.
+
+As alterações são refletidas imediatamente no banco de dados e disparam eventos webhook/SSE para manter a aplicação sincronizada.
+
+Request
+Body
+id
+string
+required
+Identificador do chat. Pode ser:
+
+wa_chatid (ex: "5511999999999@s.whatsapp.net")
+wa_fastid (ex: "5511888888888:5511999999999")
+Example: "5511999999999@s.whatsapp.net"
+
+chatbot_disableUntil
+integer
+Timestamp UTC até quando o chatbot deve ficar desativado para este chat. Use 0 para reativar imediatamente.
+
+Example: 1735686000
+
+lead_isTicketOpen
+boolean
+Status do ticket associado ao lead.
+
+true: Ticket está aberto/em atendimento
+false: Ticket está fechado/resolvido
+Example: true
+
+lead_assignedAttendant_id
+string
+ID do atendente atribuído ao lead. Use string vazia ("") para remover a atribuição.
+
+Example: "att_123456"
+
+lead_kanbanOrder
+integer
+Posição do card no quadro kanban. Valores maiores aparecem primeiro.
+
+Example: 1000
+
+lead_tags
+array
+Lista de tags associadas ao lead. Tags inexistentes são criadas automaticamente. Envie array vazio ([]) para remover todas as tags.
+
+Example: ["vip","suporte","prioridade-alta"]
+
+lead_name
+string
+Nome principal do lead
+
+Example: "João Silva"
+
+lead_fullName
+string
+Nome completo do lead
+
+Example: "João Silva Pereira"
+
+lead_email
+string
+Email do lead
+
+Example: "joao@exemplo.com"
+
+lead_personalId
+string
+Documento de identificação (CPF/CNPJ) Apenas números ou formatado
+
+Example: "123.456.789-00"
+
+lead_status
+string
+Status do lead no funil de vendas
+
+Example: "qualificado"
+
+lead_notes
+string
+Anotações sobre o lead
+
+Example: "Cliente interessado em plano premium"
+
+lead_field01
+string
+Campo personalizado 1
+
+lead_field02
+string
+Campo personalizado 2
+
+lead_field03
+string
+Campo personalizado 3
+
+lead_field04
+string
+Campo personalizado 4
+
+lead_field05
+string
+Campo personalizado 5
+
+lead_field06
+string
+Campo personalizado 6
+
+lead_field07
+string
+Campo personalizado 7
+
+lead_field08
+string
+Campo personalizado 8
+
+lead_field09
+string
+Campo personalizado 9
+
+lead_field10
+string
+Campo personalizado 10
+
+lead_field11
+string
+Campo personalizado 11
+
+lead_field12
+string
+Campo personalizado 12
+
+lead_field13
+string
+Campo personalizado 13
+
+lead_field14
+string
+Campo personalizado 14
+
+lead_field15
+string
+Campo personalizado 15
+
+lead_field16
+string
+Campo personalizado 16
+
+lead_field17
+string
+Campo personalizado 17
+
+lead_field18
+string
+Campo personalizado 18
+
+lead_field19
+string
+Campo personalizado 19
+
+lead_field20
+string
+Campo personalizado 20
+
+Responses
+
+GET
+/chatwoot/config
+Obter configuração do Chatwoot
+Retorna a configuração atual da integração com Chatwoot para a instância.
+
+Funcionalidades:
+Retorna todas as configurações do Chatwoot incluindo credenciais
+Mostra status de habilitação da integração
+Útil para verificar configurações atuais antes de fazer alterações
+Responses
+
+200
+Configuração obtida com sucesso
+
+401
+Token inválido/expirado
+
+500
+Erro interno do servidor
+
+PUT
+/chatwoot/config
+Atualizar configuração do Chatwoot
+Atualiza a configuração da integração com Chatwoot para a instância.
+
+Funcionalidades:
+Configura todos os parâmetros da integração Chatwoot
+Reinicializa automaticamente o cliente Chatwoot quando habilitado
+Retorna URL do webhook para configurar no Chatwoot
+Sincronização bidirecional de mensagens novas entre WhatsApp e Chatwoot
+Sincronização automática de contatos (nome e telefone)
+Atualização automática LID → PN (Local ID para Phone Number)
+Sistema de nomes inteligentes com til (~)
+Configuração no Chatwoot:
+Após configurar via API, use a URL retornada no webhook settings da inbox no Chatwoot
+Configure como webhook URL na sua inbox do Chatwoot
+A integração ficará ativa e sincronizará mensagens e contatos automaticamente
+🏷️ Sistema de Nomes Inteligentes:
+Nomes com til (~): São atualizados automaticamente quando o contato modifica seu nome no WhatsApp
+Nomes específicos: Para definir um nome fixo, remova o til (~) do nome no Chatwoot
+Exemplo: "~João Silva" será atualizado automaticamente, "João Silva" (sem til) permanecerá fixo
+Atualização LID→PN: Contatos migram automaticamente de Local ID para Phone Number quando disponível
+Sem duplicação: Durante a migração LID→PN, não haverá duplicação de conversas
+Respostas nativas: Todas as respostas dos agentes aparecem nativamente no Chatwoot
+🚧 AVISO IMPORTANTE - INTEGRAÇÃO BETA:
+Fase Beta: Esta integração está em fase de desenvolvimento e testes
+Uso por conta e risco: O usuário assume total responsabilidade pelo uso
+Recomendação: Teste em ambiente não-produtivo antes de usar em produção
+Suporte limitado: Funcionalidades podem mudar sem aviso prévio
+⚠️ Limitações Conhecidas:
+Sincronização de histórico: Não implementada - apenas mensagens novas são sincronizadas
+Request
+Body
+enabled
+boolean
+required
+Habilitar/desabilitar integração com Chatwoot
+
+Example: true
+
+url
+string
+required
+URL base da instância Chatwoot (sem barra final)
+
+Example: "https://app.chatwoot.com"
+
+access_token
+string
+required
+Token de acesso da API Chatwoot (obtido em Profile Settings > Access Token)
+
+Example: "pXXGHHHyJPYHYgWHJHYHgJjj"
+
+account_id
+integer
+required
+ID da conta no Chatwoot (visível na URL da conta)
+
+Example: 1
+
+inbox_id
+integer
+required
+ID da inbox no Chatwoot (obtido nas configurações da inbox)
+
+Example: 5
+
+ignore_groups
+boolean
+Ignorar mensagens de grupos do WhatsApp na sincronização
+
+sign_messages
+boolean
+Assinar mensagens enviadas para WhatsApp com identificação do agente
+
+Example: true
+
+create_new_conversation
+boolean
+Sempre criar nova conversa ao invés de reutilizar conversas existentes
+
+GET
+/instance/proxy
+Obter configuração de proxy da instância
+A uazapiGO já utiliza um proxy gerenciado por padrão. Para dar liberdade ao cliente, é possível informar um proxy próprio. Retorna o estado atual do proxy, com a URL mascarada e informações do último teste de conectividade.
+
+Responses
+
+200
+Configuração de proxy recuperada com sucesso
+
+401
+Token inválido ou expirado
+
+500
+Erro interno do servidor ao recuperar a configuração
+
+POST
+/instance/proxy
+Configurar ou alterar o proxy
+Permite habilitar ou trocar para um proxy próprio. A URL é validada antes de salvar. Quando já usamos o proxy gerenciado padrão, você pode substituí-lo enviando seu proxy_url. A conexão pode ser reiniciada automaticamente para aplicar a mudança.
+
+Request
+Body
+enable
+boolean
+required
+Define se o proxy deve ser habilitado; se false, remove o proxy atual
+
+proxy_url
+string
+URL do proxy a ser usado (obrigatória se enable=true)
+
+Example: "http://usuario:senha@ip:porta"
+
+Responses
+
+200
+Proxy configurado com sucesso
+
+400
+Payload inválido ou falha na validação do proxy
+
+401
+Token inválido ou expirado
+
+500
+Erro interno do servidor ao configurar o proxy
+
+DELETE
+/instance/proxy
+Remover o proxy configurado
+Desativa e apaga o proxy personalizado, voltando ao comportamento padrão (proxy gerenciado). Pode reiniciar a conexão para aplicar a remoção.
+
+Responses
+
+200
+Configuração de proxy removida com sucesso
+
+401
+Token inválido ou expirado
+
+500
+Erro interno do servidor ao deletar a configuração de proxy
+
+POST
+/instance/updatechatbotsettings
+Chatbot Configurações
+Explicação dos campos:
+
+openai_apikey: Chave da API OpenAI (começa com "sk-")
+
+chatbot_enabled: Habilita/desabilita o chatbot
+
+chatbot_ignoreGroups: Define se o chatbot deve ignorar mensagens de grupos
+
+chatbot_stopConversation: Palavra-chave que os usuários podem usar para parar o chatbot
+
+chatbot_stopMinutes: Por quantos minutos o chatbot deve ficar desativado após receber o comando de parada
+
+chatbot_stopWhenYouSendMsg: Por quantos minutos o chatbot deve ficar desativado após você enviar uma mensagem fora da API, 0 desliga.
+
+Request
+Body
+No request body schema defined
+Responses
+
+200
+Sucesso
+
+401
+Token inválido/expirado
+
+404
+Instância não encontrada
+
+500
+Erro interno
+
+POST
+/trigger/edit
+Criar, atualizar ou excluir um trigger do chatbot
+Endpoint para gerenciar triggers do chatbot. Suporta:
+
+Criação de novos triggers
+Atualização de triggers existentes
+Exclusão de triggers por ID
+Request
+Body
+id
+string
+ID do trigger. Vazio para criação, obrigatório para atualização/exclusão
+
+delete
+boolean
+Quando verdadeiro, exclui o trigger especificado pelo id
+
+trigger
+string
+required
+Responses
+
+200
+Trigger atualizado com sucesso
+
+201
+Trigger criado com sucesso
+
+400
+Corpo da requisição inválido ou campos obrigatórios ausentes
+
+404
+Trigger não encontrado
+
+500
+Erro no servidor
+
+POST
+/agent/edit
+Criar/Editar Agente
+Documentação dos Campos de Configuração
+Campos Básicos
+Nome e Identificação
+O agente precisa ser configurado com informações básicas que determinam sua identidade e funcionamento.
+
+Nome do Agente
+name: Define como o agente será identificado nas conversas.
+
+Exemplos válidos:
+
+"Assistente de Vendas"
+"Suporte Técnico"
+"João"
+"Maria"
+Provedor do Serviço
+provider: Especifica qual serviço de IA será utilizado.
+
+Provedores disponíveis:
+
+"openai" (ChatGPT)
+"anthropic" (Claude)
+"gemini" (Google)
+"deepseek" (DeepSeek)
+Chave de API
+apikey: Credencial necessária para autenticação com o provedor escolhido.
+
+Deve ser obtida através do site oficial do provedor selecionado
+Mantenha esta chave em segurança e nunca a compartilhe
+Configuração do Modelo
+Seleção do Modelo
+model: Especifica qual modelo de IA será utilizado. A disponibilidade depende do provedor selecionado.
+
+OpenAI
+Documentação: https://platform.openai.com/docs/models
+
+gpt-4o
+gpt-4o-mini
+gpt-3.5-turbo
+Claude
+Documentação: https://docs.anthropic.com/en/docs/about-claude/models
+
+claude-3-5-sonnet-latest
+claude-3-5-haiku-latest
+claude-3-opus-latest
+Gemini
+Documentação: https://ai.google.dev/models/gemini
+
+gemini-2.0-flash-exp
+gemini-1.5-pro
+gemini-1.5-flash
+DeepSeek
+Documentação: https://api-docs.deepseek.com/quick_start/pricing
+
+deepseek-chat
+deepseek-reasoner
+Configurações de Comportamento
+Prompt Base (basePrompt)
+Instruções iniciais para definir o comportamento do agente
+
+Exemplo para assistente de vendas:
+
+"Você é um assistente especializado em vendas, focado em ajudar clientes a encontrar os produtos ideais. Mantenha um tom profissional e amigável."
+
+Exemplo para suporte:
+
+"Você é um agente de suporte técnico especializado em nossos produtos. Forneça respostas claras e objetivas para ajudar os clientes a resolverem seus problemas."
+
+Parâmetros de Geração
+temperature: Controla a criatividade das respostas (0-100)
+
+0-30: Respostas mais conservadoras e precisas
+
+30-70: Equilíbrio entre criatividade e precisão
+
+70-100: Respostas mais criativas e variadas
+
+maxTokens: Limite máximo de tokens por resposta
+
+Recomendado: 1000-4000 para respostas detalhadas
+
+Para respostas curtas: 500-1000
+
+Limite máximo varia por modelo
+
+diversityLevel: Controla a diversidade das respostas (0-100)
+
+Valores mais altos geram respostas mais variadas
+
+Recomendado: 30-70 para uso geral
+
+frequencyPenalty: Penalidade para repetição de palavras (0-100)
+
+Valores mais altos reduzem repetições
+
+Recomendado: 20-50 para comunicação natural
+
+presencePenalty: Penalidade para manter foco no tópico (0-100)
+
+Valores mais altos incentivam mudanças de tópico
+
+Recomendado: 10-30 para manter coerência
+
+Configurações de Interação
+Mensagens
+signMessages: Se verdadeiro, adiciona a assinatura do agente nas mensagens
+
+Útil para identificar quem está enviando a mensagem
+readMessages: Se verdadeiro, marca as mensagens como lidas ao responder
+
+Recomendado para simular comportamento humano
+Exemplos de Configuração
+Assistente de Vendas
+
+{
+  "name": "Assistente de Vendas",
+  "provider": "openai",
+  "model": "gpt-4",
+  "basePrompt": "Você é um assistente de vendas especializado...",
+  "temperature": 70,
+  "maxTokens": 2000,
+  "diversityLevel": 50,
+  "frequencyPenalty": 30,
+  "presencePenalty": 20,
+  "signMessages": true,
+  "readMessages": true
+}
+
+Suporte Técnico
+
+{
+  "name": "Suporte Técnico",
+  "provider": "anthropic",
+  "model": "claude-3-sonnet-20240229",
+  "basePrompt": "Você é um agente de suporte técnico...",
+  "temperature": 30,
+  "maxTokens": 3000,
+  "diversityLevel": 40,
+  "frequencyPenalty": 40,
+  "presencePenalty": 15,
+  "signMessages": true,
+  "readMessages": true
+}
+
+Dicas de Otimização
+Ajuste Gradual: Comece com valores moderados e ajuste conforme necessário
+
+Teste o Base Prompt: Verifique se as instruções estão claras e completas
+
+Monitore o Desempenho: Observe as respostas e ajuste os parâmetros para melhor adequação
+
+Backup: Mantenha um backup das configurações que funcionaram bem
+
+Documentação: Registre as alterações e seus impactos para referência futura
+
+Request
+Body
+No request body schema defined
+Responses
+
+200
+Agente atualizado com sucesso
+
+201
+Novo agente criado com sucesso
+
+400
+Erro na requisição
+
+401
+Não autorizado
+
+404
+Agente não encontrado
+
+500
+Erro interno do servidor
+
+POST
+/knowledge/edit
+Criar/Editar Conhecimento do Agente
+Gerencia o conhecimento base usado pelos agentes de IA para responder consultas. O conhecimento pode ser fornecido como texto direto ou através de arquivos PDF/CSV.
+
+Características principais:
+
+Suporta criação, edição e exclusão de conhecimento
+Aceita conteúdo em:
+Texto puro
+URLs públicas
+Base64 encoded de arquivos
+Upload direto de arquivos
+Formatos suportados: PDF, CSV, TXT, HTML
+Processa automaticamente qualquer formato de entrada
+Vetoriza automaticamente o conteúdo para busca semântica
+Nota sobre URLs e Base64:
+
+URLs devem ser públicas e acessíveis
+Para PDFs/CSVs, especifique fileType se não for detectável da extensão
+Base64 deve incluir o encoding completo do arquivo
+O servidor detecta e processa automaticamente conteúdo Base64
+Request
+Body
+id
+string
+ID do conhecimento (vazio para criar novo)
+
+delete
+boolean
+Define se é uma operação de exclusão
+
+knowledge
+object
+fileType
+string
+Tipo do arquivo quando não detectado automaticamente
+
+GET
+/knowledge/list
+Listar Base de Conhecimento
+Retorna todos os conhecimentos cadastrados para o agente de IA da instância. Estes conhecimentos são utilizados pelo chatbot para responder perguntas e interagir com os usuários de forma contextualizada.
+
+Responses
+
+200
+Lista de conhecimentos recuperada com sucesso
+
+401
+Token de autenticação ausente ou inválido
+
+500
+Erro interno do servidor ao buscar conhecimentos
+
+POST
+/function/edit
+Criar/Editar função para integração com APIs externas
+Configuração de Funções de API para Agentes IA
+Documentação para criar/editar funções utilizadas pelos agentes de IA para integração com APIs externas. Inclui validação automática e controle de ativação.
+
+1. Estrutura Base da Função
+Campos Principais
+{
+  "name": "nomeDaFuncao",
+  "description": "Descrição detalhada",
+  "isActive": true,
+  "method": "POST",
+  "endpoint": "https://api.exemplo.com/recurso",
+  "headers": {},
+  "body": {},
+  "parameters": []
+}
+Detalhamento dos Campos
+name
+Identificador único e descritivo
+Sem espaços ou caracteres especiais
+Ex: "createProduct", "updateUserStatus"
+description
+Propósito e funcionamento da função
+Inclua casos de uso e resultados esperados
+Ex: "Cria produto no catálogo com nome, preço e categoria"
+isActive
+Controla disponibilidade da função
+Desativa automaticamente se houver erros
+Default: false
+method
+GET: buscar dados
+POST: criar recurso
+PUT: atualizar completo
+PATCH: atualização parcial
+DELETE: remover recurso
+endpoint
+URL completa da API
+Aceita placeholders: {{variavel}}
+Exemplos:
+https://api.exemplo.com/produtos
+https://api.exemplo.com/usuarios/{{userId}}
+https://api.exemplo.com/busca?q={{query}}&limit={{limit}}
+headers
+{
+  "Authorization": "Bearer {{apiKey}}",
+  "Content-Type": "application/json",
+  "Accept": "application/json"
+}
+body (POST/PUT/PATCH)
+{
+  "name": "{{productName}}",
+  "price": "{{price}}",
+  "metadata": {
+    "tags": "{{tags}}"
+  }
+}
+2. Configuração de Parâmetros
+Estrutura do Parâmetro
+{
+  "name": "nomeParametro",
+  "type": "string",
+  "description": "Descrição do uso",
+  "required": true,
+  "enum": "valor1,valor2,valor3",
+  "minimum": 0,
+  "maximum": 100
+}
+Tipos de Parâmetros
+String
+{
+  "name": "status",
+  "type": "string",
+  "description": "Status do pedido",
+  "required": true,
+  "enum": "pending,processing,completed"
+}
+Número
+{
+  "name": "price",
+  "type": "number",
+  "description": "Preço em reais",
+  "required": true,
+  "minimum": 0.01,
+  "maximum": 99999.99
+}
+Inteiro
+{
+  "name": "quantity",
+  "type": "integer",
+  "description": "Quantidade",
+  "minimum": 0,
+  "maximum": 1000
+}
+Boolean
+{
+  "name": "active",
+  "type": "boolean",
+  "description": "Status de ativação"
+}
+3. Sistema de Validação
+Validações Automáticas
+JSON
+Headers e body devem ser válidos
+Erros desativam a função
+Placeholders ({{variavel}})
+Case-sensitive
+Devem ter parâmetro correspondente
+Parâmetros
+Nomes únicos
+Tipos corretos
+Limites numéricos válidos
+Enums sem valores vazios
+Erros e Avisos
+Função desativa se houver:
+JSON inválido
+Parâmetros não documentados
+Violações de tipo
+Erros aparecem em undocumentedParameters
+4. Exemplo Completo
+{
+  "name": "createProduct",
+  "description": "Criar novo produto no catálogo",
+  "isActive": true,
+  "method": "POST",
+  "endpoint": "https://api.store.com/v1/products",
+  "headers": {
+    "Authorization": "Bearer {{apiKey}}",
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "name": "{{productName}}",
+    "price": "{{price}}",
+    "category": "{{category}}"
+  },
+  "parameters": [
+    {
+      "name": "apiKey",
+      "type": "string",
+      "description": "Chave de API",
+      "required": true
+    },
+    {
+      "name": "productName",
+      "type": "string",
+      "description": "Nome do produto",
+      "required": true
+    },
+    {
+      "name": "price",
+      "type": "number",
+      "description": "Preço em reais",
+      "required": true,
+      "minimum": 0.01
+    },
+    {
+      "name": "category",
+      "type": "string",
+      "description": "Categoria do produto",
+      "required": true,
+      "enum": "electronics,clothing,books"
+    }
+  ]
+}
+Request
+Body
+id
+string
+required
+ID da função. Vazio para criar nova, preenchido para editar existente.
+
+delete
+boolean
+required
+Se true, deleta a função especificada pelo ID.
+
+function
+object
+required
+Responses
+
+200
+Função atualizada com sucesso
+
+201
+Nova função criada com sucesso
+
+400
+Erro de validação nos dados fornecidos
+
+404
+Função não encontrada
+
+500
+Erro interno do servi
+
+GET
+/function/list
+Lista todas as funções de API
+Retorna todas as funções de API configuradas para a instância atual
+
+Responses
+
+200
+Lista de funções recuperada com sucesso
+
+500
+Erro interno do servidor
+
+
+
+
+
+
+
+
+
+
+

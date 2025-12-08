@@ -1,0 +1,70 @@
+Fluxo Atual do Usuário no Azera CRM
+1. Onboarding e Autenticação
+Usuário acessa o app e faz login/signup via Supabase Auth.
+Confirmação de email obrigatória.
+Seleção de tenant (empresa) se multi-tenant.
+2. Dashboard Principal
+Visualiza KPIs: leads ativos, vendas, conversão, performance da equipe.
+Gráficos interativos (Recharts) para vendas por período, origem de leads.
+Acesso rápido a leads, produtos, equipe.
+3. Gestão de Leads
+Pipeline visual (drag & drop) com estágios: Prospect, Contato, Proposta, Fechamento.
+Criação/editação de leads com campos personalizados (nome, telefone, email, origem).
+Detalhes do lead: timeline de atividades, anexos, tarefas associadas.
+Filtros por equipe, origem, status.
+Distribuição automática para vendedores via automações.
+4. Gestão de Produtos/Imóveis
+CRUD de imóveis: título, descrição, preço, imagens (upload via Supabase Storage).
+Galeria de fotos, filtros avançados.
+Associação com leads/clientes.
+Visualização em grid/lista.
+5. Gestão de Equipes
+Owner/admin convida membros por email.
+Roles: owner (full access), admin (gerenciamento), vendedor (leads próprios).
+Controle de permissões: vendedores veem apenas seus leads (se configurado).
+6. Conectar Canais de Comunicação
+Página dedicada para conectar Facebook Ads e WhatsApp Business.
+Interface visual com cards para cada canal, explicações e botões de conexão.
+Estilo glassmorphism com botões em tons cyan e green, layout responsivo em 3 colunas.
+7. Automações e Webhooks
+Criação de automações: triggers (novo lead, mudança de status), ações (webhook POST/PUT/GET).
+Dispatcher assíncrono processa webhooks com retries.
+Logs de execução, testes de integração.
+Integração com N8N/Zapier para workflows externos.
+8. Sistema de Tarefas
+CRUD de tarefas associadas a leads/produtos.
+Checklist interno, responsáveis, equipes.
+Workflow básico.
+9. Cobrança e Assinaturas (Stripe)
+Checkout para subscriptions mensais/anuais.
+Webhooks atualizam status automaticamente.
+Páginas de sucesso/erro.
+10. Configurações e Perfil
+Perfil usuário: nome, email, avatar.
+Configurações empresa: nome, logo, API keys.
+Dark/light mode, notificações.
+11. Logout e Segurança
+Logout limpa sessão.
+RLS garante isolamento de dados por tenant.
+Possibilidades de Expansão
+Melhorias no Fluxo Atual
+Onboarding Guiado: Tutorial interativo para novos usuários (ex: como criar primeiro lead).
+Notificações Push: Alertas em tempo real para novos leads, tarefas vencidas (via Supabase Realtime).
+Mobile App: PWA ou React Native para acesso offline.
+Analytics Avançado: Cohort analysis, funil de conversão detalhado, previsões de vendas.
+Novas Funcionalidades
+Integrações Adicionais: WhatsApp Business API, email marketing (Mailchimp), calendários (Google Calendar).
+IA e Automação: Sugestões de leads via IA, chatbots para qualificação, análise de sentimento em conversas.
+E-commerce: Loja integrada para imóveis, com Stripe para pagamentos diretos.
+Relatórios Customizáveis: Dashboards personalizados por usuário/role.
+Gamificação: Pontuação para vendedores, metas visuais, rankings.
+Fluxos Alternativos
+Modo Vendedor: Interface simplificada focada em leads próprios, sem acesso a configurações globais.
+Modo Admin: Foco em equipe, relatórios, configurações.
+Modo Cliente: Portal para leads verem status de propostas (se implementado).
+API Externa: Webhooks bidirecionais para sincronização com ERPs imobiliários.
+Otimização de UX
+Busca Global: Busca em leads, produtos, tarefas com filtros avançados.
+Bulk Actions: Editar múltiplos leads/produtos simultaneamente.
+Templates: Modelos para leads, produtos, emails.
+Backup/Restore: Export/import de dados para migração.

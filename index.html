@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <!-- CSS Crítico Inline -->
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box}html{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}body{min-height:100vh;background-color:#0f172a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}#root{min-height:100vh}.loading-container{display:flex;align-items:center;justify-content:center;min-height:100vh}.spinner{width:50px;height:50px;border:3px solid rgba(34,211,238,.1);border-top-color:#22d3ee;border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+    </style>
+
+    <!-- SEO Meta Tags -->
+    <title>Azera CRM | CRM Completo para Imobiliárias e Equipes de Vendas</title>
+    <meta name="description" content="Dobre suas vendas com Azera CRM. Automação de follow-ups, pipeline visual Kanban, gestão de equipes e integração com qualquer sistema. Teste grátis por 14 dias!" />
+    <meta name="keywords" content="crm imobiliário, crm vendas, gestão de leads, pipeline vendas, automação comercial, crm para imobiliárias, software vendas, gestão equipe vendas" />
+    <meta name="author" content="Azera" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://azera.com.br" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://azera.com.br/" />
+    <meta property="og:title" content="Azera CRM | Dobre suas vendas com o CRM que pensa como você" />
+    <meta property="og:description" content="Pare de perder leads por desorganização. Automatize follow-ups, organize seu pipeline visual e coloque sua equipe inteira na mesma página." />
+    <meta property="og:image" content="https://azera.com.br/og-image.jpg" />
+    <meta property="og:locale" content="pt_BR" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://azera.com.br/" />
+    <meta property="twitter:title" content="Azera CRM | Dobre suas vendas com o CRM que pensa como você" />
+    <meta property="twitter:description" content="Pare de perder leads por desorganização. Automatize follow-ups, organize seu pipeline visual e coloque sua equipe inteira na mesma página." />
+    <meta property="twitter:image" content="https://azera.com.br/og-image.jpg" />
+
+    <!-- Schema.org Markup -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Azera CRM",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "BRL"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.9",
+        "ratingCount": "127"
+      },
+      "description": "CRM completo para imobiliárias e equipes de vendas com automação, pipeline visual e gestão de equipes."
+    }
+    </script>
+
+    <!-- Preconnect para recursos externos -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://js.stripe.com">
+    <link rel="dns-prefetch" href="https://connect.facebook.net">
+
+    <!-- Fonts loaded via index.css -->
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://connect.facebook.net; frame-src 'self' https://js.stripe.com https://www.facebook.com; connect-src 'self' *.supabase.co wss://*.supabase.co https://api.stripe.com https://js.stripe.com https://graph.facebook.com https://www.facebook.com https://web.facebook.com https://api.z-api.io;" />
+
+    <!-- Facebook SDK - Carregamento assíncrono otimizado -->
+    <script defer>
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId      : '1201882808362468',
+          cookie     : true,
+          xfbml      : true,
+          version    : 'v20.0'
+        });
+
+        FB.AppEvents.logPageView();
+      };
+
+      (function(d, s, id){
+         var js, fjs = d.getElementsByTagName(s)[0];
+         if (d.getElementById(id)) {return;}
+         js = d.createElement(s); js.id = id; js.async = true; js.defer = true;
+         js.src = "https://connect.facebook.net/pt_BR/sdk.js";
+         fjs.parentNode.insertBefore(js, fjs);
+       }(document, 'script', 'facebook-jssdk'));
+    </script>
+
+    <style>
+      /* Previne zoom no mobile ao duplo toque */
+      * {
+        touch-action: manipulation;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

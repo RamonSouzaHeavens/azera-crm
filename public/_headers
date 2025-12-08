@@ -1,0 +1,26 @@
+/*
+  Headers de segurança para produção
+  Este arquivo é usado por Netlify, Vercel e outros hosts estáticos
+*/
+
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.stripe.com https://graph.facebook.com https://www.facebook.com https://web.facebook.com https://api.z-api.io; frame-ancestors 'none'
+
+# Cache assets estáticos
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache fontes
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# HTML sem cache
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+*/

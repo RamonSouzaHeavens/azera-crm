@@ -1,0 +1,11 @@
+# robots.txt for Azera CRM
+User-agent: *
+Allow: /
+Allow: /site
+Disallow: /dashboard
+Disallow: /login
+Disallow: /api/
+Disallow: /admin/
+
+# Sitemap
+Sitemap: https://azera.com.br/sitemap.xml

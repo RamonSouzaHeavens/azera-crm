@@ -1,0 +1,6 @@
+{
+  "name": "webhook-processor",
+  "description": "Processa webhooks e APIs para sincronização de dados",
+  "version": "1.0.0",
+  "region": "us-east-1"
+}

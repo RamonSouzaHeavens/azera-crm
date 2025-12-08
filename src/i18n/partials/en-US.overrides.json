@@ -1,0 +1,139 @@
+﻿{
+  "sidebar": {
+    "sections": {
+      "progress": "Progress",
+      "administration": "Administration",
+      "automations": "Automations",
+      "company": "Company",
+      "team": "Team",
+      "billing": "Billing",
+      "settings": "Settings",
+      "documentation": "Documentation"
+    },
+    "ariaLabel": "Primary sidebar navigation",
+    "menu": "Menu",
+    "openMenu": "Open menu",
+    "expand": "Expand sidebar",
+    "collapse": "Collapse sidebar",
+    "myCompany": "My company",
+    "admin": "Administrator",
+    "lineOption": "Line {number}",
+    "confirm": "Confirm header",
+    "manage": "Manage",
+    "renewsIn": "Renews in",
+    "system": "System",
+    "selectLanguage": "Select language",
+    "activateLightTheme": "Switch to light theme",
+    "activateDarkTheme": "Switch to dark theme"
+  },
+  "header": {
+    "manage": "Manage subscription",
+    "renewsIn": "Renews in",
+    "selectLanguage": "Select language",
+    "activateLightTheme": "Switch to light mode",
+    "activateDarkTheme": "Switch to dark mode",
+    "roles": {
+      "system": "System"
+    },
+    "defaultUser": "User"
+  },
+  "notifications": {
+    "label": "Notifications tray",
+    "button": "Notifications",
+    "title": "Invites & alerts",
+    "empty": "No new notifications",
+    "invitePrefix": "Invited as"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "validation": {
+      "emailRequired": "Email is required",
+      "passwordMin": "Password must have at least 6 characters",
+      "passwordRequired": "Password is required",
+      "nameRequired": "Full name is required",
+      "emailInvalid": "Invalid email",
+      "passwordMatch": "Passwords must match",
+      "confirmRequired": "Confirmation is required",
+      "tenantNameRequired": "Company name is required",
+      "personalEmailInvalid": "Invalid personal email"
+    },
+    "toasts": {
+      "resendError": "Unable to resend confirmation email",
+      "resendSuccess": "Confirmation email re-sent",
+      "loginSuccess": "Login successful!",
+      "accountCreated": "Account created! Check your inbox",
+      "createError": "Failed to create account"
+    },
+    "branding": {
+      "slogan": "CRM built for ambitious proptech teams",
+      "subtitle": "Organize leads, automate follow-ups, and close faster"
+    },
+    "registerTitle": "Create your account",
+    "loginTitle": "Welcome back",
+    "loginSubtitle": "Sign in to continue closing deals",
+    "labels": {
+      "fullName": "Full name",
+      "tenantName": "Company name",
+      "personalEmail": "Personal email (optional)",
+      "phone": "Phone"
+    },
+    "placeholders": {
+      "name": "Your full name",
+      "email": "you@company.com",
+      "tenantName": "Your business name",
+      "personalEmail": "Optional personal email",
+      "phone": "(555) 555-5555",
+      "password": "At least 6 characters",
+      "confirmPassword": "Confirm password",
+      "loginEmail": "Email or username",
+      "loginPassword": "Enter your password"
+    },
+    "buttons": {
+      "createAccount": "Create account",
+      "enter": "Sign in",
+      "forgotPassword": "Forgot password",
+      "haveAccount": "Already have an account?",
+      "noAccount": "Don't have an account?",
+      "login": "Sign in",
+      "freeAccount": "Get a free account"
+    },
+    "support": {
+      "text": "Need help?",
+      "link": "Live chat"
+    },
+    "modals": {
+      "accountCreated": {
+        "title": "Confirm your email",
+        "subtitle": "We sent a link to finish setting up your account",
+        "message": "Check your inbox at",
+        "spam": "Still nothing? Check spam and promotions.",
+        "clickLink": "Click the confirmation link",
+        "loginAfter": "Then you can log in",
+        "resending": "Resending...",
+        "resend": "Resend email",
+        "understood": "Got it"
+      },
+      "emailExists": {
+        "title": "Email already registered",
+        "subtitle": "That address already has an account",
+        "message": "Use it to sign in or recover your password",
+        "whatToDo": "You can log in or reset your password",
+        "login": "Sign in with this email",
+        "recover": "Recover password",
+        "cancel": "Cancel"
+      },
+      "successPopup": {
+        "title": "Success! Account created",
+        "message1": "We sent a verification email to grant you access",
+        "message2": "Click the link <strong>sent to your inbox</strong> to continue",
+        "spamWarning": "If nothing shows, check spam folders",
+        "accessEmail": "Open your email client",
+        "button": "Done"
+      }
+    }
+  }
+}

@@ -1,0 +1,139 @@
+﻿{
+  "sidebar": {
+    "sections": {
+      "progress": "Progreso",
+      "administration": "Administración",
+      "automations": "Automatizaciones",
+      "company": "Empresa",
+      "team": "Equipo",
+      "billing": "Facturación",
+      "settings": "Configuración",
+      "documentation": "Documentación"
+    },
+    "ariaLabel": "Barra lateral de navegación",
+    "menu": "Menú",
+    "openMenu": "Abrir menú",
+    "expand": "Expandir menú",
+    "collapse": "Contraer menú",
+    "myCompany": "Mi empresa",
+    "admin": "Administrador",
+    "lineOption": "Línea {number}",
+    "confirm": "Confirmar encabezado",
+    "manage": "Gestionar",
+    "renewsIn": "Renueva en",
+    "system": "Sistema",
+    "selectLanguage": "Seleccionar idioma",
+    "activateLightTheme": "Activar tema claro",
+    "activateDarkTheme": "Activar tema oscuro"
+  },
+  "header": {
+    "manage": "Gestionar suscripción",
+    "renewsIn": "Renueva en",
+    "selectLanguage": "Seleccionar idioma",
+    "activateLightTheme": "Activar tema claro",
+    "activateDarkTheme": "Activar tema oscuro",
+    "roles": {
+      "system": "Sistema"
+    },
+    "defaultUser": "Usuario"
+  },
+  "notifications": {
+    "label": "Centro de notificaciones",
+    "button": "Notificaciones",
+    "title": "Invitaciones y alertas",
+    "empty": "No hay notificaciones",
+    "invitePrefix": "Invitado como"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "logout": "Cerrar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "validation": {
+      "emailRequired": "El correo es obligatorio",
+      "passwordMin": "La contraseña debe tener al menos 6 caracteres",
+      "passwordRequired": "La contraseña es obligatoria",
+      "nameRequired": "El nombre completo es obligatorio",
+      "emailInvalid": "Correo inválido",
+      "passwordMatch": "Las contraseñas deben coincidir",
+      "confirmRequired": "La confirmación es obligatoria",
+      "tenantNameRequired": "El nombre de la empresa es obligatorio",
+      "personalEmailInvalid": "Correo personal inválido"
+    },
+    "toasts": {
+      "resendError": "Error al reenviar el correo",
+      "resendSuccess": "Correo reenviado",
+      "loginSuccess": "Inicio de sesión correcto",
+      "accountCreated": "Cuenta creada. Revisa tu correo",
+      "createError": "Error al crear la cuenta"
+    },
+    "branding": {
+      "slogan": "CRM inteligente para equipos inmobiliarios",
+      "subtitle": "Organiza leads, automatiza tareas y cierra más rápido"
+    },
+    "registerTitle": "Crear cuenta",
+    "loginTitle": "Bienvenido de nuevo",
+    "loginSubtitle": "Accede a tu cuenta para continuar",
+    "labels": {
+      "fullName": "Nombre completo",
+      "tenantName": "Nombre de la empresa",
+      "personalEmail": "Correo personal (opcional)",
+      "phone": "Teléfono"
+    },
+    "placeholders": {
+      "name": "Tu nombre",
+      "email": "contacto@empresa.com",
+      "tenantName": "Nombre de tu empresa",
+      "personalEmail": "Correo personal (opcional)",
+      "phone": "+34 600 000 000",
+      "password": "Mínimo 6 caracteres",
+      "confirmPassword": "Repite tu contraseña",
+      "loginEmail": "Correo o usuario",
+      "loginPassword": "Introduce tu contraseña"
+    },
+    "buttons": {
+      "createAccount": "Crear cuenta",
+      "enter": "Entrar",
+      "forgotPassword": "Olvidé mi contraseña",
+      "haveAccount": "¿Ya tienes cuenta?",
+      "noAccount": "¿Aún no tienes cuenta?",
+      "login": "Iniciar sesión",
+      "freeAccount": "Crear cuenta gratis"
+    },
+    "support": {
+      "text": "¿Necesitas ayuda?",
+      "link": "Chat de soporte"
+    },
+    "modals": {
+      "accountCreated": {
+        "title": "Confirma tu correo",
+        "subtitle": "Revisa tu bandeja para activar la cuenta",
+        "message": "Enviamos un correo a",
+        "spam": "También mira la carpeta de spam si no lo ves",
+        "clickLink": "Haz clic en el enlace enviado",
+        "loginAfter": "Luego regresa para iniciar sesión",
+        "resending": "Reenviando...",
+        "resend": "Reenviar correo",
+        "understood": "Entendido"
+      },
+      "emailExists": {
+        "title": "Correo ya registrado",
+        "subtitle": "Esa dirección ya tiene cuenta",
+        "message": "Puedes iniciar sesión con ese correo",
+        "whatToDo": "Usa tu contraseña existente o recupérala",
+        "login": "Iniciar sesión con este correo",
+        "recover": "Recuperar contraseña",
+        "cancel": "Cancelar"
+      },
+      "successPopup": {
+        "title": "¡Cuenta creada!",
+        "message1": "Revisa tu correo para activar el acceso",
+        "message2": "Haz clic en el enlace <strong>enviado a tu email</strong> para continuar",
+        "spamWarning": "Si no aparece, verifica el spam",
+        "accessEmail": "Abrir tu correo",
+        "button": "Perfecto"
+      }
+    }
+  }
+}

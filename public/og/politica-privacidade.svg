@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)" />
+
+  <!-- Accent bar -->
+  <rect x="0" y="0" width="8" height="630" fill="url(#accent)" />
+
+  <!-- Shield icon -->
+  <g transform="translate(80, 180)">
+    <circle cx="60" cy="60" r="60" fill="#06b6d4" opacity="0.15" />
+    <path d="M60 20 L100 40 V70 C100 95 82 115 60 120 C38 115 20 95 20 70 V40 L60 20Z"
+          fill="none" stroke="#06b6d4" stroke-width="4" />
+    <path d="M45 65 L55 75 L75 55" fill="none" stroke="#06b6d4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  <!-- Content -->
+  <g fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">
+    <!-- Title -->
+    <text x="220" y="220" font-size="52" font-weight="700">Política de Privacidade</text>
+
+    <!-- Subtitle -->
+    <text x="220" y="280" font-size="28" fill="#94a3b8">Azera CRM — Proteção de Dados & LGPD</text>
+
+    <!-- Description -->
+    <text x="220" y="350" font-size="20" fill="#64748b">Saiba como coletamos, usamos e protegemos</text>
+    <text x="220" y="380" font-size="20" fill="#64748b">seus dados pessoais em conformidade com a LGPD.</text>
+
+    <!-- Footer -->
+    <text x="80" y="560" font-size="18" fill="#64748b">azera.space/politica-privacidade</text>
+
+    <!-- Logo text -->
+    <text x="1000" y="560" font-size="24" font-weight="600" fill="#06b6d4">Azera CRM</text>
+  </g>
+
+  <!-- Decorative elements -->
+  <circle cx="1100" cy="100" r="150" fill="#06b6d4" opacity="0.05" />
+  <circle cx="1150" cy="150" r="100" fill="#3b82f6" opacity="0.05" />
+</svg>

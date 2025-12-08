@@ -1,0 +1,33 @@
+Resumo Executivo do Azera CRM
+
+O Azera é um CRM multi-tenant desenvolvido em React 18 + TypeScript + Vite, projetado especificamente para imobiliárias. Utiliza Supabase como backend (PostgreSQL + Auth + Storage + Realtime), Zustand para gerenciamento de estado, TailwindCSS para estilização com design system glassmorphism em dark mode por padrão, e integrações com Stripe para cobrança e webhooks para automações.
+
+Funcionalidades Principais:
+- Gestão de Leads: Pipeline visual drag & drop, campos personalizados, timeline, anexos, tarefas.
+- Gestão de Produtos/Imóveis: CRUD com upload de imagens, filtros avançados, associação com leads.
+- Gestão de Equipes: Convites por email, roles (owner, admin, vendedor), permissões baseadas em RLS.
+- Conectar Canais: Página visual para integrar Facebook Ads e WhatsApp Business, com interface responsiva e explicações.
+- Automações e Webhooks: Sistema de triggers e ações, dispatcher assíncrono, integração com N8N/Zapier.
+- Sistema de Tarefas: CRUD associado a leads/produtos, checklists.
+- Cobrança: Subscriptions via Stripe com webhooks automáticos.
+- Configurações: Perfil, empresa, API keys, temas.
+
+Arquitetura:
+- Frontend: React com hooks, componentes reutilizáveis, PWA potencial.
+- Backend: Supabase com RLS para isolamento multi-tenant, RPC para lógica complexa.
+- Segurança: Autenticação JWT, confirmação de email, isolamento de dados.
+- Deploy: Vite para build, hospedagem em Vercel/Netlify, Supabase para dados.
+
+Diferenciais:
+- Foco em imobiliárias: Fluxos otimizados para leads de imóveis.
+- Integrações: Facebook Ads para importação automática, WhatsApp para conversas.
+- UX Moderna: Glassmorphism, animações com Framer Motion, responsivo.
+- Escalabilidade: Multi-tenant seguro, automações flexíveis.
+
+Roadmap:
+- Melhorias: Onboarding guiado, notificações push, analytics avançado.
+- Novas Features: IA para sugestões, e-commerce integrado, gamificação.
+- Expansão: Mobile app, integrações adicionais (email, calendários).
+
+O Azera visa ser o CRM completo para imobiliárias, combinando simplicidade com poder de automação.</content>
+<parameter name="filePath">e:\Agência\Gold Age\Azera\CRM Azera\sobreoapp\resumo_azera.txt

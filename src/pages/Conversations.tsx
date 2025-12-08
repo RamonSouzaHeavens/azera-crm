@@ -1,0 +1,909 @@
+import { useState, useEffect, Fragment } from 'react';
+import { format } from 'date-fns';
+import {
+  MessageCircle,
+  Paperclip,
+  Mic,
+  Send,
+  Search,
+  Phone as PhoneIcon,
+  Mail,
+  Trash2,
+  X,
+  ArrowLeft,
+  Copy,
+  Plus,
+  Instagram,
+  Zap,
+  Clock,
+  CheckCheck
+} from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { Dialog, Transition } from '@headlessui/react';
+import RequireRole from '../components/auth/RequireRole';
+import DeleteConversationModal from '../components/DeleteConversationModal';
+import toast from 'react-hot-toast';
+import { useConversations } from '../hooks/useConversations';
+import { useMessages } from '../hooks/useMessages';
+import { useActiveIntegration } from '../hooks/useActiveIntegration';
+import { useDeleteConversation } from '../hooks/useDeleteConversation';
+import { useAudioRecorder } from '../hooks/useAudioRecorder';
+import { supabase } from '../lib/supabase';
+import AudioBubble from '../components/AudioBubble';
+import { LeadTimeline } from '../components/team/LeadTimeline';
+import { LeadAttachments } from '../components/team/LeadAttachments';
+import { useAuthStore } from '../stores/authStore';
+import { AddActivityModal } from '../components/team/AddActivityModal';
+import { loadPipelineStages } from '../services/pipelineService';
+
+interface MinimalConversation {
+  id?: string;
+  contact_name?: string;
+  channel?: string;
+  avatar?: string;
+}
+
+interface Lead {
+  id: string;
+  nome: string;
+  telefone?: string;
+  email?: string;
+  status?: string;
+  etapa_funil_id?: string;
+  // outros campos conforme necessário
+}
+
+export default function ConversationsPage() {
+  const { t } = useTranslation();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<MinimalConversation | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [lead, setLead] = useState<Lead | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [funilEtapas, setFunilEtapas] = useState<any[]>([]);
+  const [textoInput, setTextoInput] = useState('');
+  const [activeTab, setActiveTab] = useState<'info' | 'notes' | 'files'>('info');
+  const [modalAddActivity, setModalAddActivity] = useState(false);
+  const [timelineKey, setTimelineKey] = useState(0);
+
+  const navigate = useNavigate();
+  const { user, tenant } = useAuthStore();
+  const { conversations, loading, markConversationRead } = useConversations();
+  const { messages, loading: messagesLoading, sending, sendMessage, messagesEndRef } = useMessages(selectedId);
+  const { integration: activeIntegration } = useActiveIntegration();
+  const { isRecording, recordingDuration, startRecording, stopRecording, cancelRecording, audioBlob, clearAudio } = useAudioRecorder();
+  const { deleteConversation, loading: deletingConversation } = useDeleteConversation();
+
+  const selectedConversa = conversations.find(c => c.id === selectedId);
+
+  // Carregar etapas do funil
+  useEffect(() => {
+    const fetchEtapas = async () => {
+      if (!tenant?.id) return;
+      try {
+        const stages = await loadPipelineStages(tenant.id);
+        if (stages) setFunilEtapas(stages);
+      } catch (error) {
+        console.error('Erro ao carregar etapas:', error);
+      }
+    };
+    fetchEtapas();
+  }, [tenant?.id]);
+
+  // Buscar avatar do Z-API se necessário
+  useEffect(() => {
+    if (selectedConversa && !selectedConversa.avatar && !selectedConversa.avatar_url && selectedConversa.contact_name) {
+      // Lógica de avatar simplificada ou placeholder
+    }
+  }, [selectedConversa]);
+
+  // Scroll automático para o fim
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, selectedId]);
+
+  // Atualizar lead state
+  useEffect(() => {
+    if (selectedConversa) {
+      // Buscar lead completo se necessário, aqui usando dados da conversa como base
+      setLead({
+        id: selectedConversa.contact_id || 'temp-id',
+        nome: selectedConversa.contact_name,
+        telefone: selectedConversa.contact_number,
+        email: undefined,
+        status: selectedConversa.status
+      } as any);
+    } else {
+      setLead(null);
+    }
+  }, [selectedConversa]);
+
+  // Filtrar conversas
+  const filteredConversations = conversations.filter(c =>
+    c.contact_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.last_message_content?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleSend = async () => {
+    if (!textoInput.trim() || uploadingMedia) return;
+    await sendMessage(textoInput);
+    setTextoInput('');
+  };
+
+  const handleSendAudio = async () => {
+    if (!audioBlob) return;
+    toast.error("Envio de áudio requer implementação de upload");
+    clearAudio();
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.length) {
+      toast.error("Envio de arquivo requer implementação de upload");
+    }
+  };
+
+  const confirmDeleteConversation = async () => {
+    if (conversationToDelete?.id) {
+      await deleteConversation(conversationToDelete.id);
+      setShowDeleteModal(false);
+      setConversationToDelete(null);
+      if (selectedId === conversationToDelete.id) setSelectedId(null);
+    }
+  };
+
+  const handleMicClick = () => {
+    startRecording();
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const findHttpUrl = (text: unknown): string | null => {
+    if (!text || typeof text !== 'string') return null;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const match = text.match(urlRegex);
+    return match ? match[0] : null;
+  };
+
+  const parseMessageText = (content: unknown): string => {
+    if (!content) return '';
+
+    // Se for objeto direto (já parseado)
+    if (typeof content === 'object' && content !== null) {
+      const obj = content as any;
+
+      // Tentar extrair texto de campos conhecidos
+      const textFields = [
+        obj.text,
+        obj.caption,
+        obj.body,
+        obj.message,
+        obj.content,
+        obj.conversation,
+        obj.extendedTextMessage?.text
+      ];
+
+      for (const field of textFields) {
+        if (field && typeof field === 'string' && field.trim()) {
+          return field.trim();
+        }
+      }
+
+      // Se for mídia sem texto, retornar indicador
+      if (obj.PTT || obj.ptt) return '🎵 Áudio';
+      if (obj.mimetype?.includes('image') || obj.imageMessage) return '📷 Imagem';
+      if (obj.mimetype?.includes('video') || obj.videoMessage) return '🎥 Vídeo';
+      if (obj.mimetype?.includes('audio')) return '🎵 Áudio';
+      if (obj.documentMessage) return '📄 Documento';
+
+      // Se tem URL mas não tem texto, é provavelmente mídia
+      if (obj.url || obj.directPath) return '📎 Mídia';
+
+      return '';
+    }
+
+    // Se for string
+    let text = String(content).trim();
+
+    // Ignorar data URIs
+    if (text.startsWith('data:')) return '';
+
+    // Filtrar tags especiais como [ExtendedTextMessage], [media], etc.
+    if (text.match(/^\[[\w\s]+\]$/)) {
+      return '';
+    }
+
+    // Remover sufixo [media] se existir
+    text = text.replace(/\s*\[media\]\s*$/i, '').trim();
+
+    // Tentar parsear JSON
+    if (text.startsWith('{') || text.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(text);
+        // Recursivamente chamar a função com o objeto parseado
+        return parseMessageText(parsed);
+      } catch (_err) {
+        // Se falhar o parse, continua
+      }
+    }
+
+    // Verificar tags de mídia no texto
+    const upper = text.toUpperCase();
+    if (upper.includes('[ÁUDIO]') || upper.includes('[AUDIO]')) return '🎵 Áudio';
+    if (upper.includes('[IMAGEM]') || upper.includes('[IMAGE]')) return '📷 Imagem';
+    if (upper.includes('[VÍDEO]') || upper.includes('[VIDEO]')) return '🎥 Vídeo';
+    if (upper.includes('[DOCUMENTO]') || upper.includes('[DOCUMENT]')) return '📄 Documento';
+
+    return text;
+  };
+
+  return (
+    <RequireRole roles={['owner', 'admin', 'manager']}>
+      <div className="flex flex-col h-full relative overflow-hidden bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+
+        <div className="flex-1 overflow-hidden flex">
+
+          {/* =================================================================================
+              LEFT COLUMN - LIST
+          ================================================================================= */}
+          <div className={`w-full md:w-80 lg:w-96 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 h-full ${selectedId ? 'hidden md:flex' : 'flex'}`}>
+
+            {/* Header / Search */}
+            <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-between mb-4">
+                <h1 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <MessageCircle className="w-5 h-5 text-emerald-600" />
+                  {t('conversations.inbox')}
+                </h1>
+                <div className="flex gap-2">
+                  {/* Botão de 3 pontinhos removido */}
+                </div>
+              </div>
+
+              <div className="relative group">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder={t('conversations.searchPlaceholder')}
+                  className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-transparent focus:border-emerald-500/30 focus:bg-white dark:focus:bg-gray-900 rounded-lg text-sm focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none"
+                />
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto">
+              {/* Optional: "Pinned" section visual header if you wanted to implement later */}
+              {/* <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider mt-2">All Conversations</div> */}
+
+              {filteredConversations.map((conversa) => (
+                <div
+                  key={conversa.id}
+                  onClick={() => {
+                    setSelectedId(conversa.id);
+                    markConversationRead(conversa.id);
+                  }}
+                  className={`group relative p-4 cursor-pointer transition-all border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-slate-800 ${selectedId === conversa.id
+                    ? 'bg-emerald-50/60 dark:bg-emerald-900/10 border-l-4 border-l-emerald-500'
+                    : 'border-l-4 border-l-transparent'
+                    }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Avatar */}
+                    <div className="relative flex-shrink-0">
+                      {((conversa.avatar || conversa.avatar_url) && (conversa.avatar || conversa.avatar_url)?.startsWith('http')) ? (
+                        <img
+                          src={conversa.avatar || conversa.avatar_url}
+                          alt={conversa.contact_name}
+                          className="w-10 h-10 rounded-full object-cover ring-2 ring-white dark:ring-gray-700"
+                        />
+                      ) : (
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm bg-gradient-to-br ${conversa.channel === 'instagram'
+                          ? 'from-[#833AB4] via-[#FD1D1D] to-[#FCAF45]' // Instagram Gradient
+                          : selectedId === conversa.id
+                            ? 'from-emerald-500 to-emerald-700'
+                            : 'from-gray-400 to-gray-600'
+                          }`}>
+                          {conversa.contact_name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                      {conversa.channel === 'whatsapp' && (
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center">
+                          <MessageCircle className="w-3 h-3 text-emerald-500 fill-current" />
+                        </div>
+                      )}
+                      {conversa.channel === 'instagram' && (
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center">
+                          <Instagram className="w-3 h-3 text-[#E4405F]" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className={`font-semibold text-sm truncate ${selectedId === conversa.id ? 'text-emerald-900 dark:text-emerald-300' : 'text-slate-800 dark:text-slate-200'}`}>
+                          {conversa.contact_name}
+                        </p>
+                        <span className="text-[10px] font-medium text-gray-400 flex-shrink-0">
+                          {conversa.last_message_at &&
+                            format(new Date(conversa.last_message_at), 'MMM dd')}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className={`text-xs truncate flex-1 pr-2 ${conversa.unread_count > 0 ? 'font-semibold text-gray-800 dark:text-gray-200' : 'text-gray-500 dark:text-gray-400'}`}>
+                          {parseMessageText(conversa.last_message_content)}
+                        </p>
+                        {conversa.unread_count > 0 && (
+                          <span className="bg-emerald-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-sm">
+                            {conversa.unread_count}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* =================================================================================
+              MIDDLE COLUMN - CHAT AREA
+          ================================================================================= */}
+          <div className={`flex-1 flex flex-col bg-white dark:bg-slate-900 relative ${!selectedId ? 'hidden md:flex items-center justify-center' : 'flex'}`}>
+
+            {!selectedId ? (
+              <div className="text-center p-8 opacity-50">
+                <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <MessageCircle className="w-10 h-10 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('conversations.selectConversation')}</h3>
+                <p className="text-sm text-gray-500">{t('conversations.selectConversationDesc')}</p>
+              </div>
+            ) : (
+              <>
+                {/* Chat Header */}
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-slate-900 z-10">
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => setSelectedId(null)}
+                      className="md:hidden p-2 -ml-2 hover:bg-gray-100 rounded-full"
+                    >
+                      <ArrowLeft className="w-5 h-5 text-gray-600" />
+                    </button>
+
+                    <div className="flex flex-col">
+                      <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                        {selectedConversa?.contact_name}
+                        {selectedConversa?.channel === 'instagram' && (
+                          <span className="px-2 py-0.5 rounded-full bg-pink-50 text-[#E4405F] text-[10px] font-bold border border-pink-100 flex items-center gap-1">
+                            <Instagram className="w-3 h-3" /> Instagram
+                          </span>
+                        )}
+                        {selectedConversa?.channel === 'whatsapp' && (
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold border border-emerald-100 flex items-center gap-1">
+                            <MessageCircle className="w-3 h-3" /> WhatsApp
+                          </span>
+                        )}
+                      </h2>
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <span>{selectedConversa?.contact_number}</span>
+                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> {t('conversations.localTime')}: {format(new Date(), 'HH:mm')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Messages Area - Clean & Modern */}
+                <div className="flex-1 overflow-y-auto p-6 bg-slate-50 dark:bg-slate-900/50">
+                  <div className="max-w-3xl mx-auto space-y-6">
+                    {/* Date Separator Example (could be dynamic) */}
+                    {messages.length > 0 && (
+                      <div className="flex items-center justify-center my-4">
+                        <span className="text-[10px] font-semibold text-gray-400 bg-gray-200 dark:bg-gray-800 px-3 py-1 rounded-full uppercase tracking-wider">
+                          {format(new Date(messages[0].created_at), 'MMMM dd, yyyy')}
+                        </span>
+                      </div>
+                    )}
+
+                    {messages.map((msg, index) => {
+                      const textContent = parseMessageText(msg.content);
+                      const isOutbound = msg.direction === 'outbound';
+
+                      // Check if previous message was from same sender to group visually
+                      const isSequence = index > 0 && messages[index - 1].direction === msg.direction;
+
+                      const msgRecord = msg as unknown as Record<string, unknown>;
+                      let mediaUrl = msgRecord.media_url as string | null | undefined;
+                      let mediaType = msgRecord.message_type as string | undefined;
+                      let mimeType = msgRecord.media_mime_type as string | undefined;
+
+                      let contentObj: any = null;
+                      if (typeof msg.content === 'object' && msg.content !== null) {
+                        contentObj = msg.content;
+                      } else if (typeof msg.content === 'string') {
+                        try {
+                          const cleanJson = msg.content.trim().replace(/\[\w+\]$/, '').trim();
+                          contentObj = JSON.parse(cleanJson);
+                        } catch {
+                          contentObj = null;
+                        }
+                      }
+
+                      if (contentObj) {
+                        if (contentObj.PTT || contentObj.ptt || contentObj.mimetype?.includes('audio')) {
+                          mediaType = 'audio';
+                          mimeType = contentObj.mimetype || 'audio/ogg; codecs=opus';
+                          mediaUrl =
+                            contentObj.url ||
+                            contentObj.directPath ||
+                            (contentObj.base64 ? `data:${mimeType};base64,${contentObj.base64}` : null);
+                        }
+                        if (!mediaUrl) mediaUrl = findHttpUrl(contentObj);
+                      }
+
+                      return (
+                        <div key={msg.id} className={`flex items-end gap-3 ${isOutbound ? 'justify-end' : 'justify-start'}`}>
+
+                          {/* Avatar for Incoming Messages */}
+                          {!isOutbound && !isSequence && (
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 mb-1">
+                              {(selectedConversa?.avatar || selectedConversa?.avatar_url) ? (
+                                <img src={selectedConversa?.avatar || selectedConversa?.avatar_url} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 text-xs font-bold">
+                                  {selectedConversa?.contact_name?.charAt(0)}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {!isOutbound && isSequence && <div className="w-8 flex-shrink-0" />}
+
+                          <div
+                            className={`relative max-w-[85%] md:max-w-lg rounded-2xl p-1 shadow-sm border ${isOutbound && selectedConversa?.channel === 'instagram'
+                              ? 'bg-gradient-to-r from-[#833AB4] to-[#FD1D1D] text-white rounded-br-none border-transparent'
+                              : isOutbound
+                                ? 'bg-emerald-500 border-emerald-500 text-white rounded-br-none'
+                                : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 rounded-bl-none'
+                              }`}
+                          >
+                            {/* Media Render Logic */}
+                            {mediaUrl && (
+                              <div className="overflow-hidden rounded-lg mb-1 bg-black/5">
+                                {(mimeType?.includes('image') || mediaType === 'image') && (
+                                  <img
+                                    src={mediaUrl || undefined}
+                                    alt="Media"
+                                    className="w-full h-auto cursor-pointer hover:opacity-90"
+                                    style={{ maxHeight: '300px', objectFit: 'contain' }}
+                                    onClick={() => setSelectedImage(mediaUrl!)}
+                                  />
+                                )}
+                                {(mimeType?.includes('video') || mediaType === 'video') && (
+                                  <video controls src={mediaUrl} className="w-full max-h-[300px]" />
+                                )}
+                                {(mimeType?.includes('audio') || mediaType === 'audio') && (
+                                  <div className="p-2">
+                                    <AudioBubble src={mediaUrl} isOutbound={isOutbound} />
+                                  </div>
+                                )}
+                                {mediaType === 'document' && (
+                                  <a
+                                    href={mediaUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={`flex items-center gap-3 p-3 rounded-lg ${isOutbound ? 'bg-emerald-600/20 hover:bg-emerald-600/30' : 'bg-gray-100 hover:bg-gray-200'} transition-colors`}
+                                  >
+                                    <Paperclip className="w-5 h-5 opacity-70" />
+                                    <span className="text-sm font-medium underline">{t('conversations.document')}</span>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Text Content - Only show if not a media indicator */}
+                            {textContent &&
+                              !textContent.startsWith('🎵') &&
+                              !textContent.startsWith('📷') &&
+                              !textContent.startsWith('🎥') &&
+                              !textContent.startsWith('📄') &&
+                              !textContent.startsWith('📎') && (
+                                <div className="px-3 py-2">
+                                  <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                                    {textContent}
+                                  </p>
+                                </div>
+                              )}
+
+                            {/* Timestamp & Status */}
+                            <div className={`px-3 pb-1.5 flex items-center justify-end gap-1 text-[10px] ${isOutbound ? 'text-emerald-100' : 'text-gray-400'}`}>
+                              <span>{format(new Date(msg.created_at), 'HH:mm')}</span>
+                              {isOutbound && (
+                                <CheckCheck className="w-3 h-3 opacity-80" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div ref={messagesEndRef} />
+                  </div>
+                </div>
+
+                {/* Input Area - Clean Bar */}
+                <div className="p-4 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-gray-800">
+                  {isRecording ? (
+                    // Recording UI (Kept functional but styled)
+                    <div className="flex items-center gap-4 animate-in fade-in duration-200">
+                      <div className="flex-1 bg-red-50 dark:bg-red-900/20 rounded-lg p-3 flex items-center gap-3 border border-red-100 dark:border-red-900/30">
+                        <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-sm" />
+                        <span className="text-sm font-medium text-red-600 dark:text-red-400 font-mono">
+                          {formatDuration(recordingDuration)}
+                        </span>
+                        <span className="text-xs text-red-400 ml-auto">{t('conversations.recording')}</span>
+                      </div>
+                      <button onClick={cancelRecording} className="p-3 bg-gray-100 rounded-lg hover:bg-gray-200 text-gray-600 transition-colors">
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                      <button onClick={stopRecording} className="p-3 bg-emerald-500 rounded-lg hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/30 transition-all">
+                        <Send className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ) : audioBlob ? (
+                    // Audio Preview UI
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 bg-emerald-50 rounded-lg p-3 flex items-center gap-3 border border-emerald-100">
+                        <Mic className="w-5 h-5 text-emerald-600" />
+                        <span className="text-sm font-medium text-slate-700">{t('conversations.audioRecorded')}</span>
+                        <span className="text-xs text-emerald-600 font-mono ml-auto">{formatDuration(recordingDuration)}</span>
+                      </div>
+                      <button onClick={clearAudio} className="p-3 text-gray-400 hover:text-red-500 transition-colors">
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                      <button onClick={handleSendAudio} className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2">
+                        {t('conversations.sendAudio')} <Send className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    // Standard Text Input
+                    <div className="flex items-end gap-3">
+                      <div className="flex items-center gap-2 pb-3 text-gray-400">
+                        <input
+                          type="file"
+                          id="file-upload"
+                          className="hidden"
+                          accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
+                          onChange={handleFileUpload}
+                          disabled={uploadingMedia}
+                        />
+                        <label
+                          htmlFor="file-upload"
+                          className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-colors ${uploadingMedia ? 'opacity-50' : ''}`}
+                        >
+                          <Paperclip className="w-5 h-5" />
+                        </label>
+                        <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors" title="Respostas do Playbook">
+                          <Zap className="w-5 h-5 text-yellow-500" />
+                        </button>
+                      </div>
+
+                      <div className="flex-1 relative">
+                        <textarea
+                          value={textoInput}
+                          onChange={(e) => setTextoInput(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              if (!uploadingMedia) {
+                                handleSend();
+                              }
+                            }
+                          }}
+                          placeholder={t('conversations.messagePlaceholder')}
+                          disabled={uploadingMedia}
+                          rows={1}
+                          className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none min-h-[48px] max-h-[120px] text-sm text-slate-800 dark:text-slate-100 placeholder-gray-400"
+                          style={{ minHeight: '48px' }}
+                        />
+                      </div>
+
+                      {textoInput.trim() ? (
+                        <button
+                          onClick={handleSend}
+                          disabled={uploadingMedia}
+                          className={`px-4 py-3 text-white font-medium rounded-xl shadow-md transition-all flex items-center gap-2 disabled:opacity-50 ${selectedConversa?.channel === 'instagram'
+                            ? 'bg-gradient-to-r from-[#833AB4] to-[#FD1D1D] hover:opacity-90 shadow-pink-500/20'
+                            : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20'
+                            }`}
+                        >
+                          <Send className="w-4 h-4" />
+                          <span className="hidden lg:inline">{t('conversations.send')}</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleMicClick}
+                          className="p-3 bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-gray-700 rounded-xl transition-all"
+                        >
+                          <Mic className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className={`w-80 border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 hidden lg:flex flex-col`}>
+            {/* Profile Header */}
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800 text-center relative">
+              <button onClick={() => toast('Close Details')} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="w-20 h-20 rounded-full mx-auto mb-3 relative">
+                {(selectedConversa?.avatar || selectedConversa?.avatar_url) ? (
+                  <img src={selectedConversa?.avatar || selectedConversa?.avatar_url} className="w-full h-full object-cover rounded-full shadow-lg" />
+                ) : (
+                  <div className="w-full h-full bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 text-2xl font-bold">
+                    {selectedConversa?.contact_name?.charAt(0)}
+                  </div>
+                )}
+              </div>
+              <h3 className="font-bold text-lg text-slate-800 dark:text-white">{selectedConversa?.contact_name || lead?.nome}</h3>
+              <p className="text-sm text-gray-500">{lead?.email || t('conversations.visitor')}</p>
+            </div>
+
+            {/* Tabs (Visual) */}
+            <div className="flex border-b border-gray-100 dark:border-gray-800">
+              <button
+                onClick={() => setActiveTab('info')}
+                className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'info' ? 'text-emerald-600 dark:text-emerald-300 border-b-2 border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+              >
+                {t('conversations.info')}
+              </button>
+              <button
+                onClick={() => setActiveTab('notes')}
+                className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'notes' ? 'text-emerald-600 dark:text-emerald-300 border-b-2 border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+              >
+                {t('conversations.notes')}
+              </button>
+              <button
+                onClick={() => setActiveTab('files')}
+                className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'files' ? 'text-emerald-600 dark:text-emerald-300 border-b-2 border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/20' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}`}
+              >
+                {t('conversations.files')}
+              </button>
+            </div>
+
+            {/* Details List */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+
+              {activeTab === 'info' && (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('conversations.aboutCustomer')}</h4>
+
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <Mail className="w-4 h-4 text-gray-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">{t('conversations.email')}</p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[180px]">
+                        {lead?.email || t('conversations.notProvided')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <PhoneIcon className="w-4 h-4 text-gray-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">{t('conversations.phone')}</p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                        {lead?.telefone || selectedConversa?.contact_number || t('conversations.notProvided')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100 dark:border-gray-800 space-y-4">
+                    <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('conversations.attributes')}</h4>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">{t('conversations.status')}</span>
+                      <div className="relative">
+                        <select
+                          value={lead?.status || ''}
+                          onChange={async (e) => {
+                            if (!lead?.id) return;
+                            const newStatus = e.target.value;
+
+                            // Otimista update
+                            setLead(prev => prev ? { ...prev, status: newStatus } : null);
+
+                            try {
+                              const { error } = await supabase
+                                .from('clientes')
+                                .update({ status: newStatus })
+                                .eq('id', lead.id);
+
+                              if (error) throw error;
+                              toast.success('Status atualizado!');
+                            } catch (err) {
+                              toast.error('Erro ao atualizar status');
+                              // Reverter em caso de erro (idealmente buscar do banco novamente)
+                            }
+                          }}
+                          className="appearance-none pl-3 pr-8 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full font-medium border-none focus:ring-2 focus:ring-green-500/50 cursor-pointer outline-none"
+                        >
+                          {funilEtapas.length > 0 ? (
+                            funilEtapas.map(etapa => (
+                              <option key={etapa.id} value={etapa.key}>
+                                {etapa.label}
+                              </option>
+                            ))
+                          ) : (
+                            <option value="">{lead?.status || t('conversations.active')}</option>
+                          )}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                          <svg className="w-3 h-3 text-green-700 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">ID do Lead</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-gray-500 truncate max-w-[150px]" title={lead?.id}>
+                          {lead?.id}
+                        </span>
+                        <button
+                          onClick={() => {
+                            if (lead?.id) {
+                              navigator.clipboard.writeText(lead.id);
+                              toast.success('ID copiado!');
+                            }
+                          }}
+                          className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-6">
+                    <button
+                      onClick={() => lead?.id && navigate(`/app/clientes/${lead.id}`)}
+                      className="w-full py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                    >
+                      {t('conversations.viewFullProfile')}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'notes' && (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Notas e Atividades</h3>
+                    <button
+                      onClick={() => setModalAddActivity(true)}
+                      className="flex items-center gap-2 px-3 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 rounded-lg transition-all text-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Adicionar Nota
+                    </button>
+                  </div>
+
+                  {lead ? (
+                    <LeadTimeline leadId={lead.id} key={timelineKey} />
+                  ) : (
+                    <div className="text-center py-8 text-gray-400">
+                      <p>Selecione um lead para ver as notas.</p>
+                    </div>
+                  )}
+
+                  {lead && tenant && user && (
+                    <AddActivityModal
+                      isOpen={modalAddActivity}
+                      onClose={() => setModalAddActivity(false)}
+                      leadId={lead.id}
+                      tenantId={tenant.id}
+                      userId={user.id}
+                      onSuccess={() => setTimelineKey(prev => prev + 1)}
+                    />
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'files' && (
+                <div className="space-y-4 animate-in fade-in duration-300">
+                  {lead ? (
+                    <LeadAttachments leadId={lead.id} />
+                  ) : (
+                    <div className="text-center py-8 text-gray-400">
+                      <p>Selecione um lead para ver os arquivos.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+
+        {/* Image Modal */}
+        <Transition appear show={selectedImage !== null} as={Fragment}>
+          <Dialog as="div" className="relative z-50" onClose={() => setSelectedImage(null)}>
+            <Transition.Child
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
+            >
+              <div className="fixed inset-0 bg-black/90 backdrop-blur-sm" />
+            </Transition.Child>
+
+            <div className="fixed inset-0 overflow-y-auto">
+              <div className="flex min-h-full items-center justify-center p-4">
+                <Transition.Child
+                  as={Fragment}
+                  enter="ease-out duration-300"
+                  enterFrom="opacity-0 scale-95"
+                  enterTo="opacity-100 scale-100"
+                  leave="ease-in duration-200"
+                  leaveFrom="opacity-100 scale-100"
+                  leaveTo="opacity-0 scale-95"
+                >
+                  <Dialog.Panel className="relative max-w-7xl max-h-[90vh]">
+                    <button
+                      onClick={() => setSelectedImage(null)}
+                      className="absolute -top-12 right-0 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                    >
+                      <X className="w-6 h-6 text-white" />
+                    </button>
+                    <img
+                      src={selectedImage || ''}
+                      alt={t('conversations.preview')}
+                      className="max-w-full max-h-[90vh] rounded-lg shadow-2xl"
+                    />
+                  </Dialog.Panel>
+                </Transition.Child>
+              </div>
+            </div>
+          </Dialog>
+        </Transition>
+
+        {/* Modal de confirmação para deletar conversa */}
+        <DeleteConversationModal
+          isOpen={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setConversationToDelete(null);
+          }}
+          onConfirm={confirmDeleteConversation}
+          contactName={conversationToDelete?.contact_name || ''}
+          loading={deletingConversation}
+        />
+      </div >
+
+    </RequireRole >
+  );
+}

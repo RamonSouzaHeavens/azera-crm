@@ -1,0 +1,39 @@
+Simulação da Trajetória de um Novo Usuário no Azera CRM
+Passo 1: Acesso ao Site
+Usuário encontra o site via Google, anúncio ou indicação.
+Landing page (possivelmente em public ou separado) mostra: "CRM para Imobiliárias", benefícios (gestão de leads, equipe, automações), screenshots do dashboard e pipeline.
+Call-to-action: "Comece Grátis" ou "Teste por 14 Dias".
+Passo 2: Conhecer o App
+Seção "Funcionalidades": Pipeline visual, integração Facebook Ads, relatórios, multi-usuário.
+Vídeos tutoriais (links para videos ou YouTube).
+Depoimentos de imobiliárias, comparações com concorrentes.
+FAQ: "Como funciona o plano gratuito?", "Quanto custa?".
+Passo 3: Começar no Gratuito
+Clique em "Comece Grátis": Redireciona para signup.
+Plano gratuito: Limite de 50 leads, 1 equipe, sem automações avançadas (baseado em subscriptions Stripe).
+Formulário: Nome empresa, email, senha, aceite termos (LGPD).
+Passo 4: Criar Conta
+Signup via Supabase Auth: Cria profiles, tenants, memberships com role "owner".
+Confirmação email enviada automaticamente.
+Se erro (email duplicado), toast de erro.
+Sucesso: Redirecionamento para login ou entrada direta.
+Passo 5: Entrar no App
+Login: Email/senha, ou recuperação se esqueceu.
+Entrada no dashboard: KPIs vazios (sem dados), menu lateral (Leads, Produtos, Equipe, etc.).
+Tema dark por padrão, responsivo.
+Passo 6: Aprender sobre o App
+Onboarding Inicial: Modal ou tooltip: "Bem-vindo! Vamos configurar sua primeira equipe."
+Passos Guiados:
+Criar equipe: Convidar membros por email (via team_invites).
+Adicionar produtos: Upload de imóveis, campos obrigatórios.
+Conectar canais: Página visual para conectar Facebook Ads e WhatsApp, com explicações detalhadas.
+Criar automação: Exemplo de webhook para notificação de novo lead.
+Documentação: Link para GUIA_RAPIDO.md ou painel docs integrado.
+Tutoriais Interativos: Tooltips em componentes (ex: "Arraste leads na pipeline").
+Suporte: Chat ou email para dúvidas, upgrade para pago desbloqueia suporte prioritário.
+Próximos Passos Pós-Onboarding
+Usuário adiciona primeiros leads (manual ou via Facebook).
+Configura automações básicas.
+Upgrade para pago: Checkout Stripe, remove limites.
+Exploração: Relatórios, tarefas, configurações empresa.
+Essa trajetória foca em conversão de trial para pago, com UX amigável para imobiliários iniciantes.

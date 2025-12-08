@@ -1,0 +1,139 @@
+﻿{
+  "sidebar": {
+    "sections": {
+      "progress": "Progresso",
+      "administration": "Administração",
+      "automations": "Automatizações",
+      "company": "Empresa",
+      "team": "Equipe",
+      "billing": "Faturamento",
+      "settings": "Configurações",
+      "documentation": "Documentação"
+    },
+    "ariaLabel": "Barra lateral de navegação principal",
+    "menu": "Menu",
+    "openMenu": "Abrir menu",
+    "expand": "Expandir menu",
+    "collapse": "Recolher menu",
+    "myCompany": "Minha empresa",
+    "admin": "Administrador",
+    "lineOption": "Linha {number}",
+    "confirm": "Confirmar cabeçalho",
+    "manage": "Gerenciar",
+    "renewsIn": "Renova em",
+    "system": "Sistema",
+    "selectLanguage": "Selecionar idioma",
+    "activateLightTheme": "Ativar tema claro",
+    "activateDarkTheme": "Ativar tema escuro"
+  },
+  "header": {
+    "manage": "Gerenciar assinatura",
+    "renewsIn": "Renova em",
+    "selectLanguage": "Selecionar idioma",
+    "activateLightTheme": "Ativar tema claro",
+    "activateDarkTheme": "Ativar tema escuro",
+    "roles": {
+      "system": "Sistema"
+    },
+    "defaultUser": "Usuário"
+  },
+  "notifications": {
+    "label": "Painel de notificações",
+    "button": "Notificações",
+    "title": "Convites e atualizações",
+    "empty": "Nenhuma notificação nova",
+    "invitePrefix": "Convite enviado como"
+  },
+  "auth": {
+    "login": "Entrar",
+    "logout": "Sair",
+    "email": "Email",
+    "password": "Senha",
+    "confirmPassword": "Confirmar senha",
+    "validation": {
+      "emailRequired": "Email é obrigatório",
+      "passwordMin": "Senha deve ter pelo menos 6 caracteres",
+      "passwordRequired": "Senha é obrigatória",
+      "nameRequired": "Nome completo é obrigatório",
+      "emailInvalid": "Email inválido",
+      "passwordMatch": "As senhas precisam coincidir",
+      "confirmRequired": "Confirmação é obrigatória",
+      "tenantNameRequired": "Nome da empresa é obrigatório",
+      "personalEmailInvalid": "Email pessoal inválido"
+    },
+    "toasts": {
+      "resendError": "Erro ao reenviar o email",
+      "resendSuccess": "Email reenviado!",
+      "loginSuccess": "Login realizado com sucesso!",
+      "accountCreated": "Conta criada! Verifique seu email.",
+      "createError": "Erro ao criar conta"
+    },
+    "branding": {
+      "slogan": "CRM inteligente para equipes imobiliárias",
+      "subtitle": "Organize leads, nutra oportunidades e feche negócios mais rápido"
+    },
+    "registerTitle": "Crie sua conta",
+    "loginTitle": "Bem-vindo de volta",
+    "loginSubtitle": "Entre para continuar acelerando vendas",
+    "labels": {
+      "fullName": "Nome completo",
+      "tenantName": "Nome da empresa",
+      "personalEmail": "Email pessoal (opcional)",
+      "phone": "Telefone"
+    },
+    "placeholders": {
+      "name": "Seu nome completo",
+      "email": "contato@empresa.com",
+      "tenantName": "Nome da sua empresa",
+      "personalEmail": "Email pessoal (opcional)",
+      "phone": "(11) 99999-9999",
+      "password": "Mínimo 6 caracteres",
+      "confirmPassword": "Confirme sua senha",
+      "loginEmail": "Email ou usuário",
+      "loginPassword": "Digite sua senha"
+    },
+    "buttons": {
+      "createAccount": "Criar conta",
+      "enter": "Entrar",
+      "forgotPassword": "Esqueci a senha",
+      "haveAccount": "Já tem uma conta?",
+      "noAccount": "Ainda não tem conta?",
+      "login": "Entrar",
+      "freeAccount": "Criar conta gratuita"
+    },
+    "support": {
+      "text": "Precisa de ajuda?",
+      "link": "Converse no WhatsApp"
+    },
+    "modals": {
+      "accountCreated": {
+        "title": "Confirme seu email",
+        "subtitle": "Enviamos um link para ativar seu acesso",
+        "message": "Enviamos um email para",
+        "spam": "Confira também a pasta de spam caso não apareça",
+        "clickLink": "Clique no link enviado",
+        "loginAfter": "Depois volte para fazer login",
+        "resending": "Reenviando...",
+        "resend": "Reenviar email",
+        "understood": "Entendi"
+      },
+      "emailExists": {
+        "title": "Email já registrado",
+        "subtitle": "Esse email já está vinculado a uma conta Azera",
+        "message": "Você pode entrar com esse email",
+        "whatToDo": "Use a senha que já criou ou recupere o acesso",
+        "login": "Entrar com esse email",
+        "recover": "Recuperar senha",
+        "cancel": "Cancelar"
+      },
+      "successPopup": {
+        "title": "Conta criada com sucesso!",
+        "message1": "Verifique sua caixa de entrada para ativar o acesso",
+        "message2": "Clique no link <strong>enviado para o seu email</strong> para continuar",
+        "spamWarning": "Se não encontrar, verifique a pasta de spam",
+        "accessEmail": "Abrir meu email",
+        "button": "Ok"
+      }
+    }
+  }
+}

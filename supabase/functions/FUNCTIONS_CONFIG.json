@@ -1,0 +1,102 @@
+{
+  "functions": [
+    {
+      "name": "webhook-receiver",
+      "description": "Recebe webhooks inbound de provedores de mensageria",
+      "location": "supabase/functions/webhook-receiver/",
+      "config": {
+        "memory": 512,
+        "timeout": 30,
+        "environment_variables": [
+          "SUPABASE_URL",
+          "SUPABASE_SERVICE_ROLE_KEY"
+        ],
+        "cors_origins": [
+          "https://yourapp.com",
+          "https://staging.yourapp.com",
+          "http://localhost:5173"
+        ]
+      },
+      "webhooks": {
+        "meta": {
+          "url": "https://yourapp.com/functions/v1/webhook-receiver",
+          "method": "POST",
+          "description": "Configure in Meta App Dashboard → Webhooks",
+          "events": [
+            "message_echoes",
+            "message_template_status_update",
+            "messages",
+            "message_template_hsm_rejected",
+            "message_template_quality_update"
+          ]
+        }
+      }
+    },
+    {
+      "name": "send-message",
+      "description": "Envia mensagens via provedores de mensageria",
+      "location": "supabase/functions/send-message/",
+      "config": {
+        "memory": 512,
+        "timeout": 30,
+        "environment_variables": [
+          "SUPABASE_URL",
+          "SUPABASE_SERVICE_ROLE_KEY",
+          "JWT_SECRET"
+        ],
+        "cors_origins": [
+          "https://yourapp.com",
+          "https://staging.yourapp.com",
+          "http://localhost:5173"
+        ]
+      },
+      "api": {
+        "method": "POST",
+        "endpoint": "/functions/v1/send-message",
+        "auth": "Bearer <JWT_TOKEN>",
+        "body": {
+          "conversationId": "string (required)",
+          "message": "string (required)",
+          "messageType": "text | image | video | audio | document (default: text)",
+          "mediaUrl": "string (optional)",
+          "replyToExternalMessageId": "string (optional)"
+        },
+        "response": {
+          "success": "boolean",
+          "messageId": "string (uuid)",
+          "externalMessageId": "string",
+          "status": "sent | queued | failed",
+          "createdAt": "ISO 8601 timestamp",
+          "error": "string (se success=false)"
+        }
+      }
+    }
+  ],
+  "secrets": {
+    "JWT_SECRET": {
+      "description": "Secret para validar JWTs do usuário",
+      "example": "$(openssl rand -base64 32)",
+      "required": true,
+      "function": "send-message"
+    },
+    "OPENAI_API_KEY": {
+      "description": "API key OpenAI (para respuestas automáticas, OPCIONAL)",
+      "example": "sk-...",
+      "required": false,
+      "function": "webhook-processor"
+    }
+  },
+  "environment_variables": {
+    "SUPABASE_URL": {
+      "description": "URL do Supabase project",
+      "example": "https://yourproject.supabase.co",
+      "required": true
+    },
+    "SUPABASE_SERVICE_ROLE_KEY": {
+      "description": "Service Role key (NOT frontend)",
+      "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "required": true,
+      "warning": "NUNCA expor para frontend"
+    }
+  }
+}

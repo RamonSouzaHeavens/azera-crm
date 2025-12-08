@@ -1,0 +1,139 @@
+﻿{
+  "sidebar": {
+    "sections": {
+      "progress": "Fortschritt",
+      "administration": "Verwaltung",
+      "automations": "Automatisierung",
+      "company": "Unternehmen",
+      "team": "Team",
+      "billing": "Abrechnung",
+      "settings": "Einstellungen",
+      "documentation": "Dokumentation"
+    },
+    "ariaLabel": "Hauptnavigation der Seitenleiste",
+    "menu": "Menü",
+    "openMenu": "Menü öffnen",
+    "expand": "Seitenleiste erweitern",
+    "collapse": "Seitenleiste reduzieren",
+    "myCompany": "Mein Unternehmen",
+    "admin": "Administrator",
+    "lineOption": "Leitung {number}",
+    "confirm": "Header bestätigen",
+    "manage": "Verwalten",
+    "renewsIn": "Verlängert sich in",
+    "system": "System",
+    "selectLanguage": "Sprache auswählen",
+    "activateLightTheme": "Helles Theme aktivieren",
+    "activateDarkTheme": "Dunkles Theme aktivieren"
+  },
+  "header": {
+    "manage": "Abonnement verwalten",
+    "renewsIn": "Verlängert sich in",
+    "selectLanguage": "Sprache wählen",
+    "activateLightTheme": "Helles Design aktivieren",
+    "activateDarkTheme": "Dunkles Design aktivieren",
+    "roles": {
+      "system": "System"
+    },
+    "defaultUser": "Benutzer"
+  },
+  "notifications": {
+    "label": "Benachrichtigungsbereich",
+    "button": "Benachrichtigungen",
+    "title": "Einladungen & Hinweise",
+    "empty": "Keine neuen Benachrichtigungen",
+    "invitePrefix": "Eingeladen als"
+  },
+  "auth": {
+    "login": "Anmelden",
+    "logout": "Abmelden",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "confirmPassword": "Passwort bestätigen",
+    "validation": {
+      "emailRequired": "E-Mail ist erforderlich",
+      "passwordMin": "Passwort muss mindestens 6 Zeichen haben",
+      "passwordRequired": "Passwort ist erforderlich",
+      "nameRequired": "Name ist erforderlich",
+      "emailInvalid": "Ungültige E-Mail",
+      "passwordMatch": "Passwörter müssen übereinstimmen",
+      "confirmRequired": "Bestätigung erforderlich",
+      "tenantNameRequired": "Firmenname erforderlich",
+      "personalEmailInvalid": "Ungültige private E-Mail"
+    },
+    "toasts": {
+      "resendError": "Fehler beim erneuten Senden",
+      "resendSuccess": "Bestätigungs-Mail erneut gesendet",
+      "loginSuccess": "Anmeldung erfolgreich!",
+      "accountCreated": "Konto erstellt! Überprüfe dein Postfach",
+      "createError": "Konto konnte nicht erstellt werden"
+    },
+    "branding": {
+      "slogan": "CRM für ambitionierte Immobilienteams",
+      "subtitle": "Leads organisieren, Follow-ups automatisieren und schneller abschließen"
+    },
+    "registerTitle": "Konto erstellen",
+    "loginTitle": "Willkommen zurück",
+    "loginSubtitle": "Melde dich an, um weiterzumachen",
+    "labels": {
+      "fullName": "Vollständiger Name",
+      "tenantName": "Firmenname",
+      "personalEmail": "Private E-Mail (optional)",
+      "phone": "Telefon"
+    },
+    "placeholders": {
+      "name": "Dein kompletter Name",
+      "email": "du@firma.de",
+      "tenantName": "Name deines Unternehmens",
+      "personalEmail": "Optionale private E-Mail",
+      "phone": "+49 170 0000000",
+      "password": "Mindestens 6 Zeichen",
+      "confirmPassword": "Passwort wiederholen",
+      "loginEmail": "E-Mail oder Benutzername",
+      "loginPassword": "Gib dein Passwort ein"
+    },
+    "buttons": {
+      "createAccount": "Konto erstellen",
+      "enter": "Anmelden",
+      "forgotPassword": "Passwort vergessen",
+      "haveAccount": "Schon ein Konto?",
+      "noAccount": "Noch kein Konto?",
+      "login": "Anmelden",
+      "freeAccount": "Kostenloses Konto erstellen"
+    },
+    "support": {
+      "text": "Brauchen Sie Hilfe?",
+      "link": "Support-Chat"
+    },
+    "modals": {
+      "accountCreated": {
+        "title": "Bestätige deine E-Mail",
+        "subtitle": "Wir haben einen Link verschickt, um dein Konto zu aktivieren",
+        "message": "du findest die Mail unter",
+        "spam": "Schau auch im Spam-Ordner nach",
+        "clickLink": "Klicke auf den Link",
+        "loginAfter": "Danach kannst du dich einloggen",
+        "resending": "Wird erneut gesendet...",
+        "resend": "E-Mail erneut senden",
+        "understood": "Verstanden"
+      },
+      "emailExists": {
+        "title": "E-Mail bereits registriert",
+        "subtitle": "Für diese Adresse existiert schon ein Konto",
+        "message": "Du kannst dich damit anmelden",
+        "whatToDo": "Nutze dein Passwort oder setze es zurück",
+        "login": "Mit dieser E-Mail anmelden",
+        "recover": "Passwort zurücksetzen",
+        "cancel": "Abbrechen"
+      },
+      "successPopup": {
+        "title": "Erfolg! Konto erstellt",
+        "message1": "Wir haben dir zur Aktivierung eine E-Mail geschickt",
+        "message2": "Klicke auf den Link <strong>in deinem Postfach</strong>, um fortzufahren",
+        "spamWarning": "Wenn nichts ankommt, prüfe den Spam",
+        "accessEmail": "E-Mail öffnen",
+        "button": "Fertig"
+      }
+    }
+  }
+}

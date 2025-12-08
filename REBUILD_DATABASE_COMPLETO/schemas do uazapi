@@ -1,0 +1,726 @@
+SCHEMA
+Message
+Representa uma mensagem trocada no sistema
+
+Properties
+id
+string
+ID único interno da mensagem (formato r + 7 caracteres hex aleatórios)
+
+messageid
+string
+ID original da mensagem no provedor
+
+chatid
+string
+ID da conversa relacionada
+
+fromMe
+boolean
+Indica se a mensagem foi enviada pelo usuário
+
+isGroup
+boolean
+Indica se é uma mensagem de grupo
+
+messageType
+string
+Tipo de conteúdo da mensagem
+
+messageTimestamp
+integer
+Timestamp original da mensagem em milissegundos
+
+edited
+string
+Histórico de edições da mensagem
+
+quoted
+string
+ID da mensagem citada/respondida
+
+reaction
+string
+ID da mensagem reagida
+
+sender
+string
+ID do remetente da mensagem
+
+senderName
+string
+Nome exibido do remetente
+
+source
+string
+Plataforma de origem da mensagem
+
+status
+string
+Status do ciclo de vida da mensagem
+
+text
+string
+Texto original da mensagem
+
+vote
+string
+Dados de votação de enquete e listas
+
+buttonOrListid
+string
+ID do botão ou item de lista selecionado
+
+convertOptions
+string
+Conversão de opções de da mensagem, lista, enquete e botões
+
+fileURL
+string
+URL para download de arquivos de mídia
+
+content
+string
+Conteúdo completo da mensagem em formato JSON
+
+owner
+string
+Dono da mensagem
+
+track_source
+string
+Origem do rastreamento da mensagem
+
+track_id
+string
+ID para rastreamento da mensagem (aceita valores duplicados)
+
+created
+string
+Data de criação no sistema (formato SQLite YYYY-MM-DD HH:MM:SS.FFF)
+
+updated
+string
+Data da última atualização (formato SQLite YYYY-MM-DD HH:MM:SS.FFF)
+
+ai_metadata
+object
+Metadados do processamento por IA
+
+
+
+
+
+
+
+
+
+------------------------------
+
+SCHEMA
+Instance
+Representa uma instância do WhatsApp
+
+Properties
+id
+string
+ID único gerado automaticamente
+
+token
+string
+Token de autenticação da instância
+
+status
+string
+Status atual da conexão
+
+paircode
+string
+Código de pareamento
+
+qrcode
+string
+QR Code em base64 para autenticação
+
+name
+string
+Nome da instância
+
+profileName
+string
+Nome do perfil WhatsApp
+
+profilePicUrl
+string
+URL da foto do perfil
+
+isBusiness
+boolean
+Indica se é uma conta business
+
+plataform
+string
+Plataforma de origem (iOS/Android/Web)
+
+systemName
+string
+Nome do sistema operacional
+
+owner
+string
+Proprietário da instância
+
+lastDisconnect
+string
+Data/hora da última desconexão
+
+lastDisconnectReason
+string
+Motivo da última desconexão
+
+adminField01
+string
+Campo administrativo 01
+
+adminField02
+string
+Campo administrativo 02
+
+openai_apikey
+string
+Chave da API OpenAI
+
+chatbot_enabled
+boolean
+Habilitar chatbot automático
+
+chatbot_ignoreGroups
+boolean
+Ignorar mensagens de grupos
+
+chatbot_stopConversation
+string
+Palavra-chave para parar conversa
+
+chatbot_stopMinutes
+integer
+Por quanto tempo ficará pausado o chatbot ao usar stop conversation
+
+chatbot_stopWhenYouSendMsg
+integer
+Por quanto tempo ficará pausada a conversa quando você enviar mensagem manualmente
+
+created
+string
+Data de criação da instância
+
+updated
+string
+Data da última atualização
+
+msg_delay_min
+integer
+Delay mínimo em segundos entre mensagens diretas
+
+msg_delay_max
+integer
+Delay máximo em segundos entre mensagens diretas (deve ser maior que delayMin)
+
+
+Webhook
+Configuração completa de webhook com filtros e opções avançadas
+
+Properties
+id
+string
+ID único gerado automaticamente
+
+instance_id
+string
+ID da instância associada
+
+enabled
+boolean
+Webhook ativo/inativo
+
+url
+string
+required
+URL de destino dos eventos
+
+events
+array
+required
+Tipos de eventos monitorados
+
+AddUrlTypesMessages
+boolean
+Incluir na URLs o tipo de mensagem
+
+addUrlEvents
+boolean
+Incluir na URL o nome do evento
+
+excludeMessages
+array
+Filtros para excluir tipos de mensagens
+
+created
+string
+Data de criação (automática)
+
+updated
+string
+Data da última atualização (automática)
+
+Example
+{
+  "id": "wh_9a8b7c6d5e",
+  "instance_id": "inst_12345",
+  "enabled": true,
+  "url": "https://webhook.cool/example",
+  "events": [
+    "messages",
+    "connection"
+  ],
+  "AddUrlTypesMessages": false,
+  "addUrlEvents": false,
+  "excludeMessages": [],
+  "created": "2025-01-24T16:20:00Z",
+  "updated": "2025-01-24T16:25:00Z"
+}
+
+SCHEMA
+Chat
+Representa uma conversa/chamado no sistema
+
+Properties
+id
+string
+ID único da conversa (r + 7 bytes aleatórios em hex)
+
+wa_fastid
+string
+Identificador rápido do WhatsApp
+
+wa_chatid
+string
+ID completo do chat no WhatsApp
+
+wa_archived
+boolean
+Indica se o chat está arquivado
+
+wa_contactName
+string
+Nome do contato no WhatsApp
+
+wa_name
+string
+Nome do WhatsApp
+
+name
+string
+Nome exibido do chat
+
+image
+string
+URL da imagem do chat
+
+imagePreview
+string
+URL da miniatura da imagem
+
+wa_ephemeralExpiration
+integer
+Tempo de expiração de mensagens efêmeras
+
+wa_isBlocked
+boolean
+Indica se o contato está bloqueado
+
+wa_isGroup
+boolean
+Indica se é um grupo
+
+wa_isGroup_admin
+boolean
+Indica se o usuário é admin do grupo
+
+wa_isGroup_announce
+boolean
+Indica se é um grupo somente anúncios
+
+wa_isGroup_community
+boolean
+Indica se é uma comunidade
+
+wa_isGroup_member
+boolean
+Indica se é membro do grupo
+
+wa_isPinned
+boolean
+Indica se o chat está fixado
+
+wa_label
+string
+Labels do chat em JSON
+
+wa_lastMessageTextVote
+string
+Texto/voto da última mensagem
+
+wa_lastMessageType
+string
+Tipo da última mensagem
+
+wa_lastMsgTimestamp
+integer
+Timestamp da última mensagem
+
+wa_lastMessageSender
+string
+Remetente da última mensagem
+
+wa_muteEndTime
+integer
+Timestamp do fim do silenciamento
+
+owner
+string
+Dono da instância
+
+wa_unreadCount
+integer
+Contador de mensagens não lidas
+
+phone
+string
+Número de telefone
+
+wa_common_groups
+string
+Grupos em comum separados por vírgula, formato: (nome_grupo)id_grupo
+
+"Grupo Família(120363123456789012@g.us),Trabalho(987654321098765432@g.us)"
+lead_name
+string
+Nome do lead
+
+lead_fullName
+string
+Nome completo do lead
+
+lead_email
+string
+Email do lead
+
+lead_personalid
+string
+Documento de identificação
+
+lead_status
+string
+Status do lead
+
+lead_tags
+string
+Tags do lead em JSON
+
+lead_notes
+string
+Anotações sobre o lead
+
+lead_isTicketOpen
+boolean
+Indica se tem ticket aberto
+
+lead_assignedAttendant_id
+string
+ID do atendente responsável
+
+lead_kanbanOrder
+integer
+Ordem no kanban
+
+lead_field01
+string
+lead_field02
+string
+lead_field03
+string
+lead_field04
+string
+lead_field05
+string
+lead_field06
+string
+lead_field07
+string
+lead_field08
+string
+lead_field09
+string
+lead_field10
+string
+lead_field11
+string
+lead_field12
+string
+lead_field13
+string
+lead_field14
+string
+lead_field15
+string
+lead_field16
+string
+lead_field17
+string
+lead_field18
+string
+lead_field19
+string
+lead_field20
+string
+chatbot_agentResetMemoryAt
+integer
+Timestamp do último reset de memória
+
+chatbot_lastTrigger_id
+string
+ID do último gatilho executado
+
+chatbot_lastTriggerAt
+integer
+Timestamp do último gatilho
+
+chatbot_disableUntil
+integer
+Timestamp até quando chatbot está desativado
+
+created
+string
+Data de criação
+
+updated
+string
+Data da última atualização
+
+
+SCHEMA
+Label
+Representa uma etiqueta/categoria no sistema
+
+Properties
+id
+string
+ID único da etiqueta
+
+name
+string
+Nome da etiqueta
+
+color
+integer
+Índice numérico da cor (0-19)
+
+2
+colorHex
+string
+Cor hexadecimal correspondente ao índice
+
+"#fed428"
+createdAt
+string
+Data de criação
+
+Example
+{
+  "id": "l121314mnop",
+  "name": "Cliente VIP",
+  "color": 2,
+  "colorHex": "#fed428",
+  "createdAt": "2025-01-24T14:35
+
+
+SCHEMA
+Attendant
+Modelo de atendente do sistema
+
+Properties
+id
+string
+ID único gerado automaticamente
+
+name
+string
+Nome do atendente
+
+phone
+string
+Número de telefone
+
+email
+string
+Endereço de e-mail
+
+department
+string
+Departamento de atuação
+
+customField01
+string
+Campo personalizável 01
+
+customField02
+string
+Campo personalizável 02
+
+owner
+string
+Responsável pelo cadastro
+
+created
+string
+Data de criação automática
+
+updated
+string
+Data de atualização automática
+
+Example
+{
+  "id": "r1234abcd",
+  "name": "João da Silva",
+  "phone": "+5511999999999",
+  "email": "joao@empresa.com",
+  "department": "Suporte Técnico",
+  "customField01": "Turno: Manhã",
+  "customField02": "Nível: 2",
+  "owner": "admin",
+  "created": "2025-01-24T13:52:19.000Z",
+  "updated": "2025-01-24T13:52:19.000Z"
+}
+
+SCHEMA
+ChatbotTrigger
+Properties
+id
+string
+Identificador único do trigger. Se definido, você irá editar ou deletar o trigger. Se vazio, um novo trigger será criado.
+
+active
+boolean
+Define se o trigger está ativo e disponível para uso. Triggers inativos não serão executados pelo sistema.
+
+type
+string
+required
+Tipo do trigger:
+
+agent - aciona um agente de IA
+quickreply - aciona respostas rápidas predefinidas
+agent_id
+string
+required
+ID do agente de IA. Obrigatório quando type='agent'
+
+quickReply_id
+string
+ID da resposta rápida. Obrigatório quando type='quickreply'
+
+ignoreGroups
+boolean
+Define se o trigger deve ignorar mensagens de grupos
+
+lead_field
+string
+Campo do lead usado para condição do trigger
+
+lead_operator
+string
+Operador de comparação para condição do lead:
+
+equals - igual a
+not_equals - diferente de
+contains - contém
+not_contains - não contém
+greater - maior que
+less - menor que
+empty - vazio
+not_empty - não vazio
+lead_value
+string
+Valor para comparação com o campo do lead. Usado em conjunto com lead_field e lead_operator
+
+priority
+integer
+Prioridade do trigger. Quando existem múltiplos triggers que poderiam ser acionados, APENAS o trigger com maior prioridade será executado. Se houver múltiplos triggers com a mesma prioridade mais alta, um será escolhido aleatoriamente.
+
+wordsToStart
+string
+Palavras-chave ou frases que ativam o trigger. Múltiplas entradas separadas por pipe (|). Exemplo: olá|bom dia|qual seu nome
+
+responseDelay_seconds
+integer
+Tempo de espera em segundos antes de executar o trigger
+
+owner
+string
+Identificador do proprietário do trigger
+
+created
+string
+Data e hora de criação
+
+updated
+string
+Data e hora da última atualização
+
+SCHEMA
+WebhookEvent
+Properties
+event
+string
+required
+Tipo do evento recebido
+
+instance
+string
+required
+ID da instância que gerou o evento
+
+data
+object
+required
+
+SCHEMA
+QuickReply
+Properties
+id
+string
+ID único da resposta rápida
+
+shortcut
+string
+required
+Atalho para acionar a resposta
+
+content
+string
+required
+Conteúdo da mensagem pré-definida
+
+category
+string
+Categoria para organização
+
+createdAt
+string
+Data de criação
+
+updatedAt
+string
+Data da última atualização

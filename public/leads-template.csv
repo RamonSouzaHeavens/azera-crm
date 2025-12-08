@@ -1,0 +1,6 @@
+nome,email,telefone,status,fonte,observacoes,sobre_cliente,valor_potencial
+João Silva,joao.silva@email.com,(11) 99999-9999,lead,Site,Cliente interessado em consultoria,Empresa de médio porte no setor de tecnologia,5000
+Maria Santos,maria.santos@empresa.com,(11) 88888-8888,prospect,Indicação,Reunião agendada para próxima semana,Startup tecnológica em crescimento,12000
+Pedro Costa,pedro.costa@teste.com,,lead,Facebook,Precisa de mais informações sobre nossos serviços,,2500
+Ana Oliveira,ana@consultoria.com,(21) 77777-7777,client,LinkedIn,Cliente já convertido,Consultoria jurídica estabelecida,8000
+Carlos Mendes,carlos.mendes@gmail.com,(11) 66666-6666,lead,Google Ads,Interessado em pacote premium,Empresa familiar de logística,15000

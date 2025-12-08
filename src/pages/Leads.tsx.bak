@@ -1,0 +1,2067 @@
+import { useState, useEffect, useCallback, useRef } from 'react'
+import {
+  Plus,
+  Grid3X3,
+  List,
+  Kanban as KanbanIcon,
+  Search,
+  FileText,
+  X,
+  Filter,
+  Move,
+  Trash,
+  Mail,
+  Phone,
+} from 'lucide-react'
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
+import toast from 'react-hot-toast'
+
+// ======== STORES / API ========
+import { useAuthStore } from '../stores/authStore'
+import { supabase } from '../lib/supabase'
+
+// =======================
+// Tipos fortemente tipados (sem any)
+// =======================
+export type StatusType = 'lead' | 'negociacao' | 'fechado' | 'perdido'
+
+export interface ClienteRow {
+  id: string
+  tenant_id: string
+  nome: string
+  telefone: string | null
+  email: string | null
+  status: StatusType
+  notas: string | null
+  valor_potencial: number | null
+  campanha_id: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface Produto {
+  id: string
+  tenant_id: string
+  nome: string
+  descricao: string | null
+  preco: number | null
+  ativo: boolean
+  tags?: string[] | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ClienteProduto {
+  id: string
+  tenant_id: string
+  cliente_id: string
+  produto_id: string
+  status: 'entregue' | 'pendente' | 'cancelado'
+  quantidade: number
+  preco_vendido: number | null
+  observacoes: string | null
+  data_entrega: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface CampanhaRow {
+  id: string
+  tenant_id: string
+  nome: string
+  ativa: boolean
+}
+
+export interface AtividadeRow {
+  id: string
+  tenant_id: string
+  cliente_id: string
+  user_id: string | null
+  tipo: 'nota' | 'ligacao' | 'email' | 'follow-up'
+  conteudo: string
+  created_at: string
+  user_email?: string  // Campo para o email do usuÃÂ¡rio
+}
+
+export interface Cliente extends ClienteRow {
+  campanhaNome?: string
+  ultimaNota?: string
+  produtos?: Array<ClienteProduto & { produto?: Produto }>
+  tarefasAbertas?: number
+}
+
+export interface ClienteFilters {
+  status?: StatusType | 'todos'
+  createdFrom?: string
+  createdTo?: string
+  updatedFrom?: string
+  updatedTo?: string
+  valorMin?: number
+  valorMax?: number
+}
+
+// =======================
+// Paleta & UI (HUD neon)
+// =======================
+const statusConfig: Record<StatusType, {
+  label: string
+  color: string
+  bgColor: string
+  textColor: string
+  borderColor: string
+}> = {
+  lead:       { label: 'Lead',       color: '#8B5CF6', bgColor: 'bg-purple-500/10',  textColor: 'text-purple-200',  borderColor: 'border-purple-500/20' },
+  negociacao: { label: 'NegociaÃÂ§ÃÂ£o', color: '#06B6D4', bgColor: 'bg-cyan-500/10',    textColor: 'text-cyan-200',    borderColor: 'border-cyan-500/20'    },
+  fechado:    { label: 'Fechado',    color: '#10B981', bgColor: 'bg-emerald-500/10', textColor: 'text-emerald-200', borderColor: 'border-emerald-500/20' },
+  perdido:    { label: 'Perdido',    color: '#F87171', bgColor: 'bg-rose-500/10',    textColor: 'text-rose-200',    borderColor: 'border-rose-500/20'    },
+}
+
+const brl = (v: number) => `R$ ${v.toLocaleString('pt-BR')}`
+const truncate = (s?: string | null, n = 90) => (s ? (s.length > n ? s.slice(0, n) + 'Ã¢â¬Â¦' : s) : '')
+
+// =======================
+// Componente
+// =======================
+export default function Leads() {
+  const { tenant, loading: authLoading, user } = useAuthStore()
+
+  // ===== UI State
+  const [viewMode, setViewMode] = useState<'grid' | 'kanban' | 'list'>('list') // mobile-first: list for better lead scalability
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filters, setFilters] = useState<ClienteFilters>({ status: 'todos' })
+  const [filtersOpen, setFiltersOpen] = useState(false)
+
+  // ===== Data State
+  const [loading, setLoading] = useState(true)
+  const [leads, setLeads] = useState<Cliente[]>([])
+  const [produtos, setProdutos] = useState<Produto[]>([])
+  const [produtosAssociados, setProdutosAssociados] = useState<Record<string, string[]>>({})
+
+  // ===== Detail Bottom Sheet (mobile) / Drawer (desktop)
+  const [openLeadId, setOpenLeadId] = useState<string | null>(null)
+  const [detalheLead, setDetalheLead] = useState<Cliente | null>(null)
+  const [atividades, setAtividades] = useState<AtividadeRow[]>([])
+  const [novaAtividade, setNovaAtividade] = useState<{ tipo: AtividadeRow['tipo']; conteudo: string }>({ tipo: 'nota', conteudo: '' })
+  const [salvandoNota, setSalvandoNota] = useState(false)
+
+  // ===== Campanhas
+  const [campanhasMap, setCampanhasMap] = useState<Record<string, string>>({}) // id -> nome
+  const [showNewCampaign, setShowNewCampaign] = useState(false)
+  const [newCampaignName, setNewCampaignName] = useState('')
+  const [savingCampaign, setSavingCampaign] = useState(false)
+  const campanhasMapRef = useRef<Record<string, string>>(campanhasMap)
+
+  useEffect(() => {
+    campanhasMapRef.current = campanhasMap
+  }, [campanhasMap])
+
+  // =======================
+  // Loads (sem select relacional para evitar PGRST200)
+  // =======================
+  const loadCampanhas = useCallback(async () => {
+    console.log('[DEBUG] loadCampanhas started', { 
+      tenantId: tenant?.id, 
+      authLoading, 
+      userEmail: user?.email 
+    })
+    if (!tenant?.id) {
+      console.log('[DEBUG] loadCampanhas aborted - no tenant')
+      return
+    }
+    try {
+      console.log('[DEBUG] Fazendo query para campanhas...')
+      const { data, error } = await supabase
+        .from('campanhas')
+        .select('id, nome, tenant_id, ativa')
+        .eq('tenant_id', tenant.id)
+        .eq('ativa', true)
+        .order('nome', { ascending: true })
+
+      console.log('[DEBUG] Resultado campanhas:', { data, error })
+      if (error) throw error
+
+      const rows = (data ?? []) as CampanhaRow[]
+      const map: Record<string, string> = {}
+      for (const c of rows) map[c.id] = c.nome
+      console.log('[DEBUG] Mapa de campanhas criado:', map)
+      setCampanhasMap(map)
+    } catch (err) {
+      console.error('[ERROR] loadCampanhas failed:', err)
+      toast.error('Erro ao carregar campanhas')
+    }
+  }, [tenant?.id])
+
+  const loadProdutos = useCallback(async () => {
+    console.log('[DEBUG] loadProdutos started', { tenantId: tenant?.id })
+    if (!tenant?.id) {
+      console.warn('[WARN] loadProdutos aborted - no tenant')
+      return
+    }
+
+    try {
+      // Primeiro, tentamos a estrutura nova (com campo preco)
+      let { data, error } = await supabase
+        .from('produtos')
+        .select('id, tenant_id, nome, descricao, preco, ativo, tags')
+        .eq('tenant_id', tenant.id)
+        .order('nome')
+
+      // Se der erro, tentamos a estrutura antiga (com campo price)
+      if (error && error.message?.includes('preco')) {
+        console.log('[DEBUG] Tentando com campo price...')
+        const result = await supabase
+          .from('produtos')
+          .select('id, tenant_id, nome, descricao, price, ativo, tags')
+          .eq('tenant_id', tenant.id)
+          .order('nome')
+        
+        if (result.data) {
+          data = result.data.map((item: Record<string, unknown>) => ({
+            id: item.id,
+            tenant_id: item.tenant_id,
+            nome: item.nome,
+            descricao: item.descricao,
+            preco: (item.price as number) || 0,
+            ativo: item.ativo !== undefined ? (item.ativo as boolean) : true,
+            tags: item.tags as string[] | null
+          }))
+        }
+        error = result.error
+      }
+
+      // Se ainda der erro com ativo, tentamos sem esse campo
+      if (error && error.message?.includes('ativo')) {
+        console.log('[DEBUG] Tentando sem campo ativo...')
+        const result = await supabase
+          .from('produtos')
+          .select('id, tenant_id, nome, descricao, price, tags')
+          .eq('tenant_id', tenant.id)
+          .order('nome')
+        
+        if (result.data) {
+          data = result.data.map((item: Record<string, unknown>) => ({
+            id: item.id,
+            tenant_id: item.tenant_id,
+            nome: item.nome,
+            descricao: item.descricao,
+            preco: (item.price as number) || 0,
+            ativo: true,
+            tags: item.tags as string[] | null
+          }))
+        }
+        error = result.error
+      }
+
+      // Se der erro com tags, tentamos sem elas
+      if (error && error.message?.includes('tags')) {
+        console.log('[DEBUG] Tentando sem campo tags...')
+        const result = await supabase
+          .from('produtos')
+          .select('id, tenant_id, nome, descricao, price')
+          .eq('tenant_id', tenant.id)
+          .order('nome')
+        
+        if (result.data) {
+          data = result.data.map((item: Record<string, unknown>) => ({
+            id: item.id,
+            tenant_id: item.tenant_id,
+            nome: item.nome,
+            descricao: item.descricao,
+            preco: (item.price as number) || 0,
+            ativo: true,
+            tags: null
+          }))
+        }
+        error = result.error
+      }
+
+      console.log('[DEBUG] Produtos loaded:', { data, error, count: data?.length })
+      if (error) {
+        console.warn('[WARN] Erro ao carregar produtos:', error)
+        setProdutos([])
+        return
+      }
+
+      // Mapear os dados para garantir tipagem correta
+      const produtosMapeados = (data ?? []).map((produto: Record<string, unknown>) => ({
+        id: produto.id as string,
+        tenant_id: produto.tenant_id as string,
+        nome: produto.nome as string,
+        descricao: produto.descricao as string,
+        preco: Number(produto.preco) || Number(produto.price) || 0,
+        ativo: produto.ativo !== undefined ? (produto.ativo as boolean) : true,
+        tags: produto.tags as string[] | null
+      }))
+
+      console.log('[DEBUG] Produtos mapeados:', produtosMapeados)
+      setProdutos(produtosMapeados)
+    } catch (err) {
+      console.error('[ERROR] loadProdutos failed:', err)
+      setProdutos([])
+    }
+  }, [tenant?.id])
+
+  const loadProdutosAssociados = useCallback(async () => {
+    console.log('[DEBUG] loadProdutosAssociados started', { tenantId: tenant?.id })
+    if (!tenant?.id) {
+      console.warn('[WARN] loadProdutosAssociados aborted - no tenant')
+      return
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('cliente_produtos')
+        .select('cliente_id, produto_id')
+
+      console.log('[DEBUG] Produtos associados loaded:', { data, error })
+      if (error) {
+        console.warn('[WARN] Erro ao carregar produtos associados (tabela pode nÃÂ£o existir ainda):', error)
+        setProdutosAssociados({})
+        return
+      }
+
+      // Agrupamos os produtos por cliente_id
+      const grupos: Record<string, string[]> = {}
+      data?.forEach(item => {
+        if (!grupos[item.cliente_id]) {
+          grupos[item.cliente_id] = []
+        }
+        grupos[item.cliente_id].push(item.produto_id)
+      })
+
+      setProdutosAssociados(grupos)
+    } catch (err) {
+      console.error('[ERROR] loadProdutosAssociados failed:', err)
+      setProdutosAssociados({})
+    }
+  }, [tenant?.id])
+
+  const createCampaign = async () => {
+    if (!tenant?.id || !newCampaignName.trim()) {
+      toast.error('Digite o nome da campanha')
+      return
+    }
+
+    try {
+      setSavingCampaign(true)
+      console.log('[DEBUG] Criando nova campanha...')
+      
+      const { data, error } = await supabase
+        .from('campanhas')
+        .insert({
+          tenant_id: tenant.id,
+          nome: newCampaignName.trim(),
+          ativa: true
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Atualiza o mapa de campanhas
+      if (data) {
+        setCampanhasMap(prev => ({ ...prev, [data.id]: data.nome }))
+        setNewCampaignName('')
+        setShowNewCampaign(false)
+        toast.success('Campanha criada com sucesso!')
+      }
+    } catch (err) {
+      console.error('[ERROR] createCampaign failed:', err)
+      toast.error('Erro ao criar campanha')
+    } finally {
+      setSavingCampaign(false)
+    }
+  }
+
+  const toggleProdutoAssociado = async (clienteId: string, produtoId: string) => {
+    if (!tenant?.id) return
+
+    try {
+      const produtosAtuais = produtosAssociados[clienteId] || []
+      const jaAssociado = produtosAtuais.includes(produtoId)
+      
+      if (jaAssociado) {
+        // Remover associaÃÂ§ÃÂ£o
+        const { error } = await supabase
+          .from('cliente_produtos')
+          .delete()
+          .eq('tenant_id', tenant.id)
+          .eq('cliente_id', clienteId)
+          .eq('produto_id', produtoId)
+
+        if (error) throw error
+
+        setProdutosAssociados(prev => ({
+          ...prev,
+          [clienteId]: prev[clienteId]?.filter(id => id !== produtoId) || []
+        }))
+      } else {
+        // Adicionar associaÃÂ§ÃÂ£o
+        const { error } = await supabase
+          .from('cliente_produtos')
+          .insert({
+            cliente_id: clienteId,
+            produto_id: produtoId,
+            interesse_level: 'medio',
+            notas: null
+          })
+
+        if (error) throw error
+
+        setProdutosAssociados(prev => ({
+          ...prev,
+          [clienteId]: [...(prev[clienteId] || []), produtoId]
+        }))
+      }
+    } catch (err) {
+      console.error('[ERROR] toggleProdutoAssociado failed:', err)
+      toast.error('Erro ao atualizar associaÃÂ§ÃÂ£o de produto')
+    }
+  }
+
+  const loadLeads = useCallback(async () => {
+    console.log('[DEBUG] loadLeads started', { tenantId: tenant?.id, authLoading })
+    if (!tenant?.id) {
+      console.log('[DEBUG] loadLeads aborted - no tenant', { tenant, authLoading })
+      if (!authLoading) setLoading(false)
+      return
+    }
+    setLoading(true)
+    try {
+      console.log('[DEBUG] Fazendo query para clientes...')
+      // 1) Busca leads SEM join
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('id, tenant_id, nome, telefone, email, status, notas, valor_potencial, campanha_id, created_at, updated_at')
+        .eq('tenant_id', tenant.id)
+        .order('created_at', { ascending: false })
+
+      console.log('[DEBUG] Resultado clientes:', { data, error, count: data?.length })
+      if (error) throw error
+      const rows = (data ?? []) as ClienteRow[]
+
+      // 2) Busca tarefas abertas por cliente
+      const tarefasByLead: Record<string, number> = {}
+      const ids = rows.map(r => r.id)
+      if (ids.length > 0) {
+        try {
+          console.log('[DEBUG] Fazendo query para tarefas abertas...')
+          const { data: tarefasData, error: tarefasErr } = await supabase
+            .from('tarefas')
+            .select('cliente_id')
+            .eq('tenant_id', tenant.id)
+            .in('cliente_id', ids)
+            .neq('status', 'concluida')
+          
+          if (tarefasErr) {
+            console.warn('[WARN] Erro ao buscar tarefas (ignorando):', tarefasErr)
+          } else {
+            console.log('[DEBUG] Resultado tarefas:', { tarefasData, count: tarefasData?.length })
+            const list = (tarefasData ?? []) as { cliente_id: string }[]
+            for (const t of list) {
+              tarefasByLead[t.cliente_id] = (tarefasByLead[t.cliente_id] || 0) + 1
+            }
+          }
+        } catch (tarefasErr) {
+          console.warn('[WARN] Falha ao buscar tarefas (continuando sem elas):', tarefasErr)
+        }
+      }
+
+      // 3) Busca ÃÂºltima atividade de todos os leads em uma ÃÂºnica query (sem join)
+      console.log('[DEBUG] IDs dos clientes para buscar atividades:', ids)
+      const latestByLead: Record<string, AtividadeRow | undefined> = {}
+      if (ids.length > 0) {
+        try {
+          console.log('[DEBUG] Fazendo query para atividades...')
+          const { data: acts, error: actsErr } = await supabase
+            .from('atividades')
+            .select('id, tenant_id, cliente_id, tipo, conteudo, created_at')
+            .eq('tenant_id', tenant.id)
+            .in('cliente_id', ids)
+            .order('created_at', { ascending: false })
+          
+          if (actsErr) {
+            console.warn('[WARN] Erro ao buscar atividades (ignorando):', actsErr)
+            // NÃÂ£o quebra o fluxo - atividades sÃÂ£o opcionais
+          } else {
+            console.log('[DEBUG] Resultado atividades:', { acts, count: acts?.length })
+            const list = (acts ?? []) as AtividadeRow[]
+            for (const a of list) {
+              if (!latestByLead[a.cliente_id]) latestByLead[a.cliente_id] = a
+            }
+          }
+        } catch (activityErr) {
+          console.warn('[WARN] Falha ao buscar atividades (continuando sem elas):', activityErr)
+        }
+      }
+
+      // 4) Enriquecimento: nome da campanha via mapa + ÃÂºltima nota + tarefas abertas
+      console.log('[DEBUG] Mapa de campanhas atual:', campanhasMapRef.current)
+      const enriched: Cliente[] = rows.map(r => ({
+        ...r,
+        campanhaNome: r.campanha_id ? (campanhasMapRef.current[r.campanha_id] ?? undefined) : undefined,
+        ultimaNota: latestByLead[r.id]?.conteudo,
+        tarefasAbertas: tarefasByLead[r.id] || 0,
+      }))
+
+      console.log('[DEBUG] Leads enriquecidos:', enriched)
+      setLeads(enriched)
+    } catch (err) {
+      console.error('[ERROR] loadLeads failed:', err)
+      toast.error('Erro ao carregar leads')
+    } finally {
+      setLoading(false)
+    }
+  }, [tenant?.id])
+
+  const loadAtividades = useCallback(async (clienteId: string) => {
+    console.log('[DEBUG] loadAtividades called', { clienteId, tenantId: tenant?.id })
+    if (!tenant?.id) {
+      console.warn('[WARN] loadAtividades aborted - no tenant')
+      return
+    }
+    try {
+      console.log('[DEBUG] Fazendo query para atividades do cliente...')
+      const { data: atividadesData, error: atividadesError } = await supabase
+        .from('atividades')
+        .select('id, tenant_id, cliente_id, user_id, tipo, conteudo, created_at')
+        .eq('tenant_id', tenant.id)
+        .eq('cliente_id', clienteId)
+        .order('created_at', { ascending: false })
+      
+      console.log('[DEBUG] Resultado atividades:', { data: atividadesData, error: atividadesError, count: atividadesData?.length })
+      
+      if (atividadesError) {
+        console.warn('[WARN] Erro ao carregar atividades (definindo array vazio):', atividadesError)
+        setAtividades([])
+        return
+      }
+      
+      // Se nÃÂ£o hÃÂ¡ atividades, retorna
+      if (!atividadesData || atividadesData.length === 0) {
+        setAtividades([])
+        return
+      }
+      
+      // Buscar informaÃÂ§ÃÂµes dos usuÃÂ¡rios ÃÂºnicos
+      const userIds = [...new Set(atividadesData.map(a => a.user_id).filter(Boolean))]
+      console.log('[DEBUG] User IDs ÃÂºnicos encontrados:', userIds)
+      
+      let usersMap: Record<string, string> = {}
+      
+      if (userIds.length > 0) {
+        const { data: usersData, error: usersError } = await supabase
+          .from('user_profiles')
+          .select('id, full_name, email')
+          .in('id', userIds)
+        
+        console.log('[DEBUG] Dados dos usuÃÂ¡rios:', { data: usersData, error: usersError })
+        
+        if (usersData && !usersError) {
+          usersMap = usersData.reduce((map, user) => {
+            map[user.id] = user.full_name || user.email || 'UsuÃÂ¡rio'
+            return map
+          }, {} as Record<string, string>)
+        }
+      }
+      
+      console.log('[DEBUG] Mapa de usuÃÂ¡rios:', usersMap)
+      
+      // Combinar atividades com informaÃÂ§ÃÂµes dos usuÃÂ¡rios
+      const atividadesComUsuario = atividadesData.map(atividade => ({
+        ...atividade,
+        user_email: atividade.user_id ? (usersMap[atividade.user_id] || 'UsuÃÂ¡rio nÃÂ£o encontrado') : 'Sistema'
+      }))
+      
+      console.log('[DEBUG] Atividades finais com usuÃÂ¡rios:', atividadesComUsuario)
+      setAtividades(atividadesComUsuario as AtividadeRow[])
+    } catch (err) {
+      console.error('[ERROR] loadAtividades failed:', err)
+      setAtividades([]) // Define array vazio em caso de erro
+      toast.error('Erro ao carregar atividades')
+    }
+  }, [tenant?.id])
+
+  useEffect(() => {
+    // Carrega campanhas primeiro (nome da campanha no card) e depois os leads.
+    // Executamos apenas quando tenant.id muda ou authLoading vira false
+    console.log('[DEBUG] useEffect boot triggered', { 
+      tenantId: tenant?.id, 
+      authLoading
+    })
+    
+    if (authLoading || !tenant?.id) {
+      console.log('[DEBUG] Boot aborted - waiting for auth or tenant')
+      return
+    }
+    
+    const boot = async () => {
+      console.log('[DEBUG] Starting boot sequence...')
+      await loadCampanhas()
+      await loadProdutos()
+      await loadProdutosAssociados()
+      await loadLeads()
+      console.log('[DEBUG] Boot sequence completed')
+    }
+    void boot()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenant?.id, authLoading])
+
+  // =======================
+  // Actions
+  // =======================
+  const addNewLead = async () => {
+    console.log('[DEBUG] addNewLead called', { tenantId: tenant?.id })
+    if (!tenant?.id) {
+      console.error('[ERROR] Cannot add lead - no tenant')
+      toast.error('Erro: tenant nÃÂ£o encontrado')
+      return
+    }
+    
+    try {
+      console.log('[DEBUG] Inserindo novo lead...')
+      const { data, error } = await supabase
+        .from('clientes')
+        .insert({
+          tenant_id: tenant.id,
+          nome: 'Novo Lead',
+          status: 'lead' as StatusType,
+          telefone: null,
+          email: null,
+          notas: null,
+          valor_potencial: null,
+          campanha_id: null
+        })
+        .select()
+        .single()
+      
+      console.log('[DEBUG] Resultado insert lead:', { data, error })
+      if (error) throw error
+      
+      if (data) {
+        // Converte o lead criado para o formato esperado
+        const newLead: Cliente = {
+          ...data,
+          campanhaNome: undefined,
+          ultimaNota: undefined,
+          tarefasAbertas: 0
+        }
+        
+        // Adiciona ÃÂ  lista local primeiro (UX mais rÃÂ¡pido)
+        setLeads(prev => [newLead, ...prev])
+        
+        // Abre o drawer para ediÃÂ§ÃÂ£o
+        openLead(newLead)
+        
+        toast.success('Lead criado! Edite os dados agora.')
+      }
+      
+    } catch (err) {
+      console.error('[ERROR] addNewLead failed:', err)
+      toast.error('Erro ao adicionar lead')
+    }
+  }
+
+  const openLead = (lead: Cliente) => {
+    console.log('[DEBUG] openLead called', { leadId: lead.id, leadName: lead.nome })
+    setDetalheLead(lead)
+    setOpenLeadId(lead.id)
+    void loadAtividades(lead.id)
+  }
+
+  const closeLead = () => {
+    console.log('[DEBUG] closeLead called')
+    setOpenLeadId(null)
+    setDetalheLead(null)
+    setAtividades([])
+  }
+
+  const updateLead = async (updates: Partial<ClienteRow>) => {
+    if (!detalheLead || !tenant?.id) return
+    
+    console.log('[DEBUG] updateLead called', { leadId: detalheLead.id, updates })
+    
+    try {
+      const { error } = await supabase
+        .from('clientes')
+        .update(updates)
+        .eq('id', detalheLead.id)
+        .eq('tenant_id', tenant.id)
+      
+      if (error) throw error
+      
+      // Atualiza o lead local
+      const updatedLead = { ...detalheLead, ...updates }
+      setDetalheLead(updatedLead)
+      
+      // Atualiza na lista
+      setLeads(prev => prev.map(l => l.id === detalheLead.id ? { ...l, ...updates } : l))
+      
+      console.log('[DEBUG] Lead atualizado com sucesso')
+      toast.success('Lead atualizado!')
+      
+    } catch (err) {
+      console.error('[ERROR] updateLead failed:', err)
+      toast.error('Erro ao atualizar lead')
+    }
+  }
+
+  const salvarAtividade = async () => {
+    console.log('[DEBUG] salvarAtividade called', { 
+      detalheLead: detalheLead?.id, 
+      tenantId: tenant?.id, 
+      novaAtividade 
+    })
+    
+    if (!detalheLead || !tenant?.id) {
+      console.error('[ERROR] Dados insuficientes para salvar atividade')
+      toast.error('Erro: dados insuficientes')
+      return
+    }
+    
+    const { tipo, conteudo } = novaAtividade
+    if (!conteudo.trim()) {
+      toast.error('Digite o conteÃÂºdo da atividade')
+      return
+    }
+    
+    try {
+      setSalvandoNota(true)
+      console.log('[DEBUG] Tentando inserir atividade...')
+      
+      // Primeiro, vamos verificar se a tabela existe
+      const { error: checkError } = await supabase
+        .from('atividades')
+        .select('count', { count: 'exact', head: true })
+        .limit(1)
+      
+      if (checkError && (checkError.code === 'PGRST106' || checkError.code === '42P01')) {
+        console.warn('[WARN] Tabela atividades nÃÂ£o existe, usando campo notas do cliente')
+        
+        // Fallback: salva como nota no campo notas do cliente
+        const timestamp = new Date().toLocaleString('pt-BR')
+        const autor = user?.email || user?.user_metadata?.full_name || 'UsuÃÂ¡rio'
+        const notaFormatada = `[${timestamp} - ${autor}] ${tipo.toUpperCase()}: ${conteudo.trim()}`
+        const notasAtuais = detalheLead.notas || ''
+        const novasNotas = notasAtuais ? `${notasAtuais}\n\n${notaFormatada}` : notaFormatada
+        
+        await updateLead({ notas: novasNotas })
+        setNovaAtividade({ tipo: 'nota', conteudo: '' })
+        toast.success('Nota adicionada ao lead!')
+        return
+      }
+      
+      // Tenta inserir a atividade
+      const activityData = {
+        tenant_id: tenant.id,
+        cliente_id: detalheLead.id,
+        tipo,
+        conteudo: conteudo.trim(),
+        user_id: user?.id || null // Usa o ID do usuÃÂ¡rio logado
+      }
+      
+      console.log('[DEBUG] Dados da atividade a inserir:', activityData)
+      
+      const { data, error } = await supabase
+        .from('atividades')
+        .insert(activityData)
+        .select()
+        .single()
+      
+      console.log('[DEBUG] Resultado insert atividade:', { data, error })
+      
+      if (error) {
+        console.error('[ERROR] Erro ao inserir atividade:', error)
+        
+        // Fallback em caso de erro
+        console.log('[DEBUG] Usando fallback: salvando como nota no campo notas')
+        const timestamp = new Date().toLocaleString('pt-BR')
+        const autor = user?.email || user?.user_metadata?.full_name || 'UsuÃÂ¡rio'
+        const notaFormatada = `[${timestamp} - ${autor}] ${tipo.toUpperCase()}: ${conteudo.trim()}`
+        const notasAtuais = detalheLead.notas || ''
+        const novasNotas = notasAtuais ? `${notasAtuais}\n\n${notaFormatada}` : notaFormatada
+        
+        await updateLead({ notas: novasNotas })
+        setNovaAtividade({ tipo: 'nota', conteudo: '' })
+        toast.success('Nota adicionada ao lead!')
+        return
+      }
+      
+      if (data) {
+        // Adiciona a nova atividade ÃÂ  lista local
+        setAtividades(prev => [data as AtividadeRow, ...prev])
+        setNovaAtividade({ tipo: 'nota', conteudo: '' })
+        toast.success('Atividade adicionada!')
+        console.log('[DEBUG] Atividade salva com sucesso')
+      }
+      
+    } catch (err) {
+      console.error('[ERROR] salvarAtividade failed:', err)
+      
+      // ÃÅ¡ltimo fallback: salvar como nota
+      try {
+        console.log('[DEBUG] ÃÅ¡ltimo fallback: salvando como nota no campo notas')
+        const timestamp = new Date().toLocaleString('pt-BR')
+        const autor = user?.email || user?.user_metadata?.full_name || 'UsuÃÂ¡rio'
+        const notaFormatada = `[${timestamp} - ${autor}] ${tipo.toUpperCase()}: ${conteudo.trim()}`
+        const notasAtuais = detalheLead.notas || ''
+        const novasNotas = notasAtuais ? `${notasAtuais}\n\n${notaFormatada}` : notaFormatada
+        
+        await updateLead({ notas: novasNotas })
+        setNovaAtividade({ tipo: 'nota', conteudo: '' })
+        toast.success('Nota adicionada ao lead!')
+      } catch (fallbackErr) {
+        console.error('[ERROR] Fallback tambÃÂ©m falhou:', fallbackErr)
+        toast.error('NÃÂ£o foi possÃÂ­vel salvar a atividade')
+      }
+    } finally {
+      setSalvandoNota(false)
+    }
+  }
+
+  const onDragEnd = async (result: DropResult) => {
+    const { destination, source, draggableId } = result
+    if (!destination || !tenant?.id) return
+    const destStatus = destination.droppableId as StatusType
+
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return
+
+    try {
+      const { error } = await supabase
+        .from('clientes')
+        .update({ status: destStatus })
+        .eq('tenant_id', tenant.id)
+        .eq('id', draggableId)
+      if (error) throw error
+      setLeads(prev => prev.map(l => (l.id === draggableId ? { ...l, status: destStatus } : l)))
+    } catch (err) {
+      console.error(err)
+      toast.error('Falha ao mover lead')
+    }
+  }
+
+  // =======================
+  // Derived
+  // =======================
+  const filtered = leads.filter(l => {
+    const t = searchTerm.trim().toLowerCase()
+    const byText = t
+      ? [l.nome, l.email ?? '', l.telefone ?? '', l.campanhaNome ?? '', l.notas ?? '', l.ultimaNota ?? '']
+          .some(v => v?.toLowerCase().includes(t))
+      : true
+    const byStatus = filters.status && filters.status !== 'todos' ? l.status === filters.status : true
+    const byValorMin = typeof filters.valorMin === 'number' ? (l.valor_potencial ?? 0) >= filters.valorMin! : true
+    const byValorMax = typeof filters.valorMax === 'number' ? (l.valor_potencial ?? 0) <= filters.valorMax! : true
+    return byText && byStatus && byValorMin && byValorMax
+  })
+
+  const grouped: Record<StatusType, Cliente[]> = {
+    lead: filtered.filter(l => l.status === 'lead'),
+    negociacao: filtered.filter(l => l.status === 'negociacao'),
+    fechado: filtered.filter(l => l.status === 'fechado'),
+    perdido: filtered.filter(l => l.status === 'perdido'),
+  }
+
+  // =======================
+  // UI Helpers
+  // =======================
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // FunÃÂ§ÃÂ£o para apagar lead
+  const handleDeleteLead = async () => {
+    if (!detalheLead || !tenant?.id) return;
+    try {
+      const { error } = await supabase
+        .from('clientes')
+        .delete()
+        .eq('id', detalheLead.id)
+        .eq('tenant_id', tenant.id);
+      if (error) throw error;
+      setLeads(prev => prev.filter(l => l.id !== detalheLead.id));
+      closeLead();
+      setShowDeleteConfirm(false);
+      toast.success('Lead apagado com sucesso!');
+    } catch (err) {
+      console.error('[ERROR] handleDeleteLead failed:', err);
+      toast.error('Erro ao apagar lead');
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const Header = (
+    <div className="sticky  top-0 z-30 backdrop-blur-sm border-b border-slate-200 dark:border-white/5">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3">
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <div className="text-xs uppercase tracking-widest text-slate-500 dark:text-gray-400">Pipeline</div>
+            <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white">Leads</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-lg border transition ${viewMode === 'list' ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/20' : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10'}`}
+              aria-label="Ver em lista"
+            >
+              <List className="w-4 h-4 text-slate-700 dark:text-gray-300" />
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-lg border transition ${viewMode === 'grid' ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/20' : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10'}`}
+              aria-label="Ver em grade"
+            >
+              <Grid3X3 className="w-4 h-4 text-slate-700 dark:text-gray-300" />
+            </button>
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`p-2 rounded-lg border transition ${viewMode === 'kanban' ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-500/20' : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10'}`}
+              aria-label="Ver em kanban"
+            >
+              <KanbanIcon className="w-4 h-4 text-slate-700 dark:text-gray-300" />
+            </button>
+          </div>
+        </div>
+
+        {/* Search + Filters */}
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-5 gap-3">
+          <div className="sm:col-span-4 relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por nome, email, telefoneÃ¢â¬Â¦"
+              className="w-full pl-10 pr-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+            />
+          </div>
+          <div className="sm:col-span-1">
+            <button
+              onClick={() => setFiltersOpen(true)}
+              className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 transition text-sm text-slate-700 dark:text-slate-200"
+            >
+              <Filter className="w-4 h-4" /> Filtros
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile hint for kanban */}
+        <div className="mt-2 sm:hidden text-[11px] text-gray-400">
+          Dica: no celular, use a lista. O Kanban completo aparece no desktop.
+        </div>
+      </div>
+    </div>
+  )
+
+  // Removido: EmptyState substituÃÂ­do por HeroEmpty
+
+  const StatusPill = ({ s }: { s: StatusType }) => (
+    <span
+      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] border ${statusConfig[s].bgColor} ${statusConfig[s].textColor} ${statusConfig[s].borderColor}`}
+      style={{ boxShadow: `0 0 0.5rem ${statusConfig[s].color}22` }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: statusConfig[s].color }} />
+      {statusConfig[s].label}
+    </span>
+  )
+
+  const LeadCard = ({ l }: { l: Cliente }) => (
+    <button
+      onClick={() => openLead(l)}
+      className="w-full text-left rounded-3xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10 transition p-4 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white tracking-wide">{l.nome}</h3>
+            <StatusPill s={l.status} />
+          </div>
+          {l.campanhaNome && (
+            <div className="mt-0.5 text-[12px] text-gray-400">Campanha: {l.campanhaNome}</div>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-slate-600 dark:text-gray-300">
+        <div className="rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 px-3 py-2">
+          <div className="text-[11px] text-slate-500 dark:text-gray-400">Valor potencial</div>
+          <div className="text-slate-700 dark:text-white font-semibold">
+            {typeof l.valor_potencial === 'number' ? brl(l.valor_potencial) : 'Ã¢â¬â'}
+          </div>
+        </div>
+        <div className="rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 px-3 py-2">
+          <div className="text-[11px] text-slate-500 dark:text-gray-400">Criado em</div>
+          <div className="text-slate-700 dark:text-white truncate">
+            {l.created_at ? new Date(l.created_at).toLocaleDateString('pt-BR') : 'Ã¢â¬â'}
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 text-sm text-slate-600 dark:text-gray-300">
+        <div className="rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 px-3 py-2">
+          <div className="text-[11px] text-slate-500 dark:text-gray-400">Tarefas abertas</div>
+          <div className="text-slate-700 dark:text-white font-semibold">
+            {l.tarefasAbertas || 0}
+          </div>
+        </div>
+      </div>
+      {truncate(l.ultimaNota, 120) && (
+        <div className="mt-3 text-[13px] text-gray-300 line-clamp-2">
+          {truncate(l.ultimaNota, 180)}
+        </div>
+      )}
+    </button>
+  )
+
+  const LeadRow = ({ l }: { l: Cliente }) => (
+    <button
+      onClick={() => openLead(l)}
+      className="w-full text-left rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10 transition p-4 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+    >
+      <div className="flex items-start justify-between gap-4">
+        {/* Info Principal - Layout horizontal otimizado */}
+        <div className="flex items-start gap-6 flex-1 min-w-0">
+          {/* Nome e Status */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white tracking-wide truncate">{l.nome}</h3>
+              <StatusPill s={l.status} />
+            </div>
+          {l.campanhaNome && (
+            <div className="text-[12px] text-gray-400 truncate mb-1">Campanha: {l.campanhaNome}</div>
+          )}
+        </div>
+        
+        {/* Email e Contato - Vertical como solicitado */}
+        <div className="hidden sm:flex flex-col gap-1 min-w-[180px]">
+          {l.email && (
+            <div className="flex items-center gap-2 text-sm text-gray-300">
+              <Mail className="w-4 h-4 text-gray-500 flex-shrink-0" />
+              <span className="truncate max-w-[150px]">{l.email}</span>
+            </div>
+          )}
+          {l.telefone && (
+            <div className="flex items-center gap-2 text-sm text-gray-300">
+              <Phone className="w-4 h-4 text-gray-500 flex-shrink-0" />
+              <span className="truncate max-w-[120px]">{l.telefone}</span>
+            </div>
+          )}
+        </div>
+          
+          {/* ÃÅ¡ltima Nota */}
+          <div className="hidden md:flex flex-col min-w-[200px] max-w-[250px]">
+            {truncate(l.ultimaNota, 80) ? (
+              <>
+                <div className="text-[11px] text-gray-400 mb-1">ÃÅ¡ltima nota</div>
+                <div className="text-[13px] text-gray-300 line-clamp-2">
+                  {truncate(l.ultimaNota, 120)}
+                </div>
+              </>
+            ) : (
+              <div className="text-[13px] text-gray-500 italic">Sem notas</div>
+            )}
+          </div>
+          
+          {/* Valor Potencial */}
+          <div className="hidden lg:flex flex-col text-right min-w-[120px]">
+            <div className="text-[11px] text-slate-500 dark:text-gray-400 mb-1">Valor potencial</div>
+            <div className="text-slate-700 dark:text-white font-semibold">
+              {typeof l.valor_potencial === 'number' ? brl(l.valor_potencial) : 'Ã¢â¬â'}
+            </div>
+          </div>
+          
+          {/* Data de CriaÃÂ§ÃÂ£o */}
+          <div className="hidden lg:flex flex-col text-right min-w-[100px]">
+            <div className="text-[11px] text-slate-500 dark:text-gray-400 mb-1">Criado em</div>
+            <div className="text-slate-700 dark:text-white text-sm">
+              {l.created_at ? new Date(l.created_at).toLocaleDateString('pt-BR') : 'Ã¢â¬â'}
+            </div>
+          </div>
+          
+          {/* Tarefas Abertas */}
+          <div className="hidden lg:flex flex-col text-right min-w-[100px]">
+            <div className="text-[11px] text-slate-500 dark:text-gray-400 mb-1">Tarefas abertas</div>
+            <div className="text-slate-700 dark:text-white font-semibold">
+              {l.tarefasAbertas || 0}
+            </div>
+          </div>
+        </div>
+
+        {/* AÃÂ§ÃÂµes */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* AÃÂ§ÃÂµes removidas */}
+        </div>
+      </div>
+
+      {/* InformaÃÂ§ÃÂµes responsivas para tablets e mobile */}
+      <div className="sm:hidden mt-3 space-y-2">
+        {/* Email e telefone em mobile */}
+        <div className="grid grid-cols-1 gap-2 text-sm">
+          {l.email && (
+            <div className="flex items-center gap-2 text-gray-300">
+              <Mail className="w-3 h-3 text-gray-500 flex-shrink-0" />
+              <span className="truncate">{l.email}</span>
+            </div>
+          )}
+          {l.telefone && (
+            <div className="flex items-center gap-2 text-gray-300">
+              <Phone className="w-3 h-3 text-gray-500 flex-shrink-0" />
+              <span className="truncate">{l.telefone}</span>
+            </div>
+          )}
+        </div>
+        
+        {/* Valor, data e tarefas em mobile */}
+        <div className="grid grid-cols-3 gap-2 text-sm pt-2 border-t border-white/5">
+          <div className="text-gray-300">
+            <span className="text-[11px] text-gray-400">Valor</span>
+            <div className="text-white font-semibold">
+              {typeof l.valor_potencial === 'number' ? brl(l.valor_potencial) : 'Ã¢â¬â'}
+            </div>
+          </div>
+          <div className="text-gray-300">
+            <span className="text-[11px] text-gray-400">Criado</span>
+            <div className="text-white">
+              {l.created_at ? new Date(l.created_at).toLocaleDateString('pt-BR') : 'Ã¢â¬â'}
+            </div>
+          </div>
+          <div className="text-gray-300">
+            <span className="text-[11px] text-gray-400">Tarefas</span>
+            <div className="text-white font-semibold">
+              {l.tarefasAbertas || 0}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Nota para tablets */}
+      <div className="md:hidden mt-3">
+        {truncate(l.ultimaNota, 120) && (
+          <div className="text-[13px] text-gray-300 line-clamp-2 border-t border-white/5 pt-3">
+            <span className="text-[11px] text-gray-400 block mb-1">ÃÅ¡ltima nota:</span>
+            {truncate(l.ultimaNota, 150)}
+          </div>
+        )}
+      </div>
+    </button>
+  )
+
+  // =======================
+  // Render
+  // =======================
+  return (
+    <div className="min-h-screen bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200">
+      {/* HUD glow grid background + overlay */}
+      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.08),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(139,92,246,0.06),transparent_40%),radial-gradient(circle_at_50%_100%,rgba(16,185,129,0.06),transparent_45%)]" />
+
+      {Header}
+
+      <main className="relative max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+        {/* GRID / LIST MODE (mobile-first) */}
+        {viewMode === 'grid' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {loading && (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-40 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 animate-pulse" />
+              ))
+            )}
+            {!loading && filtered.length === 0 && (
+              <div className="sm:col-span-2 lg:col-span-3 flex flex-col items-center justify-center py-16 px-4">
+                <div className="rounded-3xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 p-12 text-center max-w-md">
+                  <div className="text-6xl mb-4">Ã°Å¸Å½Â¯</div>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Nenhum lead encontrado</h3>
+                  <p className="text-slate-600 dark:text-gray-400">
+                    Comece criando seu primeiro lead ou ajuste os filtros
+                  </p>
+                </div>
+              </div>
+            )}
+            {!loading && filtered.map(l => (
+              <LeadCard key={l.id} l={l} />
+            ))}
+          </div>
+        )}
+
+        {/* LIST MODE (row-based for better scalability) */}
+        {viewMode === 'list' && (
+          <div className="space-y-3">
+            {loading && (
+              Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-16 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 animate-pulse" />
+              ))
+            )}
+            {!loading && filtered.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 px-4">
+                <div className="rounded-3xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 p-12 text-center max-w-md">
+                  <div className="text-6xl mb-4">Ã°Å¸Å½Â¯</div>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Nenhum lead encontrado</h3>
+                  <p className="text-slate-600 dark:text-gray-400">
+                    Comece criando seu primeiro lead ou ajuste os filtros
+                  </p>
+                </div>
+              </div>
+            )}
+            {!loading && filtered.map(l => (
+              <LeadRow key={l.id} l={l} />
+            ))}
+          </div>
+        )}
+
+        {/* KANBAN (desktop enhanced) */}
+        {viewMode === 'kanban' && (
+          <div className="hidden lg:block">
+            <DragDropContext onDragEnd={onDragEnd}>
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                {(Object.keys(statusConfig) as StatusType[]).map((col) => (
+                  <Droppable droppableId={col} key={col}>
+                    {(provided) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className="rounded-3xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 p-3 min-h-[60vh] shadow-lg"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full`} style={{ background: statusConfig[col].color }} />
+                            {statusConfig[col].label}
+                            <span className="text-[11px] text-gray-400">({grouped[col].length})</span>
+                          </div>
+                          <Move className="w-4 h-4 text-gray-500" />
+                        </div>
+                        <div className="space-y-3">
+                          {grouped[col].map((l, idx) => (
+                            <Draggable key={l.id} draggableId={l.id} index={idx}>
+                              {(pp, snapshot) => (
+                                <div
+                                  ref={pp.innerRef}
+                                  {...pp.draggableProps}
+                                  {...pp.dragHandleProps}
+                                  className={`rounded-3xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 p-3 cursor-grab active:cursor-grabbing transition ${snapshot.isDragging ? 'ring-2 ring-cyan-500/40 scale-[1.01]' : 'hover:bg-slate-50 dark:hover:bg-white/10'}`}
+                                  onClick={() => openLead(l)}
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div>
+                                      <div className="text-sm font-semibold text-slate-900 dark:text-white">{l.nome}</div>
+                                      <div className="text-[12px] text-slate-500 dark:text-gray-400">{l.campanhaNome || 'Ã¢â¬â'}</div>
+                                    </div>
+                                    <div className="text-sm text-slate-700 dark:text-white font-semibold">
+                                      {typeof l.valor_potencial === 'number' ? brl(l.valor_potencial) : 'Ã¢â¬â'}
+                                    </div>
+                                  </div>
+                                  {truncate(l.ultimaNota, 100) && (
+                                    <div className="mt-2 text-[12px] text-gray-300 line-clamp-2">
+                                      {truncate(l.ultimaNota, 120)}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      </div>
+                    )}
+                  </Droppable>
+                ))}
+              </div>
+            </DragDropContext>
+          </div>
+        )}
+
+        {/* Floating Action Button */}
+        {/* BotÃÂ£o removido - agora estÃÂ¡ no header */}
+      </main>
+
+      {/* Filters Sheet (mobile-first) */}
+      {filtersOpen && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setFiltersOpen(false)} />
+          <div className="absolute bottom-0 left-0 right-0 lg:top-1/2 lg:left-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 lg:bottom-auto lg:rounded-3xl lg:max-w-2xl lg:w-full rounded-t-3xl lg:rounded-t-3xl bg-slate-900/95 border-t lg:border border-white/10 shadow-2xl">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="text-lg font-semibold text-white flex items-center gap-3">
+                  <Filter className="w-5 h-5 text-cyan-400" />
+                  Filtros AvanÃÂ§ados
+                </div>
+                <button onClick={() => setFiltersOpen(false)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition">
+                  <X className="w-5 h-5 text-gray-300" />
+                </button>
+              </div>
+              
+              <div className="space-y-6">
+                {/* Status */}
+                <div className="bg-white dark:bg-white/5 rounded-2xl p-5 border border-slate-200 dark:border-white/10">
+                  <label className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-cyan-400" />
+                    Status do Lead
+                  </label>
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                    {(['todos', 'lead', 'negociacao', 'fechado', 'perdido'] as const).map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setFilters(p => ({ ...p, status: s as ClienteFilters['status'] }))}
+                        className={`px-4 py-3 rounded-lg border text-sm font-medium transition ${filters.status === s 
+                          ? 'bg-cyan-100 dark:bg-cyan-500/20 border-cyan-300 dark:border-cyan-500/40 text-cyan-900 dark:text-cyan-200' 
+                          : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10 hover:border-slate-300 dark:hover:border-white/20'
+                        }`}
+                      >
+                        {s === 'todos' ? 'Todos os Status' : statusConfig[s as StatusType].label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Valor potencial */}
+                <div className="bg-white dark:bg-white/5 rounded-2xl p-5 border border-slate-200 dark:border-white/10">
+                  <label className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                    Faixa de Valor Potencial
+                  </label>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-gray-400 mb-2 block font-medium">Valor mÃÂ­nimo (R$)</label>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        className="w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 transition text-sm"
+                        placeholder="0"
+                        value={filters.valorMin ?? ''}
+                        onChange={(e) => setFilters(p => ({ ...p, valorMin: e.target.value ? Number(e.target.value) : undefined }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 mb-2 block font-medium">Valor mÃÂ¡ximo (R$)</label>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        className="w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/30 transition text-sm"
+                        placeholder="Sem limite"
+                        value={filters.valorMax ?? ''}
+                        onChange={(e) => setFilters(p => ({ ...p, valorMax: e.target.value ? Number(e.target.value) : undefined }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* BotÃÂµes de aÃÂ§ÃÂ£o */}
+                <div className="flex gap-4 pt-2">
+                  <button
+                    onClick={() => setFilters({ status: 'todos' })}
+                    className="flex-1 px-6 py-3 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-gray-200 font-medium transition flex items-center justify-center gap-2"
+                  >
+                    <X className="w-4 h-4" />
+                    Limpar Filtros
+                  </button>
+                  <button
+                    onClick={() => setFiltersOpen(false)}
+                    className="flex-1 px-6 py-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-medium transition text-sm flex items-center justify-center gap-2"
+                  >
+                    <Filter className="w-4 h-4" />
+                    Aplicar Filtros
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Lead Detail - Popup grande (desktop) / Bottom Sheet (mobile) */}
+      {openLeadId && detalheLead && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeLead} />
+          
+          {/* Mobile: Modal Centralizado */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 lg:hidden rounded-lg bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 shadow-lg max-h-[90vh] w-[calc(100vw-2rem)] max-w-md flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400">Lead</div>
+                <div className="text-slate-900 dark:text-white font-semibold text-sm">{detalheLead.nome}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <StatusPill s={detalheLead.status} />
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10"
+                >
+                  <Trash className="w-4 h-4 text-red-500" />
+                </button>
+                <button onClick={closeLead} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10">
+                  <X className="w-4 h-4 text-slate-400 dark:text-gray-300" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin scrollbar-thumb-white/10 hover:scrollbar-thumb-white/20 sm:p-6">
+              
+              {/* Dados do Lead - Mobile */}
+              <div className="space-y-3">
+                <div className="text-sm font-semibold text-white">Dados do Lead</div>
+                
+                <div>
+                  <label className="text-xs text-gray-400">Nome</label>
+                  <input
+                    type="text"
+                    value={detalheLead.nome}
+                    onChange={(e) => setDetalheLead(prev => prev ? { ...prev, nome: e.target.value } : prev)}
+                    onBlur={(e) => updateLead({ nome: e.target.value })}
+                    className="mt-1 w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-sm"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Telefone</label>
+                    <input
+                      type="tel"
+                      value={detalheLead.telefone || ''}
+                      onChange={(e) => setDetalheLead(prev => prev ? { ...prev, telefone: e.target.value } : prev)}
+                      onBlur={(e) => updateLead({ telefone: e.target.value || null })}
+                      className="mt-1 w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-sm"
+                      placeholder="(11) 99999-9999"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Email</label>
+                    <input
+                      type="email"
+                      value={detalheLead.email || ''}
+                      onChange={(e) => setDetalheLead(prev => prev ? { ...prev, email: e.target.value } : prev)}
+                      onBlur={(e) => updateLead({ email: e.target.value || null })}
+                      className="mt-1 w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-sm"
+                      placeholder="email@exemplo.com"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-400">Status</label>
+                    <select
+                      value={detalheLead.status}
+                      onChange={(e) => {
+                        const newStatus = e.target.value as StatusType
+                        setDetalheLead(prev => prev ? { ...prev, status: newStatus } : prev)
+                        updateLead({ status: newStatus })
+                      }}
+                      className="mt-1 w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                    >
+                      {Object.entries(statusConfig).map(([value, config]) => (
+                        <option key={value} value={value} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                          {config.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400">Valor potencial</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={detalheLead.valor_potencial || ''}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^0-9.,]/g, '')
+                        setDetalheLead(prev => prev ? { ...prev, valor_potencial: value ? Number(value.replace(',', '.')) : null } : prev)
+                      }}
+                      onBlur={(e) => {
+                        const value = e.target.value.replace(/[^0-9.,]/g, '')
+                        updateLead({ valor_potencial: value ? Number(value.replace(',', '.')) : null })
+                      }}
+                      className="mt-1 w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      placeholder="R$ 0,00"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 flex items-center gap-2">
+                      Campanha
+                      <button
+                        onClick={() => setShowNewCampaign(true)}
+                        className="text-cyan-400 hover:text-cyan-300"
+                        title="Adicionar nova campanha"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </label>
+                    <select
+                      value={detalheLead.campanha_id || ''}
+                      onChange={(e) => {
+                        const campanhaId = e.target.value || null
+                        setDetalheLead(prev => prev ? { ...prev, campanha_id: campanhaId } : prev)
+                        updateLead({ campanha_id: campanhaId })
+                      }}
+                      className="mt-1 w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                    >
+                      <option value="" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Sem campanha</option>
+                      {Object.entries(campanhasMap).map(([id, nome]) => (
+                        <option key={id} value={id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                          {nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-400">Produtos Associados</label>
+                  <div className="mt-1 space-y-2">
+                    {produtos.length === 0 ? (
+                      <p className="text-sm text-gray-500">Nenhum produto cadastrado</p>
+                    ) : (
+                      <div className="space-y-3 max-h-48 overflow-y-auto bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-3">
+                        {produtos.map(produto => {
+                          const isAssociado = produtosAssociados[detalheLead.id]?.includes(produto.id) || false
+                          const categoria = produto.tags?.[0] || 'Sem categoria'
+                          const preco = produto.preco ? `R$ ${produto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'PreÃÂ§o nÃÂ£o definido'
+                          
+                          return (
+                            <label key={produto.id} className="flex items-start gap-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 rounded-lg p-3 transition-colors border border-slate-200 dark:border-white/10">
+                              <input
+                                type="checkbox"
+                                checked={isAssociado}
+                                onChange={() => toggleProdutoAssociado(detalheLead.id, produto.id)}
+                                className="w-4 h-4 mt-1 text-cyan-500 bg-white dark:bg-white/10 border-slate-200 dark:border-white/20 rounded focus:ring-cyan-500/30 focus:ring-2"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-slate-900 dark:text-white text-sm font-medium truncate">{produto.nome}</div>
+                                    {produto.descricao && (
+                                      <div className="text-xs text-slate-500 dark:text-gray-400 mt-1 line-clamp-2">{produto.descricao}</div>
+                                    )}
+                                  </div>
+                                  <div className="text-right ml-2 flex-shrink-0">
+                                    <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{preco}</div>
+                                    <div className="text-[10px] text-slate-400 dark:text-gray-500 mt-0.5">{categoria}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Atividades - Mobile */}
+              <div className="rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 divide-y divide-slate-200 dark:divide-white/10 overflow-hidden">
+                <div className="p-3 text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                  <FileText className="w-4 h-4" /> Atividades
+                </div>
+                <div className="max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-white/10 hover:scrollbar-thumb-slate-300 dark:hover:scrollbar-thumb-white/20">
+                  {atividades.length === 0 && !detalheLead.notas && (
+                    <div className="p-3 text-[13px] text-slate-500 dark:text-gray-400">Sem atividades ainda</div>
+                  )}
+                  
+                  {/* Atividades da tabela atividades */}
+                  {atividades.length > 0 && (
+                    <div className="p-4 space-y-4">
+                      {atividades.map((a) => (
+                        <div key={a.id} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm text-slate-900 dark:text-white font-semibold">
+                              {a.user_email || 'Sistema'}
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-gray-400">
+                              {new Date(a.created_at).toLocaleDateString('pt-BR')} - {new Date(a.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
+                          <div className="text-sm text-slate-700 dark:text-gray-200 whitespace-pre-wrap">{a.conteudo}</div>
+                          <div className="text-[10px] px-2 py-1 rounded-full bg-cyan-100 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 inline-block">
+                            {a.tipo.toUpperCase()}
+                          </div>
+                          <div className="border-b border-slate-200 dark:border-white/10"></div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Notas do campo notas (fallback) */}
+                  {detalheLead.notas && (
+                    <div className="p-4 space-y-4">
+                      {detalheLead.notas.split('\n\n').map((nota, index) => {
+                        // Parse do formato: [data - autor] TIPO: conteudo OU [data] TIPO: conteudo
+                        const matchComAutor = nota.match(/^\[(.+?)\s*-\s*(.+?)\]\s*(.+?):\s*(.+)$/s)
+                        const matchSemAutor = nota.match(/^\[(.+?)\]\s*(.+?):\s*(.+)$/s)
+                        
+                        if (matchComAutor) {
+                          const [, dataHora, autor, tipo, conteudo] = matchComAutor
+                          const data = new Date(dataHora.replace(/(\d{2})\/(\d{2})\/(\d{4}),\s*(\d{2}):(\d{2}):(\d{2})/, '$3-$2-$1T$4:$5:$6'))
+                          
+                          return (
+                            <div key={index} className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm text-slate-900 dark:text-white font-semibold">{autor}</div>
+                                <div className="text-xs text-slate-500 dark:text-gray-400">
+                                  {data.toLocaleDateString('pt-BR')} - {data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                              <div className="text-sm text-slate-700 dark:text-gray-200 whitespace-pre-wrap">{conteudo.trim()}</div>
+                              <div className="text-[10px] px-2 py-1 rounded-full bg-cyan-100 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 inline-block">
+                                {tipo.toUpperCase()}
+                              </div>
+                              {index < detalheLead.notas!.split('\n\n').length - 1 && (
+                                <div className="border-b border-slate-200 dark:border-white/10"></div>
+                              )}
+                            </div>
+                          )
+                        } else if (matchSemAutor) {
+                          const [, dataHora, tipo, conteudo] = matchSemAutor
+                          const data = new Date(dataHora.replace(/(\d{2})\/(\d{2})\/(\d{4}),\s*(\d{2}):(\d{2}):(\d{2})/, '$3-$2-$1T$4:$5:$6'))
+                          
+                          return (
+                            <div key={index} className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm text-slate-900 dark:text-white font-semibold">UsuÃÂ¡rio</div>
+                                <div className="text-xs text-slate-500 dark:text-gray-400">
+                                  {data.toLocaleDateString('pt-BR')} - {data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                              <div className="text-sm text-slate-700 dark:text-gray-200 whitespace-pre-wrap">{conteudo.trim()}</div>
+                              <div className="text-[10px] px-2 py-1 rounded-full bg-cyan-100 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 inline-block">
+                                {tipo.toUpperCase()}
+                              </div>
+                              {index < detalheLead.notas!.split('\n\n').length - 1 && (
+                                <div className="border-b border-slate-200 dark:border-white/10"></div>
+                              )}
+                            </div>
+                          )
+                        } else {
+                          // Formato nÃÂ£o reconhecido, exibe como texto simples
+                          return (
+                            <div key={index} className="space-y-2">
+                              <div className="text-sm text-slate-900 dark:text-white font-semibold">UsuÃÂ¡rio</div>
+                              <div className="text-sm text-slate-700 dark:text-gray-200 whitespace-pre-wrap">{nota.trim()}</div>
+                              {index < detalheLead.notas!.split('\n\n').length - 1 && (
+                                <div className="border-b border-slate-200 dark:border-white/10"></div>
+                              )}
+                            </div>
+                          )
+                        }
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="p-3 space-y-3">
+                  <div className="flex items-end gap-2">
+                    <select
+                      value={novaAtividade.tipo}
+                      onChange={(e) => setNovaAtividade(s => ({ ...s, tipo: e.target.value as AtividadeRow['tipo'] }))}
+                      className="px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-sm text-slate-900 dark:text-gray-200"
+                    >
+                      <option value="nota">Nota</option>
+                      <option value="ligacao">LigaÃÂ§ÃÂ£o</option>
+                      <option value="email">E-mail</option>
+                      <option value="follow-up">Follow-up</option>
+                    </select>
+                    <input
+                      value={novaAtividade.conteudo}
+                      onChange={(e) => setNovaAtividade(s => ({ ...s, conteudo: e.target.value }))}
+                      placeholder="Adicionar uma atividadeÃ¢â¬Â¦"
+                      className="flex-1 px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-sm text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                    />
+                  </div>
+                  <button
+                    onClick={salvarAtividade}
+                    disabled={salvandoNota || !novaAtividade.conteudo.trim()}
+                    className="w-full px-4 py-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-sm disabled:opacity-60 transition"
+                  >
+                    {salvandoNota ? 'SalvandoÃ¢â¬Â¦' : 'Salvar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop: Popup Grande com Layout Lado a Lado */}
+          <div className="hidden lg:flex absolute inset-4 rounded-lg bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 shadow-lg max-w-6xl max-h-[90vh] mx-auto my-auto">
+            
+            {/* Header */}
+            <div className="absolute top-0 left-0 right-0 p-4 border-b border-slate-200 dark:border-white/10 flex items-center justify-between rounded-t-lg bg-white dark:bg-white/10">
+              <div>
+                <div className="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">Lead</div>
+                <div className="text-lg font-semibold text-slate-900 dark:text-white">{detalheLead.nome}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <StatusPill s={detalheLead.status} />
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10"
+                >
+                  <Trash className="w-4 h-4 text-red-500" />
+                </button>
+                <button onClick={closeLead} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10">
+                  <X className="w-4 h-4 text-slate-400 dark:text-gray-300" />
+                </button>
+              </div>
+            </div>
+
+            {/* ConteÃÂºdo Principal - Layout Lado a Lado */}
+            <div className="flex-1 flex pt-16 p-4 gap-4 overflow-hidden">
+              
+              {/* Lado Esquerdo: Dados do Lead */}
+              <div className="w-1/2 space-y-3 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-white/10 hover:scrollbar-thumb-slate-300 dark:hover:scrollbar-thumb-white/20">
+                <div className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider">Dados do Lead</div>
+                
+                <div>
+                  <label className="text-sm text-slate-500 dark:text-gray-400">Nome</label>
+                  <input
+                    type="text"
+                    value={detalheLead.nome}
+                    onChange={(e) => setDetalheLead(prev => prev ? { ...prev, nome: e.target.value } : prev)}
+                    onBlur={(e) => updateLead({ nome: e.target.value })}
+                    className="mt-2 w-full px-4 py-3 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-slate-500 dark:text-gray-400">Telefone</label>
+                    <input
+                      type="tel"
+                      value={detalheLead.telefone || ''}
+                      onChange={(e) => setDetalheLead(prev => prev ? { ...prev, telefone: e.target.value } : prev)}
+                      onBlur={(e) => updateLead({ telefone: e.target.value || null })}
+                      className="mt-2 w-full px-4 py-3 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                      placeholder="(11) 99999-9999"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-slate-500 dark:text-gray-400">Email</label>
+                    <input
+                      type="email"
+                      value={detalheLead.email || ''}
+                      onChange={(e) => setDetalheLead(prev => prev ? { ...prev, email: e.target.value } : prev)}
+                      onBlur={(e) => updateLead({ email: e.target.value || null })}
+                      className="mt-2 w-full px-4 py-3 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                      placeholder="email@exemplo.com"
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Status</label>
+                    <select
+                      value={detalheLead.status}
+                      onChange={(e) => {
+                        const newStatus = e.target.value as StatusType
+                        setDetalheLead(prev => prev ? { ...prev, status: newStatus } : prev)
+                        updateLead({ status: newStatus })
+                      }}
+                      className="mt-1 w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                    >
+                      {Object.entries(statusConfig).map(([value, config]) => (
+                        <option key={value} value={value} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                          {config.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 dark:text-slate-400 font-medium">Valor potencial</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={detalheLead.valor_potencial || ''}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^0-9.,]/g, '')
+                        setDetalheLead(prev => prev ? { ...prev, valor_potencial: value ? Number(value.replace(',', '.')) : null } : prev)
+                      }}
+                      onBlur={(e) => {
+                        const value = e.target.value.replace(/[^0-9.,]/g, '')
+                        updateLead({ valor_potencial: value ? Number(value.replace(',', '.')) : null })
+                      }}
+                      className="mt-1 w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      placeholder="R$ 0,00"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <label className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 font-medium">
+                      Campanha
+                      <button
+                        onClick={() => setShowNewCampaign(true)}
+                        className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300"
+                        title="Adicionar nova campanha"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </label>
+                    <select
+                      value={detalheLead.campanha_id || ''}
+                      onChange={(e) => {
+                        const campanhaId = e.target.value || null
+                        setDetalheLead(prev => prev ? { ...prev, campanha_id: campanhaId } : prev)
+                        updateLead({ campanha_id: campanhaId })
+                      }}
+                      className="mt-1 w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
+                    >
+                      <option value="" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">Sem campanha</option>
+                      {Object.entries(campanhasMap).map(([id, nome]) => (
+                        <option key={id} value={id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
+                          {nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm text-slate-500 dark:text-gray-400">Produtos Associados</label>
+                  <div className="mt-2">
+                    {produtos.length === 0 ? (
+                      <p className="text-sm text-slate-500 dark:text-gray-500">Nenhum produto cadastrado</p>
+                    ) : (
+                      <div className="space-y-3 max-h-56 overflow-y-auto bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-4">
+                        {produtos.map(produto => {
+                          const isAssociado = produtosAssociados[detalheLead.id]?.includes(produto.id) || false
+                          const categoria = produto.tags?.[0] || 'Sem categoria'
+                          const preco = produto.preco ? `R$ ${produto.preco.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : 'PreÃÂ§o nÃÂ£o definido'
+                          
+                          return (
+                            <label key={produto.id} className="flex items-start gap-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 rounded-lg p-4 transition-colors border border-slate-200 dark:border-white/10">
+                              <input
+                                type="checkbox"
+                                checked={isAssociado}
+                                onChange={() => toggleProdutoAssociado(detalheLead.id, produto.id)}
+                                className="w-5 h-5 mt-1 text-cyan-500 bg-white dark:bg-white/10 border-slate-200 dark:border-white/20 rounded focus:ring-cyan-500/30 focus:ring-2"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-slate-900 dark:text-white font-medium text-base truncate">{produto.nome}</div>
+                                    {produto.descricao && (
+                                      <div className="text-sm text-slate-500 dark:text-gray-400 mt-2 line-clamp-2">{produto.descricao}</div>
+                                    )}
+                                  </div>
+                                  <div className="text-right ml-4 flex-shrink-0">
+                                    <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{preco}</div>
+                                    <div className="text-xs text-slate-400 dark:text-gray-500 mt-1">{categoria}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Lado Direito: Atividades */}
+              <div className="w-1/2 flex flex-col">
+                <div className="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5" /> Atividades
+                </div>
+                
+                <div className="flex-1 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 divide-y divide-slate-200 dark:divide-white/10 overflow-hidden flex flex-col">
+                  <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-white/10 hover:scrollbar-thumb-slate-300 dark:hover:scrollbar-thumb-white/20 max-h-[60vh]">
+                    {atividades.length === 0 && !detalheLead.notas && (
+                      <div className="p-6 text-center text-slate-500 dark:text-gray-400">Sem atividades ainda</div>
+                    )}
+                    
+                    {/* Atividades da tabela atividades */}
+                    {atividades.length > 0 && (
+                      <div className="p-4 space-y-4">
+                        {atividades.map((a) => (
+                          <div key={a.id} className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="text-slate-900 dark:text-white font-semibold">
+                                {a.user_email || 'Sistema'}
+                              </div>
+                              <div className="text-sm text-slate-500 dark:text-gray-400">
+                                {new Date(a.created_at).toLocaleDateString('pt-BR')} - {new Date(a.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                            <div className="text-slate-700 dark:text-gray-200 whitespace-pre-wrap">{a.conteudo}</div>
+                            <div className="text-xs px-3 py-1 rounded-full bg-cyan-100 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 inline-block">
+                              {a.tipo.toUpperCase()}
+                            </div>
+                            <div className="border-b border-slate-200 dark:border-white/10"></div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Notas do campo notas (fallback) */}
+                    {detalheLead.notas && (
+                      <div className="p-4 space-y-4">
+                        {detalheLead.notas.split('\n\n').map((nota, index) => {
+                          // Parse do formato: [data - autor] TIPO: conteudo OU [data] TIPO: conteudo
+                          const matchComAutor = nota.match(/^\[(.+?)\s*-\s*(.+?)\]\s*(.+?):\s*(.+)$/s)
+                          const matchSemAutor = nota.match(/^\[(.+?)\]\s*(.+?):\s*(.+)$/s)
+                          
+                          if (matchComAutor) {
+                            const [, dataHora, autor, tipo, conteudo] = matchComAutor
+                            const data = new Date(dataHora.replace(/(\d{2})\/(\d{2})\/(\d{4}),\s*(\d{2}):(\d{2}):(\d{2})/, '$3-$2-$1T$4:$5:$6'))
+                            
+                            return (
+                              <div key={index} className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="text-slate-900 dark:text-white font-semibold">{autor}</div>
+                                  <div className="text-sm text-slate-500 dark:text-gray-400">
+                                    {data.toLocaleDateString('pt-BR')} - {data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                  </div>
+                                </div>
+                                <div className="text-slate-700 dark:text-gray-200 whitespace-pre-wrap">{conteudo.trim()}</div>
+                                <div className="text-xs px-3 py-1 rounded-full bg-cyan-100 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 inline-block">
+                                  {tipo.toUpperCase()}
+                                </div>
+                                {index < detalheLead.notas!.split('\n\n').length - 1 && (
+                                  <div className="border-b border-slate-200 dark:border-white/10"></div>
+                                )}
+                              </div>
+                            )
+                          } else if (matchSemAutor) {
+                            const [, dataHora, tipo, conteudo] = matchSemAutor
+                            const data = new Date(dataHora.replace(/(\d{2})\/(\d{2})\/(\d{4}),\s*(\d{2}):(\d{2}):(\d{2})/, '$3-$2-$1T$4:$5:$6'))
+                            
+                            return (
+                              <div key={index} className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="text-slate-900 dark:text-white font-semibold">UsuÃÂ¡rio</div>
+                                  <div className="text-sm text-slate-500 dark:text-gray-400">
+                                    {data.toLocaleDateString('pt-BR')} - {data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                  </div>
+                                </div>
+                                <div className="text-slate-700 dark:text-gray-200 whitespace-pre-wrap">{conteudo.trim()}</div>
+                                <div className="text-xs px-3 py-1 rounded-full bg-cyan-100 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-200 inline-block">
+                                  {tipo.toUpperCase()}
+                                </div>
+                                {index < detalheLead.notas!.split('\n\n').length - 1 && (
+                                  <div className="border-b border-slate-200 dark:border-white/10"></div>
+                                )}
+                              </div>
+                            )
+                          } else {
+                            // Formato nÃÂ£o reconhecido, exibe como texto simples
+                            return (
+                              <div key={index} className="space-y-2">
+                                <div className="text-slate-900 dark:text-white font-semibold">UsuÃÂ¡rio</div>
+                                <div className="text-slate-700 dark:text-gray-200 whitespace-pre-wrap">{nota.trim()}</div>
+                                {index < detalheLead.notas!.split('\n\n').length - 1 && (
+                                  <div className="border-b border-slate-200 dark:border-white/10"></div>
+                                )}
+                              </div>
+                            )
+                          }
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Input para nova atividade */}
+                  <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                    {/* Input e Select em linha */}
+                    <div className="flex items-end gap-3">
+                      <select
+                        value={novaAtividade.tipo}
+                        onChange={(e) => setNovaAtividade(s => ({ ...s, tipo: e.target.value as AtividadeRow['tipo'] }))}
+                        className="px-4 py-3 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-gray-200"
+                      >
+                        <option value="nota">Nota</option>
+                        <option value="ligacao">LigaÃÂ§ÃÂ£o</option>
+                        <option value="email">E-mail</option>
+                        <option value="follow-up">Follow-up</option>
+                      </select>
+                      <input
+                        value={novaAtividade.conteudo}
+                        onChange={(e) => setNovaAtividade(s => ({ ...s, conteudo: e.target.value }))}
+                        placeholder="Adicionar uma atividadeÃ¢â¬Â¦"
+                        className="flex-1 px-4 py-3 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                      />
+                    </div>
+                    
+                    {/* BotÃÂ£o Salvar embaixo */}
+                    <button
+                      onClick={salvarAtividade}
+                      disabled={salvandoNota || !novaAtividade.conteudo.trim()}
+                      className="w-full mt-3 px-6 py-4 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white disabled:opacity-60 transition text-base font-semibold"
+                    >
+                      {salvandoNota ? 'SalvandoÃ¢â¬Â¦' : 'Salvar'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Modal de confirmaÃÂ§ÃÂ£o */}
+          {showDeleteConfirm && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+              <div className="p-6 rounded-2xl shadow-2xl bg-white dark:bg-white/20 backdrop-blur-lg max-w-sm w-full flex flex-col items-center">
+                <div className="text-xl font-semibold text-slate-900 dark:text-white mb-2 text-center">Tem certeza que deseja apagar este cliente da sua lista?</div>
+                <div className="text-sm text-slate-700 dark:text-white mb-6 text-center">Esta aÃÂ§ÃÂ£o nÃÂ£o poderÃÂ¡ ser desfeita.</div>
+                <div className="flex gap-3 w-full">
+                  <button
+                    className="flex-1 py-2 rounded-lg font-semibold text-slate-900 dark:text-white bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition"
+                    onClick={() => setShowDeleteConfirm(false)}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    className="flex-1 py-2 rounded-lg font-semibold text-white bg-red-600 hover:bg-red-700 transition"
+                    onClick={handleDeleteLead}
+                  >
+                    Apagar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal para nova campanha */}
+          {showNewCampaign && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40">
+              <div className="bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 rounded-lg p-6 max-w-md w-full mx-4">
+                <div className="text-slate-900 dark:text-white font-semibold mb-3">Nova Campanha</div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm text-slate-500 dark:text-gray-400">Nome da campanha</label>
+                    <input
+                      type="text"
+                      value={newCampaignName}
+                      onChange={(e) => setNewCampaignName(e.target.value)}
+                      placeholder="Ex: Black Friday 2024"
+                      className="mt-1 w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-sm"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          createCampaign()
+                        } else if (e.key === 'Escape') {
+                          setShowNewCampaign(false)
+                          setNewCampaignName('')
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setShowNewCampaign(false)
+                        setNewCampaignName('')
+                      }}
+                      className="flex-1 px-4 py-2 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 text-slate-700 dark:text-gray-200"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={createCampaign}
+                      disabled={savingCampaign || !newCampaignName.trim()}
+                      className="flex-1 px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white disabled:opacity-50 font-medium text-sm transition"
+                    >
+                      {savingCampaign ? 'Criando...' : 'Criar'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+

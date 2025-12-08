@@ -1,0 +1,2179 @@
+{
+  "common": {
+    "copy": "Copy",
+    "copied": "Copied!",
+    "view": "View",
+    "open": "Open",
+    "all": "All",
+    "cancel": "Cancel",
+    "close": "Close",
+    "edit": "Edit",
+    "filter": "Filter",
+    "name": "Name",
+    "phone": "Phone",
+    "select": "Select...",
+    "value": "Value",
+    "created": "Created on",
+    "no": "No",
+    "search": "Search",
+    "yes": "Yes"
+  },
+  "apiKeys": {
+    "accessRestricted": "Access Restricted",
+    "accessRestrictedDesc": "The API Keys panel is accessible only to owners.",
+    "contactOwner": "Contact the owner to request access.",
+    "loadError": "Error loading API keys",
+    "nameRequired": "Key name is required",
+    "created": "Key created successfully",
+    "createError": "Error creating key",
+    "deleted": "Key deleted successfully",
+    "deleteError": "Error deleting key",
+    "copied": "Copied to clipboard",
+    "title": "API Keys",
+    "subtitle": "Manage external access to your account",
+    "newKey": "New Key",
+    "securityWarning": "Security Warning",
+    "securityTip1": "Never share your API keys publicly.",
+    "securityTip2": "Keys grant full access to your account.",
+    "securityTip3": "Rotate your keys periodically.",
+    "emptyTitle": "No API keys found",
+    "emptyDescription": "Create a new key to start integrating.",
+    "createFirst": "Create first key",
+    "active": "Active",
+    "revoked": "Revoked",
+    "createdLabel": "Created on {{date}}",
+    "lastUsedLabel": "Last used on {{date}}",
+    "expiresLabel": "Expires on {{date}}",
+    "permissionsLabel": "Permissions",
+    "deleteTooltip": "Delete key",
+    "deleteModalTitle": "Delete API Key",
+    "deleteModalSubtitle": "This action cannot be undone.",
+    "deleteModalBody": "Are you sure you want to permanently delete this API key?",
+    "deletePermanent": "Delete Permanently",
+    "createModalTitle": "Create New API Key",
+    "keyNameLabel": "Key Name",
+    "keyNamePlaceholder": "Ex: Zapier Integration",
+    "permissionsTitle": "Permissions",
+    "universalDesc": "Grants full access to all resources.",
+    "expirationLabel": "Expiration Date",
+    "createdModalTitle": "API Key Generated",
+    "copyWarning": "Copy your key now. You won't be able to see it again.",
+    "authHeaderInfo": "Use this key in the Authorization header of your requests.",
+    "understood": "Understood"
+  },
+  "automations": {
+    "accessRestricted": "Access Restricted",
+    "accessRestrictedDesc": "The Automations panel is accessible only to owners.",
+    "contactOwner": "Contact the owner to request access.",
+    "loadError": "Error loading automations",
+    "updated": "Automation updated successfully",
+    "created": "Automation created successfully",
+    "saveError": "Error saving automation",
+    "deleted": "Automation deleted successfully",
+    "deleteError": "Error deleting automation",
+    "testSuccess": "Test performed successfully!",
+    "testError": "Test error: {{error}}",
+    "unknown": "Unknown error",
+    "testGenericError": "Generic error while testing",
+    "activated": "Automation activated",
+    "deactivated": "Automation deactivated",
+    "updateError": "Error updating status",
+    "title": "Automations",
+    "subtitle": "Automate your business processes",
+    "webhooks": "Webhooks",
+    "new": "New Automation",
+    "howItWorks": "How it works:",
+    "step1": "Define a trigger to start.",
+    "step2": "Choose the actions to be executed.",
+    "step3": "Activate and monitor the results.",
+    "filterAll": "All ({{count}})",
+    "filterActive": "Active ({{count}})",
+    "filterInactive": "Inactive ({{count}})",
+    "loading": "Loading...",
+    "emptyTitle": "No automations found",
+    "emptyRegistered": "registered",
+    "emptyDescription": "Create your first automation to get started.",
+    "createFirst": "Create Automation",
+    "testing": "Testing..."
+  },
+  "billing": {
+    "portalUrlUnavailable": "Portal URL unavailable",
+    "portalError": "Error opening portal",
+    "loadingSubscription": "Loading subscription...",
+    "fetchError": "Error fetching billing data. Try again later.",
+    "noSubscriptionFound": "No subscription found",
+    "subscribeToAccess": "Subscribe to a plan to unlock access to Azera CRM.",
+    "viewPlans": "View plans",
+    "title": "Billing and Subscription",
+    "subtitle": "Manage your subscription and check billing details.",
+    "subscriptionStatus": "Subscription status",
+    "plan": "Plan",
+    "nextBilling": "Next billing",
+    "autoRenewal": "Auto-renewal",
+    "cancelsAtPeriodEnd": "Will be canceled at the end of the cycle",
+    "active": "Active",
+    "management": "Management",
+    "billingPortal": "Billing portal",
+    "portalDescription": "Update payment method, view receipts, and cancel directly through the Stripe portal.",
+    "openingPortal": "Opening portal...",
+    "manageSubscription": "Manage subscription"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Manage your company and account settings",
+    "active": "Active",
+    "planPro": "Pro Plan",
+    "renewsIn": "Renews in 15 days",
+    "tabs": {
+      "profile": "Profile",
+      "company": "Company",
+      "financial": "Financial",
+      "security": "Security",
+      "documents": "Documents"
+    },
+    "profile": {
+      "title": "User Profile",
+      "subtitle": "Configure your personal information",
+      "avatarTitle": "Profile Picture",
+      "avatarDesc": "PNG/JPG up to 2MB",
+      "uploading": "Uploading...",
+      "fullName": "Full Name",
+      "fullNamePlaceholder": "Your full name",
+      "displayName": "Display Name",
+      "displayNamePlaceholder": "How you want to be called",
+      "email": "Email",
+      "emailPlaceholder": "your@email.com",
+      "emailHelp": "Email cannot be changed",
+      "phone": "Phone",
+      "phonePlaceholder": "(11) 99999-9999",
+      "save": "Save Profile",
+      "saving": "Saving...",
+      "success": "Profile updated!",
+      "error": "Error updating profile",
+      "avatarSuccess": "Avatar updated successfully!",
+      "avatarError": "Error updating avatar",
+      "invalidFormat": "Invalid format. Please upload an image.",
+      "tooBig": "Image too large. Max 5MB."
+    },
+    "company": {
+      "title": "General Settings",
+      "subtitle": "Configure your organization's data",
+      "teamName": "Team Name",
+      "teamNamePlaceholder": "Your company name",
+      "teamNameHelp": "This name appears throughout the system",
+      "cnpj": "Tax ID / CNPJ",
+      "cnpjPlaceholder": "00.000.000/0001-00",
+      "phone": "Phone",
+      "phonePlaceholder": "(11) 99999-9999",
+      "email": "Email",
+      "emailPlaceholder": "contact@company.com",
+      "address": "Address",
+      "addressPlaceholder": "Street, number, neighborhood",
+      "zip": "Zip Code",
+      "zipPlaceholder": "00000-000",
+      "city": "City",
+      "state": "State",
+      "country": "Country",
+      "save": "Save Data",
+      "saving": "Saving...",
+      "success": "Settings saved!",
+      "error": "Failed to save company settings."
+    },
+    "financial": {
+      "title": "Financial Center",
+      "subtitle": "Register fixed expenses and keep the dashboard updated",
+      "description": "Only owners and administrators can adjust this data. It feeds the finance cards on the dashboard.",
+      "backToDashboard": "Back to Dashboard",
+      "locked": "Only owners and administrators can view and edit this area."
+    },
+    "security": {
+      "title": "Security Settings",
+      "subtitle": "Keep your account protected",
+      "changePassword": "Change Password",
+      "currentPassword": "Current Password",
+      "currentPasswordPlaceholder": "Enter your current password",
+      "newPassword": "New Password",
+      "newPasswordPlaceholder": "Min. 6 characters",
+      "confirmPassword": "Confirm New Password",
+      "confirmPasswordPlaceholder": "Confirm new password",
+      "updatePassword": "Update Password",
+      "updating": "Changing...",
+      "fillAll": "Fill in all fields",
+      "mismatch": "New password and confirmation do not match",
+      "minChars": "New password must be at least 6 characters",
+      "success": "Password changed! Logging out in 3 seconds...",
+      "currentIncorrect": "Incorrect current password",
+      "dangerZone": "Danger Zone",
+      "deleteAccount": "Delete Account",
+      "deleteAccountPermanent": "Delete Account Permanently",
+      "deleteAccountDesc": "By deleting your account, we will remove your data from the application (profiles, memberships, settings). This action cannot be undone and does not remove the Auth record (if you want complete user removal from Auth, contact support).",
+      "deleting": "Deleting...",
+      "modalTitle": "⚠️ Danger Zone - Delete Account",
+      "irreversible": "This action is irreversible!",
+      "modalDesc": "By confirming, we will remove your data from the application (profile, memberships, invites, related data). This action does not automatically remove the user from Auth; if needed, contact support.",
+      "confirmEmail": "To confirm, type your email:",
+      "confirmPlaceholder": "Type your email to confirm",
+      "cancel": "Cancel",
+      "confirmInvalid": "Invalid confirmation. Type your email to confirm.",
+      "sessionExpired": "Session expired. Please log in again.",
+      "deleteSuccess": "Account deleted successfully!",
+      "deleteError": "Error deleting account. Please try again."
+    },
+    "documents": {
+      "title": "Legal Documents",
+      "subtitle": "Access policies and terms of service",
+      "privacyPolicy": "Privacy Policy",
+      "privacyDesc": "Learn how we protect your data and privacy",
+      "termsOfService": "Terms of Service",
+      "termsDesc": "Read the platform terms and conditions of use",
+      "open": "Open document →"
+    }
+  },
+  "confirmEmail": {
+    "defaultEmail": "your email",
+    "title": "Account created successfully!",
+    "congrats": "🎉 Congratulations! Your account has been created successfully.",
+    "sentTo": "We sent a confirmation email to:",
+    "instruction": "Check your inbox and click the confirmation link to activate your account.",
+    "spamWarning": "💡 Don't forget to check your spam folder!",
+    "accessQuickly": "Access your email quickly:",
+    "gmail": "Gmail",
+    "outlook": "Outlook",
+    "yahoo": "Yahoo",
+    "backToLogin": "Back to Login ✨",
+    "redirecting": "Redirecting automatically in",
+    "notReceived": "Didn't receive the email? Check if you typed the address correctly.",
+    "support": "If you need help, contact support."
+  },
+  "connectChannels": {
+    "fillAllFields": "Fill in all fields",
+    "title": "Connect Channels",
+    "subtitle": "Manage your communication channel integrations",
+    "whatsappTitle": "WhatsApp",
+    "whatsappSubtitle": "Official integration via Uazapi",
+    "connected": "Connected",
+    "howToConnect": "How to connect:",
+    "step1": "Get your",
+    "instanceId": "Instance ID",
+    "token": "Token",
+    "step2": "Configure the Webhook for:",
+    "step3": "Click Connect.",
+    "activeIntegration": "Active Integration",
+    "serverUrl": "Server URL",
+    "edit": "Edit",
+    "disconnect": "Disconnect",
+    "instancePlaceholder": "Your Instance ID",
+    "tokenPlaceholder": "Your Token",
+    "cancel": "Cancel",
+    "updating": "Updating...",
+    "connecting": "Connecting...",
+    "update": "Update",
+    "connect": "Connect",
+    "troubleshooting": "Troubleshooting",
+    "troubleshoot1": "Check if the instance is active on Uazapi.",
+    "troubleshoot2": "Confirm that the token is correct and hasn't expired.",
+    "troubleshoot3": "Make sure the webhook is configured correctly.",
+    "confirmDisconnect": "Confirm Disconnection",
+    "disconnectWarning": "By disconnecting, you will lose the ability to send and receive messages via WhatsApp. Are you sure?"
+  },
+  "chat": {
+    "conversations": "Conversations"
+  },
+  "conversations": {
+    "audioMsg": "[AUDIO]",
+    "imageMsg": "[IMAGE]",
+    "videoMsg": "[VIDEO]",
+    "fileMsg": "[DOCUMENT]",
+    "audio": "Audio",
+    "fileTooLarge": "File too large (max 16MB)",
+    "mediaSent": "Media sent successfully",
+    "mediaError": "Error sending media",
+    "audioSent": "Audio sent successfully",
+    "audioError": "Error sending audio",
+    "connected": "Connected: {{provider}}",
+    "disconnected": "Disconnected",
+    "moreOptions": "More options",
+    "searchPlaceholder": "Search conversations...",
+    "openDocument": "Open document",
+    "messagePlaceholder": "Type a message...",
+    "preview": "Preview",
+    "leadInfo": "Lead Information",
+    "fullName": "Full Name",
+    "funnelStage": "Funnel Stage",
+    "newLead": "New Lead",
+    "phone": "Phone",
+    "email": "Email",
+    "notProvided": "Not provided",
+    "propertyInterest": "Property Interest",
+    "comingSoon": "Coming soon...",
+    "openFullProfile": "View Full Profile",
+    "inbox": "Inbox",
+    "selectConversation": "Select a conversation",
+    "selectConversationDesc": "Choose a contact on the left to start chatting",
+    "online": "Online",
+    "offline": "Offline",
+    "localTime": "Local time",
+    "markAsDone": "Mark as Done",
+    "recording": "Recording...",
+    "audioRecorded": "Audio Recorded",
+    "sendAudio": "Send Audio",
+    "send": "Send",
+    "document": "Document",
+    "visitor": "Visitor",
+    "info": "Info",
+    "notes": "Notes",
+    "files": "Files",
+    "aboutCustomer": "About the Customer",
+    "location": "Location",
+    "attributes": "Attributes",
+    "status": "Status",
+    "active": "Active",
+    "ticketId": "Ticket ID",
+    "viewFullProfile": "View Full Profile",
+    "deleteConversation": "Delete Conversation",
+    "deleteConfirmation": "Are you sure you want to delete the conversation with",
+    "deleteWarning": "This action cannot be undone. All messages will be permanently removed.",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "deleting": "Deleting..."
+  },
+  "dashboard": {
+    "title": "My company",
+    "updated": "Updated",
+    "progressTitle": "Your operation progress",
+    "today": "Today",
+    "pipelineTitle": "Sales Pipeline",
+    "totalSales": "Total Sales",
+    "vsLastMonth": "vs last month",
+    "activeLeads": "Active Leads",
+    "newThisMonth": "new this month",
+    "totalClients": "Total Clients",
+    "allStages": "In all stages",
+    "conversionRate": "Conversion Rate",
+    "tasksTitle": "Tasks for the Week",
+    "pending": "pending",
+    "noClient": "No client linked",
+    "noTasks": "No tasks for this week",
+    "forecastTitle": "Revenue Forecast",
+    "openNegotiation": "In open negotiation",
+    "basedOnPipeline": "Based on current pipeline",
+    "fixedExpenses": "Fixed Expenses",
+    "manage": "Manage",
+    "operationalCost": "Operational cost",
+    "monthlyRecurring": "Monthly recurring",
+    "pipeline": {
+      "Lead": "Lead",
+      "Negociação": "Negotiation",
+      "Fechado": "Closed",
+      "Perdido": "Lost"
+    }
+  },
+  "documentation": {
+    "accessRestricted": "Access Restricted",
+    "accessRestrictedDesc": "The Documentation panel is accessible only to team owners.",
+    "contactOwner": "If you believe you should have access, contact the team owner.",
+    "tabs": {
+      "home": "🏠 Home",
+      "beginners": "🎓 Beginners",
+      "credentials": "🔐 Credentials",
+      "requests": "🌐 HTTP Requests"
+    },
+    "home": {
+      "title": "Welcome to Documentation",
+      "subtitle": "Here you find everything you need to use Azera CRM in the best possible way."
+    },
+    "cards": {
+      "beginners": {
+        "title": "🎓 For Beginners",
+        "desc": "Learn the basics about automations and API keys.",
+        "button": "View tutorial →"
+      },
+      "credentials": {
+        "title": "🔐 Credentials",
+        "desc": "Manage your API keys and integration credentials.",
+        "button": "Manage →"
+      },
+      "api": {
+        "title": "🌐 HTTP API",
+        "desc": "Complete documentation of the Azera CRM REST API.",
+        "button": "Explore API →"
+      }
+    },
+    "credentials": {
+      "title": "Credential Management",
+      "subtitle": "Manage your API keys and other integration credentials securely.",
+      "warning": "🚧 This section is under development. Soon you will be able to manage all your credentials here."
+    },
+    "beginners": {
+      "title": "Beginner's Guide",
+      "subtitle": "Learn step-by-step how to use Azera CRM Automation and API Key features",
+      "automations": "Automations",
+      "apiKeys": "API Keys",
+      "automationsSection": {
+        "title": "What are Automations?",
+        "desc": "Automations allow you to configure automatic actions based on system events. For example: when a new lead is created, automatically send a welcome email or create a task for the responsible salesperson.",
+        "steps": {
+          "1": {
+            "title": "Access Settings",
+            "desc": "In the side menu, click on 'Settings' and then on 'Automations'"
+          },
+          "2": {
+            "title": "Choose Automation Type",
+            "desc": "Select between: New Lead, Converted Lead, Task Created, etc."
+          },
+          "3": {
+            "title": "Configure Conditions",
+            "desc": "Define when the automation should run (e.g., when a lead is created)"
+          },
+          "4": {
+            "title": "Define Actions",
+            "desc": "Choose what should happen: send email, create task, update status, or make HTTP request"
+          },
+          "5": {
+            "title": "Configure Headers and Body (if using HTTP)",
+            "desc": "For HTTP actions: configure Authorization Bearer and JSON data in the body"
+          },
+          "6": {
+            "title": "Test the Automation",
+            "desc": "Run a test to verify everything works correctly"
+          },
+          "7": {
+            "title": "Activate Automation",
+            "desc": "Put the automation into production by clicking the 'Activate' button"
+          }
+        },
+        "tips": {
+          "title": "💡 Important Tips",
+          "list": [
+            "Always test your automations before activating",
+            "Use specific conditions to avoid unwanted actions",
+            "Monitor execution logs to identify problems",
+            "Start with simple automations and evolve",
+            "For HTTP actions: configure headers with 'Bearer TOKEN' and body in JSON"
+          ]
+        },
+        "httpConfig": {
+          "title": "Configuring Headers and Body in HTTP Automations",
+          "whenToUse": {
+            "title": "🌐 When to use HTTP actions",
+            "desc": "In automations, you can configure actions that make HTTP requests to external systems, such as sending data to webhooks, integrating with other CRMs, or triggering chatbots."
+          },
+          "headers": {
+            "title": "📋 HTTP Headers in Automations",
+            "desc": "Configure headers the same way as in manual APIs:"
+          },
+          "body": {
+            "title": "📦 Body Template in Automations",
+            "desc": "Use dynamic data from the lead/event that triggered the automation:"
+          },
+          "vars": {
+            "title": "🔧 Available Variables:",
+            "list": [
+              "Lead ID",
+              "Lead Name",
+              "Lead Email",
+              "Phone",
+              "Current date/time",
+              "User name who created"
+            ]
+          },
+          "example": {
+            "title": "📋 HTTP Automation Example",
+            "scenario": "Scenario: New lead created → Send to chatbot",
+            "result": {
+              "title": "⚡ Result:",
+              "desc": "Whenever a new lead is created, the chatbot will automatically receive a personalized message with the lead data, without manual intervention!"
+            }
+          }
+        }
+      },
+      "apiSection": {
+        "title": "What are API Keys?",
+        "desc": "API keys allow external systems to connect to Azera CRM securely. With them, you can integrate the CRM with other services, such as chatbots, email systems, marketing tools, etc.",
+        "steps": {
+          "1": {
+            "title": "Access API Keys",
+            "desc": "In the side menu, click on 'Settings' and then on 'API Keys'"
+          },
+          "2": {
+            "title": "Click 'New Key'",
+            "desc": "Give a descriptive name for your API key (e.g., 'WhatsApp Integration')"
+          },
+          "3": {
+            "title": "Configure Permissions",
+            "desc": "Select which operations the key can perform: read, write, etc."
+          },
+          "4": {
+            "title": "Set Expiry (Optional)",
+            "desc": "Set an expiration date for greater security"
+          },
+          "5": {
+            "title": "Copy and Save the Key",
+            "desc": "The key will be shown only once. Copy and keep it in a safe place!"
+          },
+          "6": {
+            "title": "Use in your Integration",
+            "desc": "Include the key in the 'Authorization' header of your requests"
+          },
+          "7": {
+            "title": "Configure HTTP Headers",
+            "desc": "Use the correct format: {'Authorization': 'Bearer YOUR_API_KEY', 'X-Custom': 'value'}"
+          },
+          "8": {
+            "title": "Prepare JSON Body",
+            "desc": "Structure the data in the correct JSON format for each endpoint"
+          }
+        },
+        "config": {
+          "title": "🔧 How to Configure Headers and Body",
+          "headers": {
+            "title": "📋 HTTP Headers (required)",
+            "desc": "Headers are information sent along with your request. The most important is the Authorization with your API key."
+          },
+          "body": {
+            "title": "📦 Body Template (data)",
+            "desc": "The body contains the data you want to send. It must be in valid JSON format."
+          },
+          "tips": {
+            "title": "💡 Important Tips:",
+            "list": [
+              "Always use 'Bearer ' before the API key in the Authorization header",
+              "Content-Type must be 'application/json' for JSON data",
+              "Check if the JSON is valid (no extra commas, correct quotes)",
+              "Required fields vary by endpoint - consult documentation"
+            ]
+          }
+        },
+        "examples": {
+          "title": "📋 Practical Usage Examples",
+          "curl": "Complete request with curl:",
+          "js": "Or using JavaScript (fetch):"
+        },
+        "security": {
+          "title": "⚠️ API Key Security",
+          "list": [
+            "Never share your API keys in public code",
+            "Use environment variables to store keys",
+            "Revoke suspicious keys immediately",
+            "Configure minimum necessary permissions",
+            "Monitor key usage regularly",
+            "Always use HTTPS for all requests",
+            "Validate body JSON before sending"
+          ]
+        }
+      }
+    },
+    "requests": {
+      "title": "Azera CRM API",
+      "subtitle": "Complete documentation for integration with the REST API",
+      "tabs": {
+        "start": "Home",
+        "credentials": "Credentials",
+        "examples": "Examples",
+        "endpoints": "Endpoints"
+      },
+      "start": {
+        "overviewTitle": "Overview",
+        "overviewDesc": "The Azera CRM API allows you to integrate your systems and applications with all CRM data. Access leads, properties, tasks, and reports through secure and authenticated REST endpoints.",
+        "quickStartTitle": "Quick Start",
+        "quickStartStep1": "Access the <strong>Credentials</strong> tab and copy your Tenant ID and API Key",
+        "quickStartStep2": "Choose an example in the <strong>Examples</strong> tab",
+        "quickStartStep3": "Configure the request in your server or application",
+        "resourcesTitle": "Available Resources",
+        "resources": {
+          "leads": {
+            "title": "Leads and Clients",
+            "desc": "Manage leads, clients, and contact information"
+          },
+          "properties": {
+            "title": "Properties",
+            "desc": "Access and update property information"
+          },
+          "tasks": {
+            "title": "Tasks",
+            "desc": "Create and manage tasks and follow-ups"
+          }
+        },
+        "importantTitle": "Important",
+        "importantDesc": "All requests must include your <strong>Tenant ID</strong> as a query parameter and your <strong>API Key</strong> in the header. Never share your credentials or expose your API Key in client-side code."
+      },
+      "credentials": {
+        "securityTitle": "Security",
+        "securityDesc": "Keep your credentials safe. Never share your API Key or include it in code that runs in the browser. Use environment variables on your server.",
+        "fields": {
+          "tenantId": "Tenant ID",
+          "apiKey": "API Key",
+          "baseUrl": "Base URL"
+        },
+        "howToUseTitle": "How to use",
+        "howToUseDesc": "All requests must include:",
+        "headerLabel": "Header:",
+        "bodyLabel": "JSON Body:",
+        "tenantInfoTitle": "Your Tenant ID to use in automations is:",
+        "tenantInfoDesc": "Use this ID in all your API requests and automation configurations."
+      },
+      "examples": {
+        "tabs": {
+          "leads": "📋 Leads",
+          "tasks": "✅ Tasks",
+          "properties": "🏠 Properties"
+        },
+        "leads": {
+          "title": "Lead Operations",
+          "list": "🔍 List all leads",
+          "search": "🔎 Search lead by name",
+          "create": "➕ Create new lead",
+          "update": "✏️ Update existing lead",
+          "move": "📍 Move lead in pipeline",
+          "read": "👁️ Read lead data",
+          "delete": "🗑️ Remove lead",
+          "deleteDesc": "For security and data integrity reasons, removals should be performed through the Azera CRM interface."
+        },
+        "tasks": {
+          "title": "Task Operations",
+          "list": "📋 List all tasks",
+          "pending": "⏳ Pending tasks",
+          "create": "➕ Create new task",
+          "complete": "✅ Mark as completed",
+          "reschedule": "📅 Reschedule task"
+        },
+        "properties": {
+          "title": "Property Operations",
+          "list": "🏘️ List all properties",
+          "city": "🏙️ Search properties by city",
+          "available": "✅ Available properties",
+          "create": "➕ Register new property",
+          "updatePrice": "💰 Update property price",
+          "sold": "🏷️ Mark as sold"
+        }
+      },
+      "endpoints": {
+        "leadsTitle": "Leads and Clients",
+        "propertiesTitle": "Properties",
+        "tasksTitle": "Tasks",
+        "descriptions": {
+          "listClients": "Lists all tenant clients",
+          "createClient": "Creates a new client",
+          "updateClient": "Updates a specific client",
+          "deleteClient": "Removes a client",
+          "listProperties": "Lists all tenant properties",
+          "createProperty": "Registers a new property",
+          "updateProperty": "Updates a specific property",
+          "listTasks": "Lists all tasks"
+        }
+      },
+      "common": {
+        "copied": "Copied",
+        "copy": "Copy"
+      }
+    }
+  },
+  "forgotPassword": {
+    "emailInvalid": "Invalid email",
+    "emailRequired": "Email is required",
+    "successToast": "Recovery email sent!",
+    "genericError": "If this email is registered, you will receive a recovery link.",
+    "errorToast": "Error sending recovery email",
+    "unknownError": "Unknown error sending email",
+    "resendSuccess": "Email resent!",
+    "resendError": "Error resending email",
+    "backToLogin": "Back to login",
+    "title": "Forgot my password",
+    "subtitle": "Enter your email and we will send a link to reset your password",
+    "emailLabel": "Your registered email",
+    "emailPlaceholder": "your@email.com",
+    "submitButton": "Send recovery link",
+    "sending": "Sending...",
+    "securityNote": "For security:",
+    "securityList1": "• The link expires in 1 hour",
+    "securityList2": "• Also check your spam folder",
+    "securityList3": "• Only works if the email is registered",
+    "rememberedPassword": "Remembered password?",
+    "loginLink": "Log in",
+    "emailSentTitle": "Email sent!",
+    "emailSentDesc": "We sent a recovery link to",
+    "nextSteps": "Next steps:",
+    "step1": "1. Check your inbox",
+    "step2": "2. Click the link in the email",
+    "step3": "3. Set your new password",
+    "resendButton": "Resend email",
+    "resending": "Resending...",
+    "troubleshootTitle": "Did not receive the email?",
+    "troubleshoot1": "• Check spam/junk folder",
+    "troubleshoot2": "• Wait a few minutes (may take a while)",
+    "troubleshoot3": "• Confirm if the email is correct",
+    "troubleshoot4": "• Try resending the email"
+  },
+  "sidebar": {
+    "documentation": "Documentation",
+    "team": "Team",
+    "billing": "Billing",
+    "settings": "Settings",
+    "sections": {
+      "progress": "Progress",
+      "administration": "Administration",
+      "automations": "Automations",
+      "company": "Company",
+      "team": "Team",
+      "billing": "Billing",
+      "settings": "Settings",
+      "documentation": "Documentation"
+    },
+    "dashboard": "Dashboard",
+    "leads": "Leads",
+    "conversations": "Conversations",
+    "connectChannels": "Connect Channels",
+    "tasks": "Tasks",
+    "products": "Products",
+    "automations": "Automations",
+    "apiKeys": "API Keys",
+    "lineOption": "Line {number}",
+    "confirm": "Confirm Header",
+    "manage": "Manage",
+    "renewsIn": "Renews in",
+    "admin": "Administrator",
+    "system": "System",
+    "selectLanguage": "Select language",
+    "activateLightTheme": "Activate light theme",
+    "activateDarkTheme": "Activate dark theme"
+  },
+  "header": {
+    "companyName": "My company",
+    "roles": {
+      "owner": "Owner",
+      "seller": "Salesperson"
+    }
+  },
+  "products": {
+    "active": "Active",
+    "andMore": "and more {{count}}",
+    "andMoreErrors": "and more {{count}} error(s)",
+    "applyFilters": "Apply filters",
+    "area": "Area",
+    "builder": "Builder",
+    "bulkConfirmDependencies": "Related dependencies will be removed.",
+    "bulkDeleteError": "Error deleting products in bulk",
+    "bulkDeleteFailed": "Failed to delete {{count}} product(s).",
+    "bulkDeleteSuccess": "{{count}} product(s) deleted successfully.",
+    "cannotUndo": "This action cannot be undone.",
+    "catalog": "Catalog",
+    "category": "Category",
+    "confirmDeleteBody": "Are you sure you want to delete {{count}} selected product(s)?",
+    "confirmDeleteTitle": "Confirm deletion",
+    "continueDeletionPrompt": "Do you want to continue with deletion?",
+    "createFirstProduct": "Create first product",
+    "createTeam": "Create team",
+    "decoratedLabel": "Decorated {{status}}",
+    "decoratedReady": "ready",
+    "decoratedUnavailable": "unavailable",
+    "delete": "Delete",
+    "deleteAll": "Delete all",
+    "deleteConfirmDependencies": "Related dependencies will be removed along with the product.",
+    "deleteConfirmPrompt": "Delete product {{title}}?",
+    "deleteDependencyError": "Cannot delete due to dependencies.",
+    "deleteErrorGeneric": "Error deleting product",
+    "deleteForeignKeyError": "Foreign key error upon deletion.",
+    "deleteSelected": "Delete selected ({{count}})",
+    "deleteSuccess": "Product deleted successfully.",
+    "deleteSuccessWithDeps": "Product deleted along with {{count}} dependency(ies).",
+    "deleteTitle": "Delete product",
+    "deleteWithDependenciesBtn": "Delete anyway",
+    "deletingInBulk": "Deleting {{count}} product(s)...",
+    "deletionCancelled": "Deletion cancelled.",
+    "delivery": "Delivery",
+    "dependenciesHeader": "We found {{count}} related dependencies",
+    "dependenciesWillBeRemoved": "These dependencies will be automatically removed.",
+    "depsClientProductRelations": "{{count}} client-product relations",
+    "depsTaskProductRelations": "{{count}} task-product relations",
+    "depsTasks": "{{count}} related tasks",
+    "deselectAll": "Clear selection",
+    "editTitle": "Edit product",
+    "emptyActiveDescription": "You don't have registered products yet. Start by adding your first product!",
+    "emptyActiveTitle": "No active products",
+    "emptyInactiveDescription": "No inactive products at the moment.",
+    "emptyInactiveTitle": "No inactive products",
+    "enterCategory": "Enter category",
+    "featuredBadge": "Featured",
+    "filters": "Filters",
+    "filtersSubtitle": "Filter by category, price, and custom fields.",
+    "inactive": "Inactive",
+    "limitActive": "Product limit reached",
+    "limitDescription": "You reached {{current}} of {{max}} products in your plan. Upgrade to unlock more registrations.",
+    "limitTooltip": "Limit of {{max}} products reached",
+    "maxPrice": "Max price",
+    "minPrice": "Min price",
+    "neighborhood": "Neighborhood",
+    "noCustomFieldsFilter": "No custom fields available for filter.",
+    "noDescription": "No description available",
+    "noImage": "No image",
+    "phase": "Phase",
+    "refresh": "Refresh",
+    "region": "Region",
+    "searchBy": "Search by {{field}}",
+    "select": "Select",
+    "selectAll": "Select all",
+    "startingFrom": "Starting from",
+    "teamRequired": "You need a team",
+    "teamRequiredDescription": "Create or join a team to register products.",
+    "title": "Products",
+    "unknownError": "Unknown error",
+    "upgrade": "Upgrade",
+    "viewDetails": "View details",
+    "viewGrid": "View as grid",
+    "viewList": "View as list",
+    "customFields": {
+      "newField": "New Field",
+      "editField": "Edit Field",
+      "fieldId": "Field ID (for automations)",
+      "name": "Name",
+      "nameRequired": "Name *",
+      "namePlaceholder": "Ex: Number of rooms",
+      "defaultDate": "Default Date (Optional)",
+      "defaultValue": "Default Value",
+      "noDefaultValue": "No default value",
+      "information": "Information",
+      "informationPlaceholder": "Description or instruction about the field...",
+      "fieldType": "Field Type",
+      "typeText": "Text",
+      "typeNumber": "Number",
+      "typeDate": "Date (Calendar)",
+      "typeSelect": "Selection",
+      "options": "Options",
+      "optionsRequired": "Options *",
+      "optionPlaceholder": "Type an option...",
+      "deleteField": "Delete Field",
+      "cancel": "Cancel",
+      "save": "Save"
+    },
+    "newProduct": {
+      "title": "New Product",
+      "subtitle": "Fill in the fields below",
+      "basicInfo": "Basic Information",
+      "titleLabel": "Title *",
+      "titlePlaceholder": "Product name",
+      "valueLabel": "Value",
+      "valuePlaceholder": "0.00",
+      "categoryLabel": "Category",
+      "categoryPlaceholder": "Select a category",
+      "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Briefly describe the product...",
+      "customFields": "Custom Fields",
+      "addNewField": "Add new Field",
+      "media": "Media",
+      "mainCover": "Main Cover",
+      "clickToUpload": "Click to upload",
+      "gallery": "Gallery",
+      "addButton": "+ Add",
+      "noImagesYet": "No images yet",
+      "attachments": "Attachments",
+      "noDocumentsAttached": "No documents attached",
+      "cancel": "Cancel",
+      "createProduct": "Create Product",
+      "creating": "Creating..."
+    }
+  },
+  "leads": {
+    "pipeline": "Pipeline",
+    "title": "Leads",
+    "searchPlaceholder": "Search leads...",
+    "list": "List",
+    "grid": "Grid",
+    "kanban": "Kanban",
+    "configurePipeline": "Configure pipeline",
+    "managePipelineColumns": "Manage Kanban columns",
+    "clickToManageStages": "Click to manage stages",
+    "pipelineDescription": "Organize columns to reflect your team's flow.",
+    "addColumn": "Add column",
+    "addNewStage": "Add new stage",
+    "stageNameLabel": "Stage name",
+    "stageNamePlaceholder": "Ex: Prospecting",
+    "colorLabel": "Stage color",
+    "addStage": "Add stage",
+    "stageAdded": "Stage added successfully",
+    "stageUpdated": "Stage updated",
+    "stageUpdatedLocal": "Stage updated locally",
+    "invalidStageName": "Invalid stage name",
+    "stageSaveError": "Error saving stage",
+    "defaultColumnsExist": "All default columns already exist!",
+    "defaultColumnsAdded": "{{count}} default column(s) added!",
+    "addDefaultStages": "Add default",
+    "defaultColumnsSubtitle": "(does not delete your columns)",
+    "addDefaultColumnsError": "Error adding default columns",
+    "removeStage": "Remove stage",
+    "removeStageTitle": "Remove stage",
+    "confirmRemoveStage": "Are you sure you want to remove the stage \"{{stage}}\"?",
+    "removeStageWarning": "⚠️ All leads in this stage will be automatically moved to \"Lead\".",
+    "confirmRemoveAction": "Remove",
+    "stageRemoved": "Stage removed successfully",
+    "stageRemoveError": "Error removing stage",
+    "statusHeading": "Lead Status",
+    "statusLabel": "Status",
+    "allStatuses": "All statuses",
+    "valueRange": "Potential Value Range",
+    "minValue": "Min Value",
+    "maxValue": "Max Value",
+    "noLimit": "No limit",
+    "filtersAdvanced": "Advanced Filters",
+    "applyFilters": "Apply Filters",
+    "clearFilters": "Clear Filters",
+    "leadOrigin": "Lead Origin",
+    "lossReason": "Loss Reason",
+    "customFields": "Custom Fields",
+    "notesLabel": "Notes",
+    "notesPlaceholder": "Notes...",
+    "nameRequired": "Name is required",
+    "potentialValue": "Potential Value",
+    "potentialValueFilter": "Potential Value",
+    "createdAt": "Created on",
+    "openTasks": "Open Tasks",
+    "lastNote": "Last note:",
+    "stageCount": "({{count}} columns)",
+    "leadCreated": "Lead created successfully",
+    "leadMoved": "Lead moved",
+    "leadMoveFailed": "Failed to move lead",
+    "loadCampaignsError": "Error loading campaigns",
+    "loadLeadsError": "Error loading leads",
+    "campaign": "Campaign",
+    "noNotes": "No notes",
+    "emptyTitle": "No leads found",
+    "emptyDescription": "Start by creating your first lead or adjust the filters"
+  },
+  "team": {
+    "active": "Active",
+    "activeMembers": "Active members",
+    "admin": "Administrator",
+    "administrator": "Administrator",
+    "confirmLeave": "Do you want to leave this team?",
+    "confirmLeaveButton": "Confirm leave",
+    "confirmLeaveTitle": "Leave team",
+    "createButton": "Create team",
+    "createDescription": "Create your team to divide tasks and track results.",
+    "createError": "Error creating team",
+    "createNamePlaceholder": "Ex: Alpha Sales Team",
+    "createSuccess": "Team created successfully",
+    "createTitle": "Create team",
+    "createDescriptionPlaceholder": "Ex: Transforming leads into sales with maximum efficiency",
+    "dangerZone": "Danger Zone",
+    "dangerZoneDesc": "Warning: these actions can impact all members.",
+    "dataLossWarning": "This action cannot be undone and data will be lost.",
+    "defaultSlogan": "Your team, your results",
+    "deleteConfirm": "Confirm deletion",
+    "deleteError": "Error deleting",
+    "deleteSuccess": "Deletion completed successfully",
+    "deleteTeam": "Delete team",
+    "deleteTeamButton": "Delete team",
+    "deleteTeamDesc": "Permanently delete this team and all associated data.",
+    "deleteTeamTitle": "Delete team",
+    "deleteTeamWarning": "All data will be lost upon confirming deletion.",
+    "deleting": "Deleting...",
+    "email": "Email",
+    "emailPlaceholder": "email@example.com",
+    "emailRequired": "Email required",
+    "generalSettings": "General Settings",
+    "invalidCode": "Invalid code",
+    "invalidFormat": "Invalid format",
+    "invite": "Invite",
+    "inviteCode": "Invitation Code",
+    "inviteError": "Error sending invitation",
+    "inviteMemberTitle": "Invite member",
+    "inviteMember": "Invite member",
+    "inviteOptionsTitle": "Invitation options",
+    "inviteSent": "Invitation sent to {{email}}",
+    "inviteSuccess": "Invitation sent",
+    "irreversibleAction": "Irreversible action",
+    "joining": "Joining...",
+    "joinButton": "Join team",
+    "joinDescription": "Enter the invitation code provided by an administrator.",
+    "joinSuccess": "You joined the team successfully",
+    "joinTitle": "Join team",
+    "joined": "Joined on",
+    "leaveError": "Error leaving team",
+    "leaveSafeSuccess": "Left successfully",
+    "leaveSuccess": "You left the team",
+    "leaveTeam": "Leave team",
+    "leaving": "Leaving...",
+    "leadsToday": "Leads today",
+    "linkCopied": "Link copied",
+    "linkCopyError": "Error copying link",
+    "loadError": "Error loading team data",
+    "loading": "Loading...",
+    "member": "Member",
+    "memberManagement": "Member management",
+    "memberManagementDesc": "Control team roles and permissions.",
+    "memberNamePlaceholder": "Member's full name",
+    "members": "Members",
+    "name": "Name",
+    "nameMismatch": "Text entered does not match",
+    "nameRequired": "Name required",
+    "optional": "Optional",
+    "owner": "Owner",
+    "pasteCode": "Paste code here",
+    "pending": "Pending",
+    "preparing": "Preparing...",
+    "recentActivity": "Recent activities",
+    "resourceData": "Real-time data",
+    "resourceDataDesc": "Check essential team metrics.",
+    "resourceMembers": "Team",
+    "resourceMembersDesc": "Monitor member status.",
+    "resourceTracking": "Monitoring",
+    "resourceTrackingDesc": "Track team performance.",
+    "resourcesTitle": "Team Resources",
+    "restrictedAccess": "Restricted Access",
+    "restrictedAccessDesc": "Only administrators can view this tab.",
+    "role": "Role",
+    "roleUpdateError": "Error updating role",
+    "roleUpdated": "Role updated",
+    "salesperson": "Salesperson",
+    "saveError": "Error saving",
+    "sellers": "Sellers",
+    "sendEmailDesc": "Send an email invitation to new members.",
+    "sendEmailTitle": "Send invitation by email",
+    "sendInviteButton": "Send invitation",
+    "settingsSaved": "Settings saved",
+    "shareLinkDesc": "Share the link with other members.",
+    "shareLinkTitle": "Share link",
+    "slogan": "Slogan",
+    "sloganPlaceholder": "Ex: Transforming leads into sales",
+    "subscriptionRequired": "Subscription required",
+    "subtitle": "Manage members, invites, and goals in one place",
+    "tabs": {
+      "overview": "Overview",
+      "members": "Members",
+      "products": "Products",
+      "leads": "Leads",
+      "metaConnection": "Meta Connection",
+      "metaDistribution": "Meta Distribution",
+      "ads": "Ads",
+      "invites": "Invites",
+      "settings": "Settings"
+    },
+    "teamCreated": "Team created",
+    "teamName": "Team name",
+    "teamNamePlaceholder": "Official team name",
+    "title": "My team",
+    "typeToConfirm": "Type \"{{name}}\" to confirm",
+    "you": "You",
+    "codeInstruction": "Ask the team manager for the code and paste it here.",
+    "codeRequired": "Code required"
+  },
+  "tasks": {
+    "titlePage": "Tasks",
+    "searchPlaceholder": "Search tasks...",
+    "filters": "Filters",
+    "viewGrid": "View as Grid",
+    "viewKanban": "View as Kanban",
+    "configureStages": "Configure stages",
+    "newTask": "New Task",
+    "noTasks": "No tasks found",
+    "addColumn": "Add column",
+    "clickToManageStages": "Click to manage stages",
+    "saveTaskError": "Error saving task",
+    "confirmDelete": "Confirm deletion",
+    "deleteTaskError": "Error deleting task",
+    "table": {
+      "task": "Task",
+      "client": "Client",
+      "product": "Product",
+      "responsible": "Responsible",
+      "team": "Team",
+      "priority": "Priority",
+      "status": "Status",
+      "due": "Due"
+    }
+  },
+  "webhooks": {
+    "title": "Webhooks & Subscriptions",
+    "subtitle": "Manage your webhook integrations",
+    "loadingList": "Loading subscriptions...",
+    "emptyList": "No subscriptions registered",
+    "refresh": "Refresh",
+    "tabs": {
+      "logs": "Logs",
+      "events": "Events"
+    },
+    "addModal": {
+      "title": "New Webhook",
+      "namePlaceholder": "Ex: Zapier Integration",
+      "urlPlaceholder": "https://hooks.zapier.com/...",
+      "eventsLabel": "Trigger Events",
+      "save": "Create Webhook",
+      "cancel": "Cancel"
+    }
+  },
+  "leadDetails": {
+    "addOptionError": "Error adding option",
+    "saveChangesError": "Error saving changes",
+    "updateOriginError": "Error updating origin",
+    "updateLossReasonError": "Error updating loss reason",
+    "activityTitleRequired": "Activity title is required",
+    "addActivityError": "Error adding activity",
+    "loadingTitle": "Loading lead...",
+    "loadingSubtitle": "Wait while we fetch data",
+    "sessionErrorTitle": "Session expired",
+    "sessionErrorDescription": "Your session has expired. Log in again.",
+    "reloadPage": "Reload page",
+    "notFoundTitle": "Lead not found",
+    "notFoundDescription": "The lead you are looking for does not exist or has been removed.",
+    "backToLeads": "Back to leads",
+    "back": "Back",
+    "informationTitle": "Lead Information",
+    "edit": "Edit",
+    "saving": "Saving...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "leadIdLabel": "Lead ID",
+    "addOption": "Add Option",
+    "optionPlaceholder": "Type new option...",
+    "add": "Add",
+    "activitySaving": "Saving...",
+    "activityAddButton": "Add Activity"
+  },
+  "properties": {
+    "pageTitle": "Properties",
+    "pageSubtitle": "Catalog",
+    "teamRequired": "You need a team",
+    "teamRequiredDescription": "To register properties, you need to be on a team",
+    "activeTab": "Active",
+    "inactiveTab": "Inactive",
+    "selectMode": "Select",
+    "filters": "Filters",
+    "refresh": "Refresh list",
+    "newProperty": "New Property",
+    "importCsv": "Import CSV",
+    "limitReached": "Product Limitation Active",
+    "limitDescription": "Product limit reached. Upgrade to add more.",
+    "upgrade": "Upgrade",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "deleteSelected": "Delete ({{count}})",
+    "cancel": "Cancel",
+    "bulkDeleteWarning": "⚠️ Deletion may take a few minutes if many products are selected",
+    "bulkDeleteMode": "Bulk deletion",
+    "confirmDeleteTitle": "Confirm Deletion",
+    "confirmDeleteSubtitle": "This action cannot be undone",
+    "confirmDeleteBody": "You are about to delete {{count}} product(s).",
+    "confirmDeleteWarning": "⚠️ All related dependencies (tasks, relations) will be automatically removed.",
+    "deleteAll": "Delete All",
+    "emptyActiveTitle": "No active properties found",
+    "emptyActiveDescription": "Start by registering the first property for your business and see it appear here.",
+    "emptyInactiveTitle": "No inactive properties found",
+    "emptyInactiveDescription": "Activate or register new properties to see them here.",
+    "editProperty": "Edit property",
+    "deleteProperty": "Delete property",
+    "viewDetails": "View details",
+    "noImage": "No image",
+    "noDescription": "No description available",
+    "startingFrom": "Starting from",
+    "locationNotInformed": "Location not informed",
+    "bedrooms": "bedrooms",
+    "bathrooms": "bathrooms",
+    "parkingSpaces": "parking spots",
+    "clearAllFilters": "Clear All Filters",
+    "applyFilters": "Apply Filters",
+    "filtersTitle": "Property Filters",
+    "basicFilters": "Basic Filters",
+    "status": "Status",
+    "type": "Type",
+    "purpose": "Purpose",
+    "priceRange": "Price Range",
+    "minPrice": "Min price",
+    "maxPrice": "Max price",
+    "characteristics": "Characteristics",
+    "bedroomsLabel": "Bedrooms",
+    "bathroomsLabel": "Bathrooms",
+    "parkingLabel": "Parking",
+    "locationFilters": "Location",
+    "builder": "Builder/Developer",
+    "development": "Development",
+    "phase": "Development Phase",
+    "region": "Region",
+    "neighborhood": "Neighborhood",
+    "specifications": "Specifications",
+    "typology": "Typology",
+    "modality": "Modality",
+    "specialFeatures": "Special Features",
+    "builderFinancing": "Builder Financing",
+    "decoratedApartment": "Decorated Apartment",
+    "any": "Any",
+    "available": "Available",
+    "notAvailable": "Not Available",
+    "yes": "Yes",
+    "no": "No",
+    "noTypologyAvailable": "No typology available",
+    "noModalityAvailable": "No modality available",
+    "viewList": "List view",
+    "viewGrid": "Grid view",
+    "allBuilders": "All Builders",
+    "allDevelopments": "All Developments",
+    "allPhases": "All Phases",
+    "allRegions": "All Regions",
+    "allNeighborhoods": "All Neighborhoods",
+    "statusAvailable": "Available",
+    "statusReserved": "Reserved",
+    "statusSold": "Sold",
+    "statusRented": "Rented",
+    "statusUnavailable": "Unavailable",
+    "typeApartment": "Apartment",
+    "typeHouse": "House",
+    "typeTownhouse": "Townhouse",
+    "typePenthouse": "Penthouse",
+    "typeLand": "Land",
+    "typeCommercial": "Commercial",
+    "typeIndustrial": "Industrial",
+    "typeRural": "Rural",
+    "typeOther": "Other",
+    "purposeSale": "Sale",
+    "purposeRent": "Rent",
+    "purposeSaleRent": "Sale/Rent",
+    "featured": "FEATURED",
+    "editTooltip": "Edit product",
+    "deleteTooltip": "Delete product",
+    "editButton": "✏️ Edit",
+    "deleteButton": "🗑️ Delete",
+    "deletingProducts": "Deleting {{count}} product(s)...",
+    "deleteSuccess": "✅ {{count}} product(s) deleted successfully!",
+    "deleteFailed": "❌ Failed to delete {{count}} product(s):",
+    "deleteGenericError": "❌ Error executing bulk deletion",
+    "deletionCancelled": "Deletion cancelled by user",
+    "deletingProduct": "Do you want to delete product \"{{title}}\"?",
+    "deletingWithDependencies": "⚠️ This action will check and remove all related dependencies",
+    "confirmDeleteProperty": "Do you want to delete product \"{{title}}\"?",
+    "deletePropertyWarning": "⚠️ This action will check and remove all related dependencies",
+    "dependencyError": "❌ Dependency error: there are still related records. Check tasks, sales, or other relations.",
+    "foreignKeyError": "❌ Foreign key error: there are records depending on this product."
+  },
+  "importCsv": {
+    "title": "Import Properties",
+    "upload": {
+      "title": "Upload your file",
+      "description": "Select a CSV file containing data for the properties you want to import.",
+      "chooseFile": "Choose CSV File",
+      "selected": "Selected file:"
+    },
+    "instructions": {
+      "title": "Instructions",
+      "utf8": "Use UTF-8 to avoid issues with accents",
+      "firstRowHeader": "First row must contain column names",
+      "separator": "Separate values by comma (,) or semicolon (;)",
+      "requiredField": "Name field is required"
+    },
+    "header": {
+      "title": "Select Header Row",
+      "description": "Which row contains the column names? (usually the first one)",
+      "label": "Header row:",
+      "lineOption": "Line {number}",
+      "confirm": "Confirm Header"
+    },
+    "mapping": {
+      "title": "Column Mapping",
+      "aiButton": "Suggest with AI",
+      "ignore": "-- ignore --",
+      "next": "Next: Review",
+      "errors": {
+        "requiredTitle": "Missing required field",
+        "requiredDesc": "No column is mapped to \"name\". Choose a column to map.",
+        "duplicatesTitle": "Duplicate fields",
+        "duplicatesDesc": "are mapped more than once."
+      }
+    },
+    "review": {
+      "title": "Final Review",
+      "readyLines": "lines ready for import",
+      "optimizeWithAI": "Optimize with AI before importing",
+      "importing": "Importing...",
+      "importingButton": "Importing...",
+      "importButton": "Import Now"
+    },
+    "result": {
+      "title": "Import Completed!",
+      "total": "Total",
+      "imported": "Imported",
+      "errors": "Errors",
+      "errorListTitle": "Records with Error:",
+      "lineError": "Line {line}: {reason}",
+      "downloadErrors": "Download Errors CSV"
+    },
+    "success": {
+      "loaded": "CSV loaded: {count} lines",
+      "headerConfirmed": "Header confirmed — review mapping",
+      "categoriesCreated": "{count} categories created automatically"
+    },
+    "warnings": {
+      "largeFile": "Large file (>10k lines) — may take a few minutes"
+    },
+    "errors": {
+      "onlyCsv": "Only .csv files are accepted",
+      "emptyCsv": "Empty CSV",
+      "parseError": "Error processing CSV",
+      "noData": "No data in CSV",
+      "invalidHeaderLine": "Invalid selected line",
+      "noDataAfterHeader": "No data lines after header"
+    },
+    "ai": {
+      "suggesting": "Asking AI for mapping suggestion...",
+      "applied": "Mapping suggested by AI applied"
+    },
+    "optimize": {
+      "success": "Optimized data applied!"
+    }
+  },
+  "importCsvOptimize": {
+    "title": "Optimize Data with AI",
+    "toasts": {
+      "errorNoTenant": "Error: user without tenant",
+      "errorNoRecords": "No records to optimize",
+      "starting": "🚀 Starting AI transformation...",
+      "batchProgress": "Batch {{current}}/{{total}}...",
+      "success": "✅ Transformation complete! {{count}} records optimized",
+      "optimizeError": "Optimization error: {{message}}",
+      "noDataToApply": "No optimized data to apply",
+      "dataApplied": "Optimized data applied!"
+    },
+    "errors": {
+      "edgeFunction": "Error in Edge Function: {{message}}",
+      "noAiResponse": "Batch {{batch}}: No response from AI",
+      "invalidJson": "Batch {{batch}}: Invalid JSON from AI",
+      "noJsonArray": "Batch {{batch}}: No JSON array found",
+      "notArray": "Batch {{batch}}: Response is not an array"
+    },
+    "waiting": {
+      "header": "🧠 Optimize {{count}} records",
+      "description": "AI will analyze each line and:",
+      "features": {
+        "split": "✓ Split compound data (e.g., \"Studio 2 bedrooms\")",
+        "normalize": "✓ Normalize prices, dates, and fields",
+        "fill": "✓ Fill in blank fields when possible",
+        "standardize": "✓ Standardize types and categories"
+      },
+      "estimatedTime": "Estimated time: ~{{seconds}}s"
+    },
+    "buttons": {
+      "start": "Start Optimization",
+      "apply": "✓ Apply Transformation"
+    },
+    "progress": {
+      "processing": "Processing with AI...",
+      "transforming": "Transforming data..."
+    },
+    "debug": {
+      "hideRaw": "✕ Hide",
+      "showRaw": "◯ View raw response"
+    },
+    "preview": {
+      "header": "{{count}} records transformed",
+      "review": "Review the first 5 before applying"
+    }
+  },
+  "notification": {
+    "close": "Close notification",
+    "types": {
+      "success": "Success",
+      "error": "Error",
+      "warning": "Warning",
+      "info": "Information"
+    }
+  },
+  "onboarding": {
+    "setup": {
+      "title": "Initial Setup",
+      "subtitle": "3 steps to start",
+      "close": "Close initial setup",
+      "skip": "Skip"
+    },
+    "steps": {
+      "products": {
+        "title": "Import your Products",
+        "description": "Start by importing a product catalog. This helps organize your offers and link them to your leads.",
+        "dropzone": {
+          "title": "Drag a CSV or Excel file",
+          "formats": "Accepted formats: .csv, .xlsx, .xls",
+          "button": "Select file"
+        },
+        "success": "Products imported successfully!"
+      },
+      "pipeline": {
+        "title": "Configure your Pipeline",
+        "description": "Define sales stages (e.g., Prospecting, Negotiation, Won). This organizes your sales flow.",
+        "stages": [
+          "Prospecting",
+          "Presentation",
+          "Negotiation",
+          "Closing"
+        ],
+        "success": "Default pipeline created!"
+      },
+      "automation": {
+        "title": "Create your First Automation",
+        "description": "Configure a webhook or automation to sync data with WhatsApp, email, or your external CRM.",
+        "options": [
+          {
+            "title": "Automatic WhatsApp",
+            "desc": "Send messages when a lead enters the CRM"
+          },
+          {
+            "title": "Automatic Email",
+            "desc": "Send email campaigns automatically"
+          },
+          {
+            "title": "Sync with Integrations",
+            "desc": "Connect with N8N, Zapier, or external APIs"
+          }
+        ],
+        "configureButton": "Configure Automation",
+        "success": "Automation configured! You can adjust it later."
+      }
+    },
+    "complete": {
+      "title": "Ready to Start!",
+      "subtitle": "You completed the initial setup. Now you have:",
+      "items": {
+        "products": "Imported products",
+        "pipeline": "Sales pipeline configured",
+        "automation": "First automation active"
+      },
+      "footer": "Explore the menu and customize everything according to your needs!",
+      "startButton": "Start"
+    },
+    "tips": {
+      "title": "Tip:",
+      "products": "You can update your products later. For now, it's important to have a base catalog to start.",
+      "pipeline": "You can customize or add new stages at any time in Settings.",
+      "automation": "Start with something simple. You will learn more about automations in Automations → Webhooks."
+    },
+    "closeTooltip": "Close tutorial",
+    "slideNavigation": "Go to slide {{slideNumber}}",
+    "previous": "Previous",
+    "next": "Next",
+    "start": "Start",
+    "skip": "Skip tutorial",
+    "slide1": {
+      "title": "Welcome to Azera!",
+      "description": "This is our first version and we are very happy to have you here. Let's show you how everything works."
+    },
+    "slide2": {
+      "title": "How does Azera work?",
+      "description": "The CRM works through teams. You can create your own team or join an existing team via an invite."
+    },
+    "slide3": {
+      "title": "Creating your Team",
+      "description": "On the \"My Team\" screen, you can create a new team, define company name, and start inviting members to collaborate."
+    },
+    "slide4": {
+      "title": "Invite your Team",
+      "description": "Invite brokers and collaborators by email. Define permissions and organize your team to work collaboratively."
+    },
+    "slide5": {
+      "title": "Customize your Profile",
+      "description": "Access \"Settings\" to edit your personal information, profile picture, contact details, and system preferences."
+    }
+  },
+  "expenseManager": {
+    "accessRestricted": {
+      "title": "Access restricted",
+      "description": "Only owners and administrators can manage team expenses."
+    },
+    "selectTeam": "Select a team to view expenses.",
+    "loading": "Loading expenses...",
+    "summary": {
+      "total": "Total Expenses",
+      "fixed": "Fixed Expenses",
+      "variable": "Variable Expenses"
+    },
+    "header": {
+      "title": "Expense Management",
+      "addButton": "New Expense"
+    },
+    "form": {
+      "titleNew": "New Expense",
+      "titleEdit": "Edit Expense",
+      "labels": {
+        "description": "Expense Description",
+        "category": "Category",
+        "value": "Value",
+        "type": "Type",
+        "dueDate": "Due Date (optional)",
+        "additionalDetails": "Description (optional)"
+      },
+      "placeholders": {
+        "description": "Ex: Office rent",
+        "value": "0.00",
+        "details": "Additional details about the expense"
+      },
+      "buttons": {
+        "cancel": "Cancel",
+        "save": "Create",
+        "saving": "Saving...",
+        "update": "Update"
+      },
+      "types": {
+        "fixed": "Fixed",
+        "variable": "Variable",
+        "oneTime": "One-time"
+      }
+    },
+    "categories": {
+      "Aluguel": "Rent",
+      "Internet": "Internet",
+      "Telefone": "Phone",
+      "Software/Licenças": "Software/Licenses",
+      "Marketing": "Marketing",
+      "Recursos Humanos": "Human Resources",
+      "Escritório": "Office",
+      "Financeiro": "Financial",
+      "Outros": "Others"
+    },
+    "emptyState": {
+      "text": "No expenses registered yet.",
+      "subtext": "Click \"New Expense\" to start."
+    },
+    "actions": {
+      "toggleActive": "Activate expense",
+      "toggleInactive": "Deactivate expense",
+      "edit": "Edit expense",
+      "delete": "Delete expense"
+    },
+    "toasts": {
+      "requiredFields": "Description and value are required!",
+      "selectTeam": "Select a team to manage expenses",
+      "saveError": "Error saving expense!",
+      "deleteConfirm": "Are you sure you want to delete this expense?",
+      "deleteSuccess": "Expense deleted successfully!",
+      "deleteError": "Error deleting expense!",
+      "buttons": {
+        "delete": "Delete",
+        "cancel": "Cancel"
+      }
+    }
+  },
+  "subscription": {
+    "title": "Choose your Plan",
+    "subtitle": "Start your 14-day free trial. No credit card required.",
+    "save": "SAVE {{discount}}%",
+    "mostPopular": "Most Popular",
+    "perMonth": "/month",
+    "total": "Total",
+    "choosePlan": "Choose Plan",
+    "faqTitle": "Frequently Asked Questions",
+    "faq": {
+      "q1": {
+        "question": "Can I cancel anytime?",
+        "answer": "Yes, you can cancel your subscription at any time. There are no cancellation fees."
+      },
+      "q2": {
+        "question": "What is the free trial period?",
+        "answer": "We offer 14 days free. If you don't like it, cancel at no cost. If you like it, you will be charged at the end of the period."
+      },
+      "q3": {
+        "question": "How does upgrade work?",
+        "answer": "You can upgrade or downgrade at any time. We will adjust the value of your next invoice."
+      },
+      "q4": {
+        "question": "Do you offer annual discount?",
+        "answer": "Yes! Pay annually and save 2 months of subscription. Contact our support."
+      }
+    },
+    "banner": {
+      "title": "Secure Free Trial",
+      "description": "You won't be charged during the 14-day trial. You will receive a reminder 3 days before billing."
+    },
+    "userInfoNotFound": "User info not found",
+    "checkoutError": "Error initiating checkout. Try again."
+  },
+  "subscriptionCard": {
+    "header": {
+      "title": "Subscription and Payments",
+      "description": "Manage your subscription, see upcoming charges and payment history"
+    },
+    "noSubscription": {
+      "title": "No active subscription",
+      "description": "Subscribe to a plan to unlock all Azera CRM features"
+    },
+    "active": {
+      "title": "Active Subscription",
+      "nextBillingLabel": "Next Billing",
+      "statusLabel": "Status",
+      "statusActive": "Active",
+      "notDefined": "Not defined",
+      "cancellationWarning": "⚠️ Will be canceled on {{date}}"
+    },
+    "buttons": {
+      "viewPlans": "View Plans",
+      "manage": "Manage"
+    },
+    "toasts": {
+      "openingPortal": "Opening management portal..."
+    }
+  },
+  "subscriptionStatus": {
+    "loading": "Checking subscription...",
+    "error": "Error loading subscription",
+    "planLabel": "Plan",
+    "statuses": {
+      "active": "Active",
+      "trialing": "Trialing",
+      "past_due": "Past due",
+      "incomplete": "Incomplete",
+      "incomplete_expired": "Expired",
+      "canceled": "Canceled",
+      "unpaid": "Unpaid"
+    }
+  },
+  "subscriptionTimer": {
+    "days": "{count, plural, =0 {Subscribed today} =1 {1 day subscribed} other {# days subscribed}}"
+  },
+  "userProfileSetup": {
+    "title": "Complete your Profile",
+    "subtitles": {
+      "required": "Configure your profile to continue",
+      "optional": "Help your team get to know you better"
+    },
+    "form": {
+      "photoLabel": "Click camera to add photo",
+      "fullName": {
+        "label": "Full Name *",
+        "placeholder": "Ex: John Doe"
+      },
+      "displayName": {
+        "label": "How do you want to be called? *",
+        "placeholder": "Ex: John, Doe, JD"
+      },
+      "phone": {
+        "label": "Phone",
+        "placeholder": "(11) 99999-9999"
+      },
+      "bio": {
+        "label": "About you",
+        "placeholder": "Tell a little about yourself, your experience, etc."
+      }
+    },
+    "buttons": {
+      "skip": "Skip for now",
+      "save": "Save Profile"
+    },
+    "toasts": {
+      "photoSuccess": "Photo uploaded successfully!",
+      "photoError": "Error uploading photo",
+      "validationError": "Full name and display name are required",
+      "saveSuccess": "Profile configured successfully!",
+      "saveError": "Error saving profile"
+    }
+  },
+  "processModal": {
+    "title": {
+      "create": "New Process",
+      "edit": "Edit Process"
+    },
+    "fields": {
+      "client": {
+        "label": "Client",
+        "placeholder": "Select a client or lead"
+      },
+      "title": {
+        "label": "Title",
+        "placeholder": "Ex: Property Documentation"
+      },
+      "description": {
+        "label": "Description",
+        "placeholder": "Describe the process..."
+      },
+      "priority": {
+        "label": "Priority",
+        "options": {
+          "baixa": "Low",
+          "media": "Medium",
+          "alta": "High"
+        }
+      },
+      "status": {
+        "label": "Status",
+        "options": {
+          "backlog": "Backlog",
+          "em_andamento": "In Progress",
+          "revisao": "In Review",
+          "concluido": "Completed"
+        }
+      },
+      "responsible": {
+        "label": "Responsible",
+        "none": "Not assigned"
+      },
+      "startDate": "Start Date",
+      "expectedEndDate": "Expected End Date",
+      "externalLink": "External Link"
+    },
+    "actions": {
+      "create": "Create Process",
+      "update": "Update Process"
+    },
+    "success": {
+      "created": "Process created successfully!",
+      "updated": "Process updated successfully!"
+    },
+    "errors": {
+      "requiredFields": "Client and title are required",
+      "loadClients": "Error loading clients",
+      "loadUsers": "Error loading users",
+      "save": "Error saving process"
+    }
+  },
+  "publicLinkModal": {
+    "title": "Public Process Link",
+    "clientLabel": "Client",
+    "linkLabel": "Link to share with client:",
+    "howItWorks": {
+      "title": "How it works:",
+      "items": {
+        "viewAll": "The client can view all processes related to them",
+        "readOnly": "Read-only access (cannot edit)",
+        "realTime": "Updated in real-time as you modify processes",
+        "noLogin": "No client login or registration required"
+      }
+    }
+  },
+  "processView": {
+    "processLabel": "Process",
+    "tabs": {
+      "details": "Details",
+      "tasks": "Tasks"
+    }
+  },
+  "processDetails": {
+    "status": {
+      "em_andamento": "In progress",
+      "concluido": "Completed",
+      "cancelado": "Canceled",
+      "pendente": "Pending"
+    },
+    "priority": {
+      "values": {
+        "baixa": "Low",
+        "media": "Medium",
+        "alta": "High"
+      }
+    },
+    "generalInfo": {
+      "title": "General Information",
+      "notDefined": "Not defined",
+      "labels": {
+        "title": "Title",
+        "client": "Client",
+        "priority": "Priority",
+        "status": "Status",
+        "startDate": "Start Date",
+        "expectedEndDate": "Expected End Date",
+        "responsible": "Responsible",
+        "description": "Description"
+      }
+    },
+    "sharing": {
+      "title": "Sharing",
+      "description": "Share this link with the client so they can view the process in real-time:"
+    }
+  },
+  "processTasks": {
+    "placeholder": "Add new task...",
+    "addButton": "Add",
+    "emptyState": "No tasks registered for this process.",
+    "emptyStateHint": "Add the first task above.",
+    "toggleStatus": "Toggle task status",
+    "editButton": "Edit task",
+    "deleteButton": "Delete task",
+    "addSuccess": "Task added!",
+    "addError": "Error adding task",
+    "updateError": "Error updating task",
+    "deleteConfirm": "Are you sure you want to delete this task?",
+    "deleteSuccess": "Task deleted!",
+    "deleteError": "Error deleting task",
+    "loadError": "Error loading tasks"
+  },
+  "tarefaNova": {
+    "sections": {
+      "general": "General Information",
+      "checklist": "Checklist",
+      "attachments": "Attachments"
+    },
+    "fields": {
+      "title": "Title",
+      "description": "Description",
+      "responsible": "Responsible",
+      "client": "Client",
+      "product": "Product",
+      "checklist": {
+        "placeholder": "Add item to checklist..."
+      },
+      "attachments": {
+        "placeholder": "Click to attach files",
+        "empty": "No attachments added"
+      }
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "create": "Create Task",
+      "creating": "Creating..."
+    }
+  },
+  "joinTeam": {
+    "loading": "Validating invitation...",
+    "title": "Team Invitation",
+    "invitedToTeam": "You were invited to join team {team}",
+    "invitedBy": "Invited by: {name}",
+    "email": "Email",
+    "role": "Role",
+    "roles": {
+      "vendedor": "Salesperson",
+      "admin": "Administrator",
+      "administrador": "Administrator"
+    },
+    "form": {
+      "name": {
+        "label": "Full Name",
+        "placeholder": "Your full name"
+      },
+      "phone": {
+        "label": "Phone"
+      },
+      "position": {
+        "label": "Role/Position",
+        "placeholder": "Ex: Sales Consultant"
+      }
+    },
+    "acceptButton": "Accept Invitation",
+    "terms": "By accepting this invitation, you agree to be part of the team and follow established guidelines.",
+    "success": {
+      "simple": "Welcome to the team!",
+      "full": "Invitation accepted successfully!"
+    },
+    "error": {
+      "title": "Invalid Invitation",
+      "backToDashboard": "Back to Dashboard"
+    },
+    "errors": {
+      "invalidLink": "Invalid invitation link. Check if the link is correct.",
+      "teamNotFound": "Team not found. Check if the link is correct or if you have permission to access this team.",
+      "invalidOrExpired": "Invitation invalid, expired, or already used.",
+      "validationError": "Error validating invitation",
+      "noInviteInfo": "Invitation information not found",
+      "nameRequired": "Name is required",
+      "acceptError": "Error accepting invitation"
+    }
+  },
+  "resetPassword": {
+    "validation": {
+      "passwordMin": "Password must be at least 6 characters",
+      "passwordRequired": "New password is required",
+      "passwordMismatch": "Passwords do not match",
+      "confirmRequired": "Confirmation is required"
+    },
+    "loading": {
+      "verifying": "Verifying link..."
+    },
+    "form": {
+      "title": "Create new password",
+      "subtitle": "Choose a new secure password for your account",
+      "newPassword": "New password",
+      "passwordPlaceholder": "Minimum 6 characters",
+      "confirmPassword": "Confirm your new password",
+      "confirmPlaceholder": "Repeat password"
+    },
+    "success": {
+      "title": "Password reset!",
+      "redirecting": "Your password has been changed successfully. Redirecting to login..."
+    },
+    "errors": {
+      "invalidLink": "Invalid link",
+      "linkExpired": "Link expired. Request a new recovery link.",
+      "linkError": "Error: {{error}}. Request a new recovery link.",
+      "tokenNotFound": "Recovery token not found",
+      "linkInvalid": "Invalid or expired link",
+      "updateFailed": "Error resetting password",
+      "unknown": "Unknown error resetting password"
+    },
+    "actions": {
+      "backToLogin": "Back to Login",
+      "requestNewLink": "Request new link",
+      "cancel": "Cancel",
+      "setting": "Setting...",
+      "submit": "Set new password"
+    }
+  },
+  "subscribe": {
+    "header": {
+      "title": "Subscription Plans",
+      "subtitle": "Choose the ideal plan for your team and unlock all Azera CRM features"
+    },
+    "alerts": {
+      "canceled": "Subscription canceled. Choose a plan to continue using Azera CRM."
+    },
+    "status": {
+      "loading": "Loading subscription...",
+      "noSubscription": "You don't have a subscription yet!",
+      "canceledTitle": "Subscription Canceled",
+      "canceledAt": "Your subscription was canceled on {{date}}",
+      "idLabel": "ID",
+      "currentStatusLabel": "Current Status",
+      "active": "Active",
+      "trial": "Trial",
+      "planLabel": "Plan",
+      "nextBillingLabel": "Next billing",
+      "activeMessage": "✓ Your subscription is active and all Azera CRM features are available."
+    },
+    "plans": {
+      "intervals": {
+        "year": "Annual billing",
+        "month": "Monthly billing",
+        "custom": "Billing every {{count}} months"
+      }
+    },
+    "buttons": {
+      "subscribe": "Subscribe Now",
+      "redirecting": "⏳ Redirecting...",
+      "redirectingTest": "⏳ Redirecting (test)...",
+      "testCheckout": "Test Checkout (test mode)"
+    },
+    "footer": {
+      "securePaymentStart": "💳 Secure payments processed by",
+      "noLoyalty": "No loyalty, cancel anytime directly in your panel."
+    },
+    "toasts": {
+      "loginRequired": "Log in to continue"
+    },
+    "errors": {
+      "checkoutInit": "Error initiating checkout",
+      "urlNotFound": "Checkout URL not found",
+      "unexpected": "Unexpected error"
+    }
+  },
+  "success": {
+    "title": "Payment Confirmed!",
+    "subtitle": "Your subscription has been activated successfully",
+    "planTitle": "Plan {plan}",
+    "planDescription": "You now have full access to all features",
+    "nextBilling": "Next Billing",
+    "status": "Status",
+    "statusActive": "Active",
+    "checking": "Checking...",
+    "loading": "Loading...",
+    "goToDashboard": "Go to Dashboard",
+    "manageSubscription": "Manage Subscription",
+    "redirecting": "Redirecting to dashboard in {seconds} second{seconds, plural, one {} other {s}}...",
+    "checkingSubscription": "Checking your subscription...",
+    "subscriptionActivated": "Subscription activated!"
+  },
+  "oauthCallback": {
+    "error": {
+      "title": "Connection Failed",
+      "description": "There was a problem connecting your Facebook account. You will be redirected to try again."
+    },
+    "success": {
+      "title": "Connected Successfully!",
+      "description": "Your Facebook account was connected successfully. Redirecting you to the teams page..."
+    },
+    "loading": {
+      "title": "Processing Connection...",
+      "description": "Please wait while we process your Facebook connection..."
+    }
+  },
+  "auth": {
+    "logout": "Logout"
+  },
+  "notifications": {
+    "button": "Notifications"
+  },
+  "landing": {
+    "hero": {
+      "badge": "Transform your business today",
+      "title": {
+        "line1": "Automate, organize",
+        "line2": "and sell more"
+      },
+      "subtitle": "Everything you or your team needs to manage leads, products, and teams in one place.",
+      "subtitleHighlight": "No complexity, real results."
+    },
+    "features": {
+      "automation": {
+        "title": "Intelligent Automation",
+        "description": "Automate follow-ups, lead distribution, and repetitive tasks with advanced AI and powerful webhooks.",
+        "list": {
+          "webhooks": "Webhooks for any system",
+          "distribution": "Smart automatic distribution",
+          "reminders": "Real-time reminders"
+        }
+      },
+      "pipeline": {
+        "title": "Advanced Visual Pipeline",
+        "description": "Organize your sales funnel with intuitive Kanban, real-time metrics, and smart filters.",
+        "list": {
+          "dragDrop": "Customizable drag-and-drop",
+          "filters": "Advanced filters and smart search",
+          "metrics": "Automatic conversion metrics"
+        }
+      },
+      "team": {
+        "title": "Team Collaboration",
+        "description": "Complete team management with granular permissions and individual performance tracking.",
+        "list": {
+          "roles": "Custom role control",
+          "dashboards": "Individual sales dashboards",
+          "invites": "Simplified invites and onboarding"
+        }
+      }
+    },
+    "useCases": {
+      "badge": "Use Cases",
+      "title": "Made for all types of business",
+      "subtitle": "From freelancers to large enterprises, Azera adapts to your workflow and scales with your growth.",
+      "freelancer": {
+        "title": "Freelancers",
+        "description": "Fully adapt the CRM to your needs with custom fields for each client. Receive smart automatic reminders to never miss an important follow-up. Access simple and intuitive reports to track your progress and optimize your financial results.",
+        "list": {
+          "customFields": "Custom fields per client",
+          "reminders": "Automatic reminders and follow-ups",
+          "mobile": "Mobile access and full synchronization"
+        },
+        "imageLabel": "Freelancer",
+        "imageSubLabel": "Simplified client management"
+      },
+      "teams": {
+        "title": "Teams & Companies",
+        "description": "Automatically distribute leads to maximize your team's efficiency and productivity. Monitor individual performance with custom dashboards and real-time metrics. Control permissions granularly to ensure security, organization, and compliance across the company.",
+        "list": {
+          "distribution": "Automatic lead distribution",
+          "dashboards": "Real-time dashboards and reports",
+          "permissions": "Advanced role-based permissions"
+        },
+        "imageLabel": "Teams & Companies",
+        "imageSubLabel": "Collaboration and performance"
+      }
+    },
+    "fullFeatures": {
+      "badge": "Full Features",
+      "title": "All in one place",
+      "subtitle": "Complete, universal, and scalable CRM for any type of business.",
+      "subtitleHighlight": "No complexity, real results.",
+      "customFields": {
+        "title": "Custom Fields",
+        "description": "15+ field types (text, number, date, list, file, etc.) to fully adapt to your business"
+      },
+      "responsive": {
+        "title": "100% Responsive",
+        "description": "Interface optimized for desktop, tablet, and mobile. Work from anywhere with real-time synchronization"
+      },
+      "security": {
+        "title": "Maximum Security",
+        "description": "Row Level Security (RLS), end-to-end encryption, daily automatic backups, and multi-tenant isolation"
+      },
+      "tasks": {
+        "title": "Task Management",
+        "description": "Complete task system with priorities, checklists, automatic reminders, and progress tracking"
+      },
+      "integrations": {
+        "title": "Unlimited Integrations",
+        "description": "Unlimited webhooks, full REST APIs, custom API Keys. Integrate with Zapier, Make, n8n, and any system"
+      },
+      "reports": {
+        "title": "Real-time Reports",
+        "description": "Interactive dashboards with conversion metrics, team performance, and sales funnel analysis updated in real-time"
+      }
+    },
+    "pricing": {
+      "title": "Simple and direct plans",
+      "subtitle": "Start for free and scale as your team grows.",
+      "subtitleHighlight": "No hidden fees, cancel anytime.",
+      "customPlans": {
+        "badge": "Custom plans for companies",
+        "text": "Need specific features or larger volumes?",
+        "link": "Contact us",
+        "suffix": "for a tailored plan."
+      },
+      "starter": {
+        "badge": "STARTER",
+        "price": "Free",
+        "description": "To start and test",
+        "button": "Start"
+      },
+      "monthly": {
+        "badge": "MONTHLY",
+        "period": "/month",
+        "description": "Billed monthly",
+        "button": "Subscribe Monthly"
+      },
+      "semiannual": {
+        "badge": "SEMIANNUAL",
+        "discountBadge": "SAVE {{percent}}%",
+        "period": "/month",
+        "from": "From",
+        "to": "for",
+        "description": "Billed semiannually",
+        "button": "Subscribe Semiannually"
+      },
+      "annual": {
+        "badge": "ANNUAL",
+        "discountBadge": "Save R$ 120 per year",
+        "period": "/month",
+        "from": "From",
+        "to": "for",
+        "description": "Billed annually",
+        "button": "Subscribe Annually"
+      }
+    },
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "q1": {
+        "question": "Does Azera work for any type of business?",
+        "answer": "Yes! Although optimized for real estate, Azera is a universal CRM with customizable fields that adapts to any business model: consulting, e-commerce, services, B2B, etc."
+      },
+      "q2": {
+        "question": "Do I need a credit card to test?",
+        "answer": "No! You can start on the free plan immediately. Only when you decide to upgrade to Pro or Enterprise will you need to add payment details."
+      },
+      "q3": {
+        "question": "Are my data safe?",
+        "answer": "Absolutely. We use multi-tenant isolation with Row Level Security (RLS), end-to-end encryption, daily automatic backups, and tier 1 cloud infrastructure (Supabase/AWS)."
+      },
+      "q4": {
+        "question": "Can I cancel anytime?",
+        "answer": "Yes, no fines or fees. You can cancel your subscription anytime and continue using it until the end of the paid period. Your data is saved for 90 days if you decide to come back."
+      },
+      "q5": {
+        "question": "Do you offer training?",
+        "answer": "Yes! We have complete documentation, tutorial videos, and guided onboarding. Pro clients have priority support, and Enterprise includes personalized training for the team."
+      },
+      "q6": {
+        "question": "Can I integrate with other tools?",
+        "answer": "Yes! We offer unlimited webhooks, full REST APIs, and custom API Keys. You can integrate with any system: Zapier, Make, n8n, email marketing platforms, ERPs, etc."
+      }
+    },
+    "contact": {
+      "title": "Contact us",
+      "subtitle": "Have any questions? Want a custom version for your company?",
+      "subtitleHighlight": "Get in touch with us.",
+      "infoTitle": "Contact Information",
+      "email": "Email",
+      "whatsapp": "WhatsApp",
+      "hours": "Business Hours",
+      "hoursValue": "Mon-Fri: 9am to 6pm",
+      "button": "Contact us now"
+    },
+    "footer": {
+      "tagline": "The CRM that turns teams into result machines.",
+      "product": "Product",
+      "features": "Features",
+      "pricing": "Pricing",
+      "cases": "Cases",
+      "login": "Login",
+      "company": "Company",
+      "about": "About Us",
+      "contact": "Contact",
+      "blog": "Blog",
+      "careers": "Careers",
+      "legal": "Legal",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Use",
+      "lgpd": "GDPR",
+      "rights": "© {{year}} Azera CRM. All rights reserved.",
+      "privacyLink": "Privacy",
+      "termsLink": "Terms",
+      "cookiesLink": "Cookies"
+    }
+  }
+}
