@@ -26,7 +26,7 @@ export const PLANS: PricingPlan[] = [
   {
     id: 'monthly',
     name: 'Mensal',
-    price: 70,
+    price: 80,
     interval: 'month',
     intervalCount: 1,
     priceId: priceMensal,

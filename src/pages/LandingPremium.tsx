@@ -860,6 +860,67 @@ export default function LandingPremium() {
             </motion.p>
           </div>
 
+          {/* 🔥 BANNER PROMOCIONAL DE LANÇAMENTO */}
+          <motion.div
+            className="mb-16 relative"
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+          >
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 p-[2px]">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 animate-pulse opacity-50"></div>
+              <div className="relative bg-slate-950/95 backdrop-blur-xl rounded-3xl p-8 md:p-10">
+                <div className="flex flex-col lg:flex-row items-center gap-8">
+                  {/* Icon animado */}
+                  <motion.div
+                    className="flex-shrink-0"
+                    animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-orange-500/30">
+                      <Zap className="w-10 h-10 text-white fill-white" />
+                    </div>
+                  </motion.div>
+
+                  {/* Conteúdo */}
+                  <div className="flex-1 text-center lg:text-left">
+                    <motion.div
+                      className="inline-flex items-center gap-2 px-4 py-1.5 bg-yellow-500/20 border border-yellow-500/50 rounded-full text-yellow-300 text-sm font-bold mb-4"
+                      animate={{ boxShadow: ["0 0 0 0 rgba(234, 179, 8, 0)", "0 0 0 8px rgba(234, 179, 8, 0)"] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    >
+                      🎉 OFERTA DE LANÇAMENTO
+                    </motion.div>
+                    <h3 className="text-3xl md:text-4xl font-bold text-white mb-3" style={{ fontFamily: 'Outfit, system-ui, sans-serif' }}>
+                      De <span className="line-through text-slate-400">R$ 80</span> por apenas <span className="bg-gradient-to-r from-yellow-400 via-orange-400 to-pink-400 bg-clip-text text-transparent">R$ 50/mês</span>
+                    </h3>
+                    <p className="text-lg text-slate-300 max-w-2xl">
+                      Aproveite o lançamento do Azera CRM e garanta <span className="text-white font-semibold">R$ 50/mês</span> em vez de R$ 80.
+                      Automações ilimitadas, suporte prioritário e todos os recursos Pro.
+                    </p>
+                  </div>
+
+                  {/* CTA */}
+                  <div className="flex-shrink-0">
+                    <motion.a
+                      href="https://wa.me/5531991318312?text=Oi%20quero%20ativar%20minha%20assinatura%20com%20a%20oferta%20de%20lan%C3%A7amento"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white font-bold text-lg rounded-xl shadow-2xl shadow-orange-500/30 hover:shadow-orange-500/50 transition-all duration-300"
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Zap className="w-6 h-6 fill-current" />
+                      Ativar Oferta - R$ 50/mês
+                    </motion.a>
+                    <p className="text-center text-sm text-slate-400 mt-3">Vagas limitadas • Acaba em breve</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
           {/* Banner Planos Personalizados */}
           <motion.div
             className="mb-12 p-6 relative overflow-hidden"

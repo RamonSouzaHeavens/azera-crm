@@ -373,9 +373,9 @@ const TabNavigation = ({ abaAtiva, onChangeAba, canManageTeam }: { abaAtiva: Aba
 
   if (canManageTeam) {
     tabs.push(
-      { id: 'conexao-meta', label: t('team.tabs.metaConnection'), icon: Facebook },
-      { id: 'distribuicao-meta', label: t('team.tabs.metaDistribution'), icon: Target },
-      { id: 'anuncios', label: t('team.tabs.ads'), icon: BarChart3 },
+      // OCULTO PARA LANCAMENTO: { id: 'conexao-meta', label: t('team.tabs.metaConnection'), icon: Facebook },
+      // OCULTO PARA LANCAMENTO: { id: 'distribuicao-meta', label: t('team.tabs.metaDistribution'), icon: Target },
+      // OCULTO PARA LANCAMENTO: { id: 'anuncios', label: t('team.tabs.ads'), icon: BarChart3 },
       { id: 'gestao-convites', label: t('team.tabs.invites'), icon: UserPlus },
       { id: 'configuracoes', label: t('team.tabs.settings'), icon: Settings }
     )
