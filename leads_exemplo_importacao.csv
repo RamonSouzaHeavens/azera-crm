@@ -1,0 +1,11 @@
+Nome,Email,Telefone,Valor Potencial,Empresa,Cargo,LinkedIn,Quantidade de Funcionários,Setor,Orçamento Mensal,Data de Contato,Interesse,Temperatura do Lead,Urgência,Cidade,Observações
+João Silva,joao.silva@empresa.com,(11) 99999-1234,50000,Tech Solutions Ltda,Diretor Comercial,linkedin.com/in/joaosilva,150,Tecnologia,25000,2024-01-15,CRM,Quente,Alta,São Paulo,Interessado em migrar do Hubspot
+Maria Santos,maria@startup.io,(21) 98888-5678,35000,Startup Innovation,CEO,linkedin.com/in/mariasantos,45,Fintech,15000,2024-01-18,Automação,Morno,Média,Rio de Janeiro,Indicação do João
+Carlos Oliveira,carlos.oliveira@construtora.com.br,(31) 97777-9012,120000,Construtora ABC,Gerente de Vendas,linkedin.com/in/carlosoliveira,320,Construção Civil,50000,2024-01-20,Sistema completo,Quente,Alta,Belo Horizonte,Quer implementar em 3 filiais
+Ana Paula Costa,ana.costa@ecommerce.com,(41) 96666-3456,25000,E-Shop Brasil,Coordenadora Marketing,linkedin.com/in/anacosta,80,E-commerce,12000,2024-01-22,Gestão de leads,Frio,Baixa,Curitiba,Ainda comparando opções
+Pedro Henrique,pedro@agencia.digital,(51) 95555-7890,18000,Agência Digital X,Sócio,linkedin.com/in/pedrohenrique,25,Marketing Digital,8000,2024-01-25,Pipeline vendas,Morno,Média,Porto Alegre,Usa planilhas atualmente
+Fernanda Lima,fernanda.lima@industria.com,(19) 94444-2345,85000,Indústria Metal Sul,Diretora Operacional,linkedin.com/in/fernandalima,500,Indústria,40000,2024-01-28,ERP integrado,Quente,Alta,Campinas,Precisa de integração com SAP
+Lucas Mendes,lucas@consultoria.com.br,(48) 93333-6789,42000,Consultoria Premium,Consultor Senior,linkedin.com/in/lucasmendes,60,Consultoria,20000,2024-02-01,Gestão projetos,Morno,Média,Florianópolis,Atende clientes enterprise
+Juliana Rocha,juliana.rocha@clinica.med.br,(85) 92222-0123,28000,Clínica Saúde Total,Administradora,linkedin.com/in/julianarocha,35,Saúde,10000,2024-02-05,Agendamentos,Frio,Baixa,Fortaleza,Busca solução simples
+Roberto Almeida,roberto@imobiliaria.com.br,(62) 91111-4567,65000,Imobiliária Central,Diretor,linkedin.com/in/robertoalmeida,90,Imobiliário,30000,2024-02-08,CRM Imobiliário,Quente,Alta,Goiânia,Tem 500 imóveis cadastrados
+Camila Souza,camila.souza@escola.edu.br,(71) 90000-8901,15000,Escola Futuro,Coordenadora,linkedin.com/in/camilasouza,120,Educação,6000,2024-02-12,Gestão alunos,Morno,Média,Salvador,Interessada em demonstração

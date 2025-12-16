@@ -10,7 +10,7 @@ interface ExpenseManagerProps {
   canManage: boolean
 }
 
-// Mantido fora pois são valores usados no backend, 
+// Mantido fora pois são valores usados no backend,
 // a tradução será aplicada apenas na exibição.
 const categorias = [
   'Aluguel',
@@ -129,6 +129,7 @@ export function ExpenseManager({ className, tenantId, canManage }: ExpenseManage
             className="bg-red-500 text-white px-3 py-1 rounded text-sm"
             onClick={async () => {
               toast.dismiss(toastData.id)
+              if (!tenantId) return
               try {
                 await expenseService.deletarDespesa(tenantId, id)
                 await loadDespesas()
@@ -290,12 +291,14 @@ export function ExpenseManager({ className, tenantId, canManage }: ExpenseManage
               <label className="block text-xs uppercase text-slate-400 mb-2">{t('expenseManager.form.labels.type')}</label>
               <select
                 value={formData.tipo}
-                onChange={(e) => setFormData({ ...formData, tipo: e.target.value as 'fixa' | 'variavel' | 'pontual' })}
+                onChange={(e) => setFormData({ ...formData, tipo: e.target.value as 'fixa' | 'variavel' | 'pontual' | 'mensal' | 'pessoal' })}
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-white"
               >
                 <option value="fixa" className="bg-slate-800">{t('expenseManager.form.types.fixed')}</option>
                 <option value="variavel" className="bg-slate-800">{t('expenseManager.form.types.variable')}</option>
                 <option value="pontual" className="bg-slate-800">{t('expenseManager.form.types.oneTime')}</option>
+                <option value="mensal" className="bg-slate-800">{t('expenseManager.form.types.monthly')}</option>
+                <option value="pessoal" className="bg-slate-800">{t('expenseManager.form.types.personal')}</option>
               </select>
             </div>
 
@@ -355,8 +358,8 @@ export function ExpenseManager({ className, tenantId, canManage }: ExpenseManage
             <div
               key={despesa.id}
               className={`rounded-xl p-4 border transition-all ${despesa.ativa
-                  ? 'bg-white/5 border-white/10 hover:border-white/20'
-                  : 'bg-slate-800/30 border-slate-700/50 opacity-60'
+                ? 'bg-white/5 border-white/10 hover:border-white/20'
+                : 'bg-slate-800/30 border-slate-700/50 opacity-60'
                 }`}
             >
               <div className="flex items-center justify-between">
@@ -364,8 +367,8 @@ export function ExpenseManager({ className, tenantId, canManage }: ExpenseManage
                   <div className="flex items-center gap-3 mb-2">
                     <h6 className="font-medium text-white">{despesa.descricao}</h6>
                     <span className={`text-xs px-2 py-1 rounded-full ${despesa.tipo === 'fixa'
-                        ? 'bg-rose-500/20 text-rose-300'
-                        : 'bg-purple-500/20 text-purple-300'
+                      ? 'bg-rose-500/20 text-rose-300'
+                      : 'bg-purple-500/20 text-purple-300'
                       }`}>
                       {t(`expenseManager.form.types.${despesa.tipo === 'fixa' ? 'fixed' : despesa.tipo === 'variavel' ? 'variable' : 'oneTime'}`)}
                     </span>

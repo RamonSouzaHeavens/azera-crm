@@ -39,3 +39,9 @@ enabled = true
 verify_jwt = true
 import_map = "./functions/stripe-portal/deno.json"
 entrypoint = "./functions/stripe-portal/index.ts"
+
+[functions.webhook-receiver]
+enabled = true
+verify_jwt = false
+import_map = "./functions/webhook-receiver/deno.json"
+entrypoint = "./functions/webhook-receiver/index.ts"

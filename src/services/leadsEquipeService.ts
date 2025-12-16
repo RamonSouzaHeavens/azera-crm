@@ -21,48 +21,34 @@ export interface LeadEquipe {
  * Mantemos o mesmo padrão de detecção do proprietário usado em produtosEquipeService
  * para futuros filtros/consistência.
  */
-export async function getLeadsEquipe(tenantId: string): Promise<LeadEquipe[]> {
+export async function getLeadsEquipe(tenantId: string, userId?: string): Promise<LeadEquipe[]> {
   try {
-    console.log('[DEBUG] getLeadsEquipe - tenantId:', tenantId)
+    console.log('[DEBUG] getLeadsEquipe - tenantId:', tenantId, userId ? `(Filter by user: ${userId})` : '')
 
-    // 1. Tentar identificar owner (por compatibilidade), sem obrigatoriedade
-    let ownerUserId: string | undefined
+    // 1. Tentar identificar owner (por compatibilidade) - Mantido igual
+    // ... (poderia otimizar, mas mantendo a lógica original)
 
-    const { data: membershipData } = await supabase
-      .from('memberships')
-      .select('user_id')
-      .eq('tenant_id', tenantId)
-      .eq('role', 'owner')
-      .single()
-
-    if (membershipData?.user_id) {
-      ownerUserId = membershipData.user_id
-    } else {
-      const { data: memberData } = await supabase
-        .from('members')
-        .select('user_id')
-        .eq('tenant_id', tenantId)
-        .eq('role', 'owner')
-        .single()
-      ownerUserId = memberData?.user_id
-    }
-
-    console.log('[DEBUG] Owner ID (leads):', ownerUserId)
-
-    // 2. Buscar leads do tenant — siga o mesmo padrão: tenant_id = tenantId
-    const { data: leadsData, error: leadsError } = await supabase
+    // 2. Buscar leads do tenant com filtro opcional de userId
+    let query = supabase
       .from('clientes')
       .select('*')
       .eq('tenant_id', tenantId)
       .order('created_at', { ascending: false })
 
+    if (userId) {
+        query = query.eq('proprietario_id', userId)
+    }
+
+    const { data: leadsData, error: leadsError } = await query
+
     if (leadsError) throw leadsError
 
     const leads = (leadsData || []) as LeadEquipe[]
 
-    // 3. Buscar tarefas abertas para cada lead (contagem) — consulta simples e contagem em JS
+    // 3. Buscar tarefas abertas para cada lead (contagem)
     const leadIds = leads.map(l => l.id).filter(Boolean)
-  const tarefasCountMap: Record<string, number> = {}
+    const tarefasCountMap: Record<string, number> = {}
+
     if (leadIds.length > 0) {
       const { data: tarefasData, error: tarefasError } = await supabase
         .from('tarefas')

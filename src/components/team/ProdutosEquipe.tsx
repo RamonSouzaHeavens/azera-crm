@@ -55,6 +55,7 @@ interface Produto {
 
 interface ProdutosEquipeProps {
   tenantId: string
+  readOnly?: boolean
 }
 
 interface Filtros {
@@ -114,12 +115,12 @@ const statusStyle: Record<string, string> = {
   indisponivel: 'bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-300 border-rose-400/50 dark:border-rose-400/20',
 }
 
-const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
+const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId, readOnly = false }) => {
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [loading, setLoading] = useState(true)
-  const [filtros] = useState<Filtros>({ 
-    tipo: 'todos', 
-    finalidade: 'todos', 
+  const [filtros] = useState<Filtros>({
+    tipo: 'todos',
+    finalidade: 'todos',
     texto: '',
     financiamento_incorporadora: 'any',
     decorado: 'any'
@@ -151,10 +152,10 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
         <div className="relative w-1/2 bg-gradient-to-br from-slate-900 to-slate-800 overflow-hidden flex-shrink-0 aspect-video">
           <div className="w-full h-full">
             {isValidUrl(item.capa_url) ? (
-              <img 
-                src={item.capa_url as string} 
-                alt={item.nome} 
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.08]" 
+              <img
+                src={item.capa_url as string}
+                alt={item.nome}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.08]"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-slate-400 bg-gradient-to-br from-slate-800 to-slate-900">
@@ -164,7 +165,7 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
                 </div>
               </div>
             )}
-            
+
             {/* Status Badge */}
             <div className="absolute top-3 left-3">
               <span className={`text-[10px] sm:text-xs font-semibold px-3 py-1.5 rounded-full border backdrop-blur-md ${statusStyle[item.status || 'indisponivel']}`}>
@@ -197,7 +198,7 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
               </div>
             </div>
           </div>
-          
+
           <p className="text-xs text-slate-600 dark:text-gray-400 line-clamp-2 mb-2 leading-relaxed">{item.descricao ?? 'Sem descrição disponível'}</p>
 
           {/* Categoria e Tipo */}
@@ -254,7 +255,7 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
     return (
       <>
         {/* Mobile: Layout de Lista Vertical */}
-        <div 
+        <div
           className="md:hidden rounded-xl border bg-gradient-to-r transition-all shadow-lg hover:shadow-cyan-500/20 backdrop-blur-sm overflow-hidden border-slate-200 dark:border-white/10 from-white/95 dark:from-white/8 to-white/90 dark:to-white/5 hover:from-white/98 dark:hover:from-white/12 hover:to-white/95 dark:hover:to-white/10 hover:border-cyan-400/40 cursor-pointer"
           onClick={() => {
             setProdutoSelecionado(item)
@@ -334,7 +335,7 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
         </div>
 
         {/* Desktop: Layout Original em Grid */}
-        <div 
+        <div
           className="hidden md:block rounded-xl border bg-gradient-to-r transition-all shadow-lg hover:shadow-cyan-500/20 backdrop-blur-sm overflow-hidden border-slate-200 dark:border-white/10 from-white/95 dark:from-white/8 to-white/90 dark:to-white/5 hover:from-white/98 dark:hover:from-white/12 hover:to-white/95 dark:hover:to-white/10 hover:border-cyan-400/40 cursor-pointer"
           onClick={() => {
             setProdutoSelecionado(item)
@@ -404,22 +405,24 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
             </div>
 
             {/* Coluna 5: Ações */}
-            <div className="flex flex-col justify-center space-y-2">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => toast.error('Edição não implementada')}
-                  className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-white/10 border border-slate-300 dark:border-white/30 text-xs text-slate-700 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white transition-all font-medium"
-                >
-                  ✏️ Editar
-                </button>
-                <button
-                  onClick={() => handleDeleteSystemProducts()}
-                  className="px-3 py-1.5 rounded-lg bg-rose-100 dark:bg-rose-500/15 border border-rose-300 dark:border-rose-400/30 text-xs text-rose-700 dark:text-rose-500 hover:bg-rose-200 dark:hover:bg-rose-500/30 hover:text-rose-900 dark:hover:text-rose-100 transition-all font-medium"
-                >
-                  🗑️ Excluir
-                </button>
+            {!readOnly && (
+              <div className="flex flex-col justify-center space-y-2">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => toast.error('Edição não implementada')}
+                    className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-white/10 border border-slate-300 dark:border-white/30 text-xs text-slate-700 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white transition-all font-medium"
+                  >
+                    ✏️ Editar
+                  </button>
+                  <button
+                    onClick={() => handleDeleteSystemProducts()}
+                    className="px-3 py-1.5 rounded-lg bg-rose-100 dark:bg-rose-500/15 border border-rose-300 dark:border-rose-400/30 text-xs text-rose-700 dark:text-rose-500 hover:bg-rose-200 dark:hover:bg-rose-500/30 hover:text-rose-900 dark:hover:text-rose-100 transition-all font-medium"
+                  >
+                    🗑️ Excluir
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </>
@@ -479,7 +482,7 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
 
     if (filtros.texto) {
       const texto = filtros.texto.toLowerCase()
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         p.nome.toLowerCase().includes(texto) ||
         p.descricao?.toLowerCase().includes(texto) ||
         p.bairro?.toLowerCase().includes(texto) ||
@@ -540,7 +543,7 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
     }
 
     if (filtros.bairro) {
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         p.bairro === filtros.bairro || p.filtros?.bairro === filtros.bairro
       )
     }
@@ -558,13 +561,13 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
 
     // Filtros de array
     if (filtros.tipologia && filtros.tipologia.length > 0) {
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         p.filtros?.tipologia?.some(t => filtros.tipologia!.includes(t))
       )
     }
 
     if (filtros.modalidade && filtros.modalidade.length > 0) {
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         p.filtros?.modalidade?.some(m => filtros.modalidade!.includes(m))
       )
     }
@@ -576,7 +579,7 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
         if (filterValue !== undefined && filterValue !== null && filterValue !== '') {
           // Encontrar a definição do campo para saber o tipo
           const fieldDef = customFields.find(f => f.id === fieldId)
-          
+
           console.log('🎯 [Filtro Custom Field]', {
             fieldId,
             fieldName: fieldDef?.field_label,
@@ -584,10 +587,10 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
             filterValue,
             filterValueType: typeof filterValue
           })
-          
+
           filtered = filtered.filter(item => {
             const itemValue = item.filtros?.[fieldId]
-            
+
             console.log('🔍 [Item Check]', {
               productId: item.id,
               productName: item.nome,
@@ -595,14 +598,14 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
               itemValue,
               itemValueType: typeof itemValue
             })
-            
+
             if (!itemValue) {
               console.log('❌ [No Value] Item não tem valor para este campo')
               return false
             }
-            
+
             let match = false
-            
+
             // Para campos number: comparação numérica exata
             if (fieldDef?.field_type === 'number') {
               const filterNum = Number(filterValue)
@@ -613,22 +616,22 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
             // Para campos select: comparação exata
             else if (fieldDef?.field_type === 'select') {
               match = String(itemValue).toLowerCase() === String(filterValue).toLowerCase()
-              console.log('📋 [Select Match]', { 
-                itemValue: String(itemValue).toLowerCase(), 
-                filterValue: String(filterValue).toLowerCase(), 
-                match 
+              console.log('📋 [Select Match]', {
+                itemValue: String(itemValue).toLowerCase(),
+                filterValue: String(filterValue).toLowerCase(),
+                match
               })
             }
             // Para campos text/date: busca parcial
             else {
               match = String(itemValue).toLowerCase().includes(String(filterValue).toLowerCase())
-              console.log('📝 [Text Match]', { 
-                itemValue: String(itemValue).toLowerCase(), 
-                filterValue: String(filterValue).toLowerCase(), 
-                match 
+              console.log('📝 [Text Match]', {
+                itemValue: String(itemValue).toLowerCase(),
+                filterValue: String(filterValue).toLowerCase(),
+                match
               })
             }
-            
+
             console.log(match ? '✅ [MATCH]' : '❌ [NO MATCH]')
             return match
           })
@@ -710,14 +713,16 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
             <span className="hidden sm:inline">Filtros</span>
           </button>
 
-          <button
-            onClick={handleDeleteSystemProducts}
-            disabled={deletingSystem}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-400/30 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-sm font-medium"
-            title="Deletar produtos do sistema"
-          >
-            <span className="hidden sm:inline">{deletingSystem ? 'Deletando...' : 'Limpar'}</span>
-          </button>
+          {!readOnly && (
+            <button
+              onClick={handleDeleteSystemProducts}
+              disabled={deletingSystem}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-400/30 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-sm font-medium"
+              title="Deletar produtos do sistema"
+            >
+              <span className="hidden sm:inline">{deletingSystem ? 'Deletando...' : 'Limpar'}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -726,7 +731,7 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowFilterPopup(false)} />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 dark:bg-slate-900/98 bg-white border dark:border-cyan-500/30 border-gray-300/30 rounded-3xl p-8 max-w-2xl w-full mx-4 shadow-2xl">
-            
+
             {/* Header */}
             <div className="flex items-center justify-between mb-6 pb-4 border-b dark:border-white/10 border-gray-300/10">
               <div className="flex items-center gap-3">

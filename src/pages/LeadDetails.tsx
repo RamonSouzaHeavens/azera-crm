@@ -9,6 +9,8 @@ import { LeadAttachments } from '../components/team/LeadAttachments';
 import { LeadCustomFields } from '../components/team/LeadCustomFields';
 import { AddActivityModal } from '../components/team/AddActivityModal';
 import { Plus, Edit3, Save, X, ChevronDown } from 'lucide-react';
+import { getTeamOverview } from '../services/equipeService';
+import toast from 'react-hot-toast';
 
 interface Lead {
   id: string;
@@ -65,6 +67,7 @@ const LeadDetails: React.FC = () => {
   const [modalAddValue, setModalAddValue] = useState('');
   const [origins, setOrigins] = useState<LeadOrigin[]>([]);
   const [lossReasons, setLossReasons] = useState<LeadLossReason[]>([]);
+  const [teamMembers, setTeamMembers] = useState<{ id: string, name: string }[]>([]);
 
   // Funções para adicionar opções
   const handleConfirmAdd = async () => {
@@ -128,7 +131,8 @@ const LeadDetails: React.FC = () => {
       notas: lead.notas,
       valor_potencial: lead.valor_potencial,
       status: lead.status,
-      compartilhado_equipe: lead.compartilhado_equipe
+      compartilhado_equipe: lead.compartilhado_equipe,
+      proprietario_id: lead.proprietario_id
     });
     setIsEditing(true);
   };
@@ -142,31 +146,55 @@ const LeadDetails: React.FC = () => {
     if (!lead || !tenant) return;
 
     setSavingLead(true);
-    try {
-      const { error } = await supabase
-        .from('clientes')
-        .update({
-          nome: editedLead.nome,
-          email: editedLead.email,
-          telefone: editedLead.telefone,
-          notas: editedLead.notas,
-          valor_potencial: editedLead.valor_potencial,
-          status: editedLead.status,
-          compartilhado_equipe: editedLead.compartilhado_equipe,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', lead.id)
-        .eq('tenant_id', tenant.id);
 
-      if (error) throw error;
+    // Dados que serão enviados para atualização
+    const updateData = {
+      nome: editedLead.nome,
+      email: editedLead.email,
+      telefone: editedLead.telefone,
+      notas: editedLead.notas,
+      valor_potencial: editedLead.valor_potencial,
+      status: editedLead.status,
+      compartilhado_equipe: editedLead.compartilhado_equipe,
+      proprietario_id: editedLead.proprietario_id || null,
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('[DEBUG saveLeadChanges] Lead ID:', lead.id);
+    console.log('[DEBUG saveLeadChanges] Tenant ID:', tenant.id);
+    console.log('[DEBUG saveLeadChanges] Update Data:', JSON.stringify(updateData, null, 2));
+    console.log('[DEBUG saveLeadChanges] proprietario_id type:', typeof updateData.proprietario_id, 'value:', updateData.proprietario_id);
+
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .update(updateData)
+        .eq('id', lead.id)
+        .eq('tenant_id', tenant.id)
+        .select();
+
+      console.log('[DEBUG saveLeadChanges] Supabase response - data:', data);
+      console.log('[DEBUG saveLeadChanges] Supabase response - error:', error);
+
+      if (error) {
+        console.error('[DEBUG saveLeadChanges] Supabase error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        throw error;
+      }
 
       // Atualizar o lead local
       setLead(prev => prev ? { ...prev, ...editedLead, updated_at: new Date().toISOString() } : null);
       setIsEditing(false);
       setEditedLead({});
-    } catch (error) {
-      console.error('Erro ao salvar alterações:', error);
-      alert(t('leadDetails.saveChangesError'));
+      toast.success('Alterações salvas com sucesso!');
+    } catch (error: any) {
+      console.error('[DEBUG saveLeadChanges] Caught error:', error);
+      console.error('[DEBUG saveLeadChanges] Error stringify:', JSON.stringify(error, null, 2));
+      toast.error(error?.message || t('leadDetails.saveChangesError'));
     } finally {
       setSavingLead(false);
     }
@@ -279,6 +307,32 @@ const LeadDetails: React.FC = () => {
     };
 
     fetchOptions();
+
+    // Carregar membros da equipe
+    const loadTeamMembers = async () => {
+      if (!tenant?.id) return
+      try {
+        const overview = await getTeamOverview()
+
+        if (overview?.members && overview.members.length > 0) {
+          const team = overview.members.map((m: any) => ({
+            id: m.user_id || m.id,
+            name: m.nome || m.email || 'Usuário',
+          }))
+          setTeamMembers(team)
+        } else if (user?.id) {
+          // Fallback: usuário atual
+          setTeamMembers([{ id: user.id, name: user.email || 'Você' }])
+        }
+      } catch (err) {
+        console.error('[ERROR] loadTeamMembers:', err)
+        // Fallback em caso de erro
+        if (user?.id) {
+          setTeamMembers([{ id: user.id, name: user.email || 'Você' }])
+        }
+      }
+    }
+    loadTeamMembers()
   }, [tenant]);
 
   if (loading) return (
@@ -437,6 +491,30 @@ const LeadDetails: React.FC = () => {
                   />
                 ) : (
                   <p className="text-slate-600 dark:text-slate-400">{lead.nome}</p>
+                )}
+              </div>
+
+
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  {t('common.owner', 'Responsável')}
+                </label>
+                {isEditing ? (
+                  <select
+                    value={editedLead.proprietario_id || ''}
+                    onChange={(e) => setEditedLead(prev => ({ ...prev, proprietario_id: e.target.value || null }))}
+                    className="w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                  >
+                    <option value="">Sem responsável</option>
+                    {teamMembers.map(m => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-slate-600 dark:text-slate-400">
+                    {teamMembers.find(m => m.id === lead.proprietario_id)?.name || 'Sem responsável'}
+                  </p>
                 )}
               </div>
 
@@ -668,7 +746,7 @@ const LeadDetails: React.FC = () => {
         onClose={() => setModalAddActivity(false)}
         leadId={lead.id}
         tenantId={tenant.id}
-        userId={user.id}
+        userId={user?.id || ''}
         onSuccess={() => setTimelineKey(prev => prev + 1)}
       />
 

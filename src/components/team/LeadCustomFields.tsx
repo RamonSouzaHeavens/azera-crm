@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/authStore';
-import { Plus, Settings, Type, Hash, Calendar, List, CheckSquare, X, Trash2 } from 'lucide-react';
+import { Plus, Settings, Type, Hash, Calendar, List, CheckSquare, X, Trash2, Tags, ListChecks } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 
 interface LeadCustomFieldsProps {
@@ -11,7 +11,7 @@ interface LeadCustomFieldsProps {
 interface CustomField {
   id: string;
   field_name: string;
-  field_type: 'text' | 'number' | 'date' | 'select' | 'boolean';
+  field_type: 'text' | 'number' | 'date' | 'select' | 'multiselect' | 'tags' | 'boolean';
   options: string[];
   required: boolean;
 }
@@ -28,6 +28,8 @@ const getFieldIcon = (fieldType: string) => {
     case 'number': return <Hash className="w-4 h-4" />;
     case 'date': return <Calendar className="w-4 h-4" />;
     case 'select': return <List className="w-4 h-4" />;
+    case 'multiselect': return <ListChecks className="w-4 h-4" />;
+    case 'tags': return <Tags className="w-4 h-4" />;
     case 'boolean': return <CheckSquare className="w-4 h-4" />;
     default: return <Type className="w-4 h-4" />;
   }
@@ -40,7 +42,7 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
   const [showManageModal, setShowManageModal] = useState(false);
   const [newField, setNewField] = useState({
     field_name: '',
-    field_type: 'text' as 'text' | 'number' | 'date' | 'select' | 'boolean',
+    field_type: 'text' as 'text' | 'number' | 'date' | 'select' | 'multiselect' | 'tags' | 'boolean',
     options: [] as string[],
     required: false,
     field_value: ''
@@ -230,6 +232,102 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
           </select>
         );
 
+      case 'multiselect': {
+        const selectedValues = value ? value.split(',').filter(Boolean) : [];
+        return (
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              {selectedValues.map((v, idx) => (
+                <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-md text-sm">
+                  {v}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newValues = selectedValues.filter((_, i) => i !== idx);
+                      updateFieldValue(field.id, newValues.join(','));
+                    }}
+                    className="hover:text-indigo-900 dark:hover:text-indigo-100"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value && !selectedValues.includes(e.target.value)) {
+                  updateFieldValue(field.id, [...selectedValues, e.target.value].join(','));
+                }
+              }}
+              className="w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+            >
+              <option value="">Adicionar opção...</option>
+              {field.options.filter(opt => !selectedValues.includes(opt)).map(option => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+        );
+      }
+
+      case 'tags': {
+        const tags = value ? value.split(',').filter(Boolean) : [];
+        return (
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag, idx) => (
+                <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-md text-sm">
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newTags = tags.filter((_, i) => i !== idx);
+                      updateFieldValue(field.id, newTags.join(','));
+                    }}
+                    className="hover:text-emerald-900 dark:hover:text-emerald-100"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const input = e.currentTarget;
+                    const newTag = input.value.trim();
+                    if (newTag && !tags.includes(newTag)) {
+                      updateFieldValue(field.id, [...tags, newTag].join(','));
+                      input.value = '';
+                    }
+                  }
+                }}
+                placeholder="Digite e pressione Enter..."
+                className="flex-1 px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 text-sm"
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                  const newTag = input?.value?.trim();
+                  if (newTag && !tags.includes(newTag)) {
+                    updateFieldValue(field.id, [...tags, newTag].join(','));
+                    input.value = '';
+                  }
+                }}
+                className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        );
+      }
+
       case 'boolean':
         return (
           <select
@@ -298,7 +396,7 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
           {/* Adicionar novo campo */}
           <div className="bg-slate-50 dark:bg-white/5 rounded-lg p-6 border border-slate-200 dark:border-white/10">
             <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Adicionar Novo Campo</h4>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               {/* Nome do Campo */}
               <div>
@@ -321,20 +419,22 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
                 </label>
                 <select
                   value={newField.field_type}
-                  onChange={(e) => setNewField(prev => ({ ...prev, field_type: e.target.value as 'text' | 'number' | 'date' | 'select' | 'boolean' }))}
+                  onChange={(e) => setNewField(prev => ({ ...prev, field_type: e.target.value as 'text' | 'number' | 'date' | 'select' | 'multiselect' | 'tags' | 'boolean' }))}
                   className="w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
                 >
                   <option value="text">Texto</option>
                   <option value="number">Número</option>
                   <option value="date">Data</option>
-                  <option value="select">Seleção</option>
+                  <option value="select">Seleção Única</option>
+                  <option value="multiselect">Seleção Múltipla</option>
+                  <option value="tags">Tags (livre)</option>
                   <option value="boolean">Sim/Não</option>
                 </select>
               </div>
             </div>
 
-            {/* Opções (somente para select) */}
-            {newField.field_type === 'select' && (
+            {/* Opções (para select e multiselect) */}
+            {(newField.field_type === 'select' || newField.field_type === 'multiselect') && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   Opções
@@ -454,7 +554,7 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
           {/* Lista de campos existentes */}
           <div>
             <h4 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Campos Configurados</h4>
-            
+
             {fields.length === 0 ? (
               <div className="text-center py-8 text-slate-500 dark:text-slate-400">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center">
@@ -483,12 +583,12 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                    
+
                     <div className="text-xs text-slate-500 dark:text-slate-400 mb-2">
                       Tipo: {field.field_type}
                       {field.options.length > 0 && ` • ${field.options.length} opções`}
                     </div>
-                    
+
                     <div className="text-xs text-slate-500 dark:text-slate-400">
                       <span className="font-medium">Código:</span> <code className="bg-slate-100 dark:bg-white/10 px-1 py-0.5 rounded text-xs">{field.id}</code>
                     </div>

@@ -159,11 +159,10 @@ export default function TarefaNova() {
 
       // Salvar checklist
       if (checklist.length > 0) {
-        const checklistInserts = checklist.map((item, index) => ({
+        const checklistInserts = checklist.map((item) => ({
           tarefa_id: tarefa.id,
           texto: item.titulo,
-          done: item.concluido,
-          ordem: index
+          done: item.concluido
         }))
 
         const { error: checklistError } = await supabase

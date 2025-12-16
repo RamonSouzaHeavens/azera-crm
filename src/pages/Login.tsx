@@ -12,6 +12,7 @@ import GmailIcon from '../images/gmail.png'
 import OutlookIcon from '../images/outlook.png'
 import YahooIcon from '../images/yahoo.png'
 import Iridescence from '../components/ui/ethereal-shadow'
+import { LoginTransition } from '../components/ui/LoginTransition'
 
 interface LoginData { email: string; password: string }
 interface SignUpData {
@@ -19,8 +20,7 @@ interface SignUpData {
   password: string;
   name: string;
   tenantName: string;
-  personalEmail?: string;
-  telefone?: string;
+  telefone: string;
 }
 
 export const Login = () => {
@@ -33,12 +33,12 @@ export const Login = () => {
   const [showEmailExistsModal, setShowEmailExistsModal] = useState(false)
   const [existingEmail, setExistingEmail] = useState('')
   const [showSuccessPopup, setShowSuccessPopup] = useState(false)
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
 
   const navigate = useNavigate()
   const { user, isAdmin, signIn, signUp } = useAuthStore()
   const { t } = useTranslation()
 
-  // Schemas moved inside to use t()
   const loginSchema = yup.object({
     email: yup.string().required(t('auth.validation.emailRequired')),
     password: yup.string().min(6, t('auth.validation.passwordMin')).required(t('auth.validation.passwordRequired')),
@@ -53,14 +53,12 @@ export const Login = () => {
       .oneOf([yup.ref('password')], t('auth.validation.passwordMatch'))
       .required(t('auth.validation.confirmRequired')),
     tenantName: yup.string().required(t('auth.validation.tenantNameRequired')),
-    personalEmail: yup.string().email(t('auth.validation.personalEmailInvalid')).optional(),
-    telefone: yup.string().optional(),
+    telefone: yup.string().required(t('auth.validation.phoneRequired')),
   })
 
   const loginForm = useForm({ resolver: yupResolver(loginSchema) })
   const signupForm = useForm({ resolver: yupResolver(signupSchema) })
 
-  // Função para reenviar email de confirmação
   const handleResendConfirmationEmail = async () => {
     if (!confirmEmail) return
 
@@ -95,18 +93,21 @@ export const Login = () => {
   }, [user, isAdmin, showConfirmModal])
 
   if ((user || isAdmin) && !showConfirmModal) {
-    // Deixar isRedirecting ser true para evitar render do formulário
     return <Navigate to="/app/dashboard" replace />
   }
 
   const handleLogin = async (data: LoginData) => {
+    setIsLoggingIn(true)
+
+    // Delay de 3 segundos para o efeito visual
+    await new Promise(resolve => setTimeout(resolve, 3000))
+
     try {
       console.log('🔐 Tentando fazer login...');
       await signIn(data.email, data.password)
       console.log('✅ Login bem-sucedido!');
       toast.success(t('auth.toasts.loginSuccess'))
 
-      // Verificar se há convite pendente
       const pendingToken = localStorage.getItem('pending_invite_token')
       if (pendingToken) {
         console.log('🎯 Convite pendente encontrado, redirecionando...')
@@ -114,10 +115,8 @@ export const Login = () => {
         navigate(`/invite/accept?token=${encodeURIComponent(pendingToken)}`)
         return
       }
-
-      // O useEffect vai redirecionar automaticamente após o estado atualizar
-      // Não fazer navigate aqui para evitar conflito
     } catch (error: unknown) {
+      setIsLoggingIn(false)
       console.error('❌ Erro no login:', error);
       const errorMessage = error instanceof Error ? (error.message || 'Erro ao fazer login') : 'Ocorreu um erro desconhecido'
       console.error('Mensagem de erro:', errorMessage);
@@ -127,41 +126,29 @@ export const Login = () => {
 
   const handleSignUp = async (data: SignUpData) => {
     try {
-      await signUp(data.email, data.password, data.name, data.tenantName, data.personalEmail, data.telefone)
+      await signUp(data.email, data.password, data.name, data.tenantName, undefined, data.telefone)
       toast.success(t('auth.toasts.accountCreated'))
       setConfirmEmail(signupForm.getValues('email'))
       setShowConfirmModal(true)
       setIsSignUp(false)
 
-      // Verificar se há convite pendente após criação da conta
       const pendingToken = localStorage.getItem('pending_invite_token')
       if (pendingToken) {
         console.log('🎯 Convite pendente encontrado após criar conta')
-        // Não remover o token ainda, será removido quando o convite for aceito
-        // O usuário precisará confirmar o email primeiro, então isso será processado no login
       }
 
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido'
-
-      // Log do erro para debug
       console.error('❌ signUp - erro:', err)
 
-      // Tratar erro de confirmação de email de forma amigável
       if (errorMessage.includes('CONFIRM_EMAIL_REQUIRED')) {
-        console.log('✅ Redirecionando para página de confirmação de email')
-        const email = signupForm.getValues('email')
-        console.log('📧 Email para redirecionar:', email)
-        console.log('🚀 Executando redirecionamento...')
-        navigate(`/confirmar-email?email=${encodeURIComponent(email)}`)
+        navigate(`/confirmar-email?email=${encodeURIComponent(signupForm.getValues('email'))}`)
         return
       }
 
-      // Detectar se é email já registrado
       if (errorMessage.includes('User already registered') ||
         errorMessage.includes('Email already registered') ||
         errorMessage.includes('already exists')) {
-        console.log('📧 Email já registrado detectado')
         setExistingEmail(data.email)
         setShowEmailExistsModal(true)
       } else {
@@ -177,15 +164,15 @@ export const Login = () => {
       amplitude={0.1}
       speed={0.3}
     >
-      {/* Container centralizado */}
+      {isLoggingIn && <LoginTransition />}
+
       <div className="flex items-center justify-center min-h-screen p-4 md:p-6" data-login-page>
-        <div className="w-full max-w-md">
-          {/* Header do formulário */}
-          <div className="mb-12 text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30 mb-4 mx-auto">
+        <div className={`w-full transition-all duration-300 ${isSignUp ? 'max-w-2xl' : 'max-w-md'}`}>
+          <div className={`text-center ${isSignUp ? 'mb-6' : 'mb-12'}`}>
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/30 mb-3 mx-auto">
               {isSignUp ? <User className="w-6 h-6 text-blue-400" /> : <Lock className="w-6 h-6 text-blue-400" />}
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight">
+            <h2 className={`font-bold text-white mb-1 tracking-tight ${isSignUp ? 'text-2xl md:text-3xl' : 'text-3xl md:text-4xl'}`}>
               {isSignUp ? t('auth.registerTitle') : t('auth.loginTitle')}
             </h2>
             <p className="text-sm md:text-base text-slate-400">
@@ -193,139 +180,132 @@ export const Login = () => {
             </p>
           </div>
 
-          {/* Card com design premium */}
-          <div className="rounded-2xl bg-white/[0.02] border border-white/10 p-8 md:p-10 font-['Outfit'] backdrop-blur-xl">
+          <div className={`rounded-2xl bg-white/[0.02] border border-white/10 font-['Outfit'] backdrop-blur-xl ${isSignUp ? 'p-6 md:p-8' : 'p-8 md:p-10'}`}>
             {isSignUp ? (
-              <form onSubmit={signupForm.handleSubmit(handleSignUp)} className="space-y-6">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-text opacity-70">{t('auth.labels.fullName')}</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400 opacity-70 w-5 h-5" />
-                    <input
-                      {...signupForm.register('name')}
-                      type="text"
-                      placeholder={t('auth.placeholders.name')}
-                      className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-blue-500/30 text-text placeholder:text-text/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
-                    />
+              <form onSubmit={signupForm.handleSubmit(handleSignUp)} className="space-y-4">
+                {/* Row 1: Nome + Email */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-text opacity-70">{t('auth.labels.fullName')}</label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400 opacity-70 w-4 h-4" />
+                      <input
+                        {...signupForm.register('name')}
+                        type="text"
+                        placeholder={t('auth.placeholders.name')}
+                        className="w-full pl-10 pr-3 py-2.5 rounded-lg bg-white/5 border border-blue-500/30 text-text text-sm placeholder:text-text/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                      />
+                    </div>
+                    {signupForm.formState.errors.name && (
+                      <p className="text-[10px] text-rose-500">{signupForm.formState.errors.name.message}</p>
+                    )}
                   </div>
-                  {signupForm.formState.errors.name && (
-                    <p className="text-xs text-rose-500">{signupForm.formState.errors.name.message}</p>
-                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-text opacity-70">{t('auth.email')}</label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-primary opacity-50 w-4 h-4" />
+                      <input
+                        {...signupForm.register('email')}
+                        type="email"
+                        placeholder={t('auth.placeholders.email')}
+                        className="w-full pl-10 pr-3 py-2.5 rounded-lg bg-white/5 border border-blue-500/30 text-text text-sm placeholder:text-text/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                      />
+                    </div>
+                    {signupForm.formState.errors.email && (
+                      <p className="text-[10px] text-rose-500">{signupForm.formState.errors.email.message}</p>
+                    )}
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-text opacity-70">{t('auth.email')}</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-primary opacity-50 w-5 h-5" />
-                    <input
-                      {...signupForm.register('email')}
-                      type="email"
-                      placeholder={t('auth.placeholders.email')}
-                      className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-blue-500/30 text-text placeholder:text-text/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
-                    />
+                {/* Row 2: Empresa + Telefone */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-text opacity-70">{t('auth.labels.tenantName')}</label>
+                    <div className="relative">
+                      <Building className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400 opacity-70 w-4 h-4" />
+                      <input
+                        {...signupForm.register('tenantName')}
+                        type="text"
+                        placeholder={t('auth.placeholders.tenantName')}
+                        className="w-full pl-10 pr-3 py-2.5 rounded-lg bg-white/5 border border-blue-500/30 text-text text-sm placeholder:text-text/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                      />
+                    </div>
+                    {signupForm.formState.errors.tenantName && (
+                      <p className="text-[10px] text-rose-500">{signupForm.formState.errors.tenantName.message}</p>
+                    )}
                   </div>
-                  {signupForm.formState.errors.email && (
-                    <p className="text-xs text-rose-500">{signupForm.formState.errors.email.message}</p>
-                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-text opacity-70">{t('auth.labels.phone')}</label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400 opacity-70 w-4 h-4" />
+                      <input
+                        {...signupForm.register('telefone')}
+                        type="tel"
+                        placeholder={t('auth.placeholders.phone')}
+                        className="w-full pl-10 pr-3 py-2.5 rounded-lg bg-white/5 border border-blue-500/30 text-text text-sm placeholder:text-text/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                      />
+                    </div>
+                    {signupForm.formState.errors.telefone && (
+                      <p className="text-[10px] text-rose-500">{signupForm.formState.errors.telefone.message}</p>
+                    )}
+                  </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-text opacity-70">{t('auth.labels.tenantName')}</label>
-                  <div className="relative">
-                    <Building className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400 opacity-70 w-5 h-5" />
-                    <input
-                      {...signupForm.register('tenantName')}
-                      type="text"
-                      placeholder={t('auth.placeholders.tenantName')}
-                      className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-blue-500/30 text-text placeholder:text-text/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
-                    />
-                  </div>
-                  {signupForm.formState.errors.tenantName && (
-                    <p className="text-xs text-rose-500">{signupForm.formState.errors.tenantName.message}</p>
-                  )}
-                </div>
+                {/* Row 3: Senha + Confirmar Senha */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-text opacity-70">{t('auth.labels.personalEmail')}</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-primary opacity-50 w-5 h-5" />
-                    <input
-                      {...signupForm.register('personalEmail')}
-                      type="email"
-                      placeholder={t('auth.placeholders.personalEmail')}
-                      className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-blue-500/30 text-text placeholder:text-text/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
-                    />
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-text opacity-70">{t('auth.password')}</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-primary opacity-50 w-4 h-4" />
+                      <input
+                        {...signupForm.register('password')}
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder={t('auth.placeholders.password')}
+                        className="w-full pl-10 pr-10 py-2.5 rounded-lg bg-white/5 border border-blue-500/30 text-text text-sm placeholder:text-text/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(s => !s)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text opacity-40 hover:opacity-70 transition-opacity"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {signupForm.formState.errors.password && (
+                      <p className="text-[10px] text-rose-500">{signupForm.formState.errors.password.message}</p>
+                    )}
                   </div>
-                  {signupForm.formState.errors.personalEmail && (
-                    <p className="text-xs text-rose-500">{signupForm.formState.errors.personalEmail.message}</p>
-                  )}
-                </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-text opacity-70">{t('auth.labels.phone')}</label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400 opacity-70 w-5 h-5" />
-                    <input
-                      {...signupForm.register('telefone')}
-                      type="tel"
-                      placeholder={t('auth.placeholders.phone')}
-                      className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-blue-500/30 text-text placeholder:text-text/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
-                    />
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-text opacity-70">{t('auth.confirmPassword')}</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-primary opacity-50 w-4 h-4" />
+                      <input
+                        {...signupForm.register('confirmPassword')}
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        placeholder={t('auth.placeholders.confirmPassword')}
+                        className="w-full pl-10 pr-10 py-2.5 rounded-lg bg-white/5 border border-blue-500/30 text-text text-sm placeholder:text-text/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(s => !s)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text opacity-40 hover:opacity-70 transition-opacity"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {signupForm.formState.errors.confirmPassword && (
+                      <p className="text-[10px] text-rose-500">{signupForm.formState.errors.confirmPassword.message}</p>
+                    )}
                   </div>
-                  {signupForm.formState.errors.telefone && (
-                    <p className="text-xs text-rose-500">{signupForm.formState.errors.telefone.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-text opacity-70">{t('auth.password')}</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-primary opacity-50 w-5 h-5" />
-                    <input
-                      {...signupForm.register('password')}
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder={t('auth.placeholders.password')}
-                      className="w-full pl-11 pr-11 py-3 rounded-xl bg-white/5 border border-blue-500/30 text-text placeholder:text-text/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(s => !s)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text opacity-40 hover:opacity-70 transition-opacity"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                  {signupForm.formState.errors.password && (
-                    <p className="text-xs text-rose-500">{signupForm.formState.errors.password.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-text opacity-70">{t('auth.confirmPassword')}</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-primary opacity-50 w-5 h-5" />
-                    <input
-                      {...signupForm.register('confirmPassword')}
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      placeholder={t('auth.placeholders.confirmPassword')}
-                      className="w-full pl-11 pr-11 py-3 rounded-xl bg-white/5 border border-blue-500/30 text-text placeholder:text-text/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(s => !s)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text opacity-40 hover:opacity-70 transition-opacity"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                  {signupForm.formState.errors.confirmPassword && (
-                    <p className="text-xs text-rose-500">{signupForm.formState.errors.confirmPassword.message}</p>
-                  )}
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-4 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-cyan-600 text-white transition-all transform active:scale-[0.98] text-lg hover:from-blue-600 hover:to-cyan-700"
+                  className="w-full py-3 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-cyan-600 text-white transition-all transform active:scale-[0.98] text-base hover:from-blue-600 hover:to-cyan-700"
                 >
                   {t('auth.buttons.createAccount')}
                 </button>
@@ -377,7 +357,6 @@ export const Login = () => {
                 >
                   {t('auth.buttons.enter')}
                 </button>
-                {/* Esqueci a senha */}
                 <div className="mt-3 text-center">
                   <Link
                     to="/forgot-password"
@@ -389,27 +368,6 @@ export const Login = () => {
               </form>
             )}
 
-            {/* Social - OCULTO TEMPORARIAMENTE */}
-            {/* <div className="mt-8">
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-white/10" />
-                <span className="text-xs text-gray-400">Ou continue com</span>
-                <div className="flex-1 h-px bg-white/10" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mt-5">
-                <button className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition">
-                  <svg viewBox="0 0 24 24" className="w-5 h-5"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.4-1.7 4-5.5 4-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.2.8 3.9 1.5l2.6-2.6C16.6 3 14.5 2 12 2 6.9 2 2.8 6.1 2.8 11.2S6.9 20.4 12 20.4c7 0 9.3-4.9 8.6-8.1H12z"/><path fill="#34A853" d="M3.9 7.3l3.2 2.4c.9-2.6 3.3-3.9 5-3.9 1.5 0 2.5.6 3.1 1.1l2.6-2.6C16.6 3 14.5 2 12 2 8.4 2 5.3 4.1 3.9 7.3z"/><path fill="#FBBC05" d="M12 22c2.9 0 5.4-1 7.2-2.7l-3.6-2.8c-1 .7-2.3 1.1-3.6 1.1-2.8 0-5.2-1.9-6.1-4.5H2.2v2.8C4 20.5 7.7 22 12 22z"/><path fill="#4285F4" d="M22.6 12.3c0-.8-.1-1.5-.2-2.2H12v4.3h5.9c-.3 1.4-1 2.5-2.2 3.3l2.8 2.1c2.1-1.9 3.1-4.7 3.1-7.5z"/></svg>
-                  <span className="text-sm text-slate-200">Google</span>
-                </button>
-                <button className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition">
-                  <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white"><path d="M18.7 19.5c-.8 1.2-1.7 2.5-3 2.5s-1.8-.8-3.3-.8-2 .8-3.3.8c-1.3 0-2.3-1.3-3.1-2.5C4.2 17 2.9 12.4 4.7 9.4 5.6 7.9 7.1 7 8.8 7c1.2 0 2.3.9 3.1.9.8 0 2.3-1.1 3.8-.9 1.6.2 3 .9 3.7 2-2.1 1.1-2.5 4-1.1 5.9.3.4 1 .9 1 .9-.2.7-.6 1.8-1.6 2.7zM13 3.5c.7-.8 1.9-1.5 2.9-1.5.1 1.2-.3 2.3-1 3.2-.7.8-1.8 1.5-2.9 1.4-.1-1.2.4-2.3 1-3.1z"/></svg>
-                  <span className="text-sm text-slate-200">Apple</span>
-                </button>
-              </div>
-            </div> */}
-
-            {/* Footer / trocar estado */}
             <div className="mt-8 pt-6 border-t border-white/5 text-center">
               <p className="text-sm text-slate-400">
                 {isSignUp ? t('auth.buttons.haveAccount') : t('auth.buttons.noAccount')}{' '}
@@ -423,7 +381,6 @@ export const Login = () => {
               </p>
             </div>
 
-            {/* Suporte */}
             <div className="mt-6 text-center">
               <a
                 href="https://wa.me/5531991318312"
@@ -449,7 +406,6 @@ export const Login = () => {
         </div>
       </div>
 
-      {/* Modal de confirmação */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/70" onClick={() => setShowConfirmModal(false)} />
@@ -490,11 +446,10 @@ export const Login = () => {
         </div>
       )}
 
-      {/* Modal: Email já existe */}
       {showEmailExistsModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setShowEmailExistsModal(false)} />
-          <div className="relative z-10 w-full max-w-md mx-4 rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-200">
+          <div className="absolute inset-0 bg-black/85" onClick={() => setShowEmailExistsModal(false)} />
+          <div className="relative z-10 w-full max-w-md mx-4 rounded-2xl border border-white/10 bg-slate-900/95 backdrop-blur-xl p-6 text-slate-200">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center">
                 <span className="text-2xl">⚠️</span>
@@ -529,7 +484,6 @@ export const Login = () => {
                   setIsSignUp(false)
                   setTimeout(() => {
                     loginForm.setValue('email', existingEmail)
-                    // Rola para o formulário de login
                     document.querySelector('[data-login-form]')?.scrollIntoView({ behavior: 'smooth' })
                   }, 100)
                 }}
@@ -548,23 +502,19 @@ export const Login = () => {
         </div>
       )}
 
-      {/* Popup: Conta criada com sucesso */}
       {showSuccessPopup && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center" style={{ pointerEvents: 'auto' }}>
           <div className="absolute inset-0 bg-black/70" onClick={() => setShowSuccessPopup(false)} />
           <div className="relative z-10 w-full max-w-md mx-4 rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/90 to-cyan-950/90 p-8 text-slate-200">
             <div className="flex flex-col items-center text-center">
-              {/* Ícone de sucesso animado */}
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/50 animate-pulse">
                 <span className="text-4xl">📧</span>
               </div>
 
-              {/* Título */}
               <h3 className="text-2xl font-bold text-white mb-3 bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
                 {t('auth.modals.successPopup.title')}
               </h3>
 
-              {/* Mensagem */}
               <div className="space-y-3 text-gray-300 mb-6">
                 <p className="text-base leading-relaxed">
                   {t('auth.modals.successPopup.message1')}
@@ -580,7 +530,6 @@ export const Login = () => {
                 </p>
               </div>
 
-              {/* Atalhos de Email */}
               <div className="mb-8 w-full">
                 <p className="text-sm text-gray-400 mb-3">{t('auth.modals.successPopup.accessEmail')}</p>
                 <div className="flex gap-3 justify-center">
@@ -614,7 +563,6 @@ export const Login = () => {
                 </div>
               </div>
 
-              {/* Botão */}
               <button
                 onClick={() => setShowSuccessPopup(false)}
                 className="w-full px-6 py-3 rounded-xl font-semibold text-base bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-600 hover:to-cyan-700 transition-all duration-300 hover:scale-105 active:scale-95"

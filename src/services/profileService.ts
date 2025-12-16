@@ -1,8 +1,7 @@
 import { supabase } from '../lib/supabase'
 
 export type UserProfile = {
-  id: string
-  user_id: string
+  id: string // Este é o user_id (PK referenciando auth.users)
   full_name: string | null
   display_name: string | null
   avatar_url: string | null
@@ -11,6 +10,8 @@ export type UserProfile = {
   profile_completed: boolean
   created_at: string
   updated_at: string
+  // Alias para compatibilidade
+  user_id?: string
 }
 
 export type TeamMemberWithProfile = {
@@ -54,7 +55,6 @@ export async function getUserProfile(): Promise<UserProfile | null> {
       .from('profiles')
       .insert({
         id: user.id,
-        user_id: user.id,
         full_name: user.user_metadata?.full_name || '',
         display_name: user.user_metadata?.full_name || '',
         profile_completed: false,
@@ -145,7 +145,6 @@ export async function updateUserProfile(profile: Partial<UserProfile>): Promise<
       console.log('➕ [updateUserProfile] Perfil não existe, fazendo INSERT...')
       const insertData = {
         id: user.id,
-        user_id: user.id,
         full_name: profile.full_name ?? null,
         display_name: profile.display_name ?? null,
         avatar_url: profile.avatar_url ?? null,

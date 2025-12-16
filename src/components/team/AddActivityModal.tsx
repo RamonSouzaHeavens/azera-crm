@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
+import { checkAndUnlockAchievements } from '../../services/achievementService';
 
 interface AddActivityModalProps {
   isOpen: boolean;
@@ -87,6 +88,11 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
           });
 
         if (error) throw error;
+
+        // Verificar conquistas ao registrar atividade (ligação/reunião/interação)
+        if (newActivity.type === 'atividade' || newActivity.type === 'interacao') {
+          checkAndUnlockAchievements(userId, tenantId);
+        }
       }
 
       setNewActivity({ type: 'nota', title: '', description: '' });
@@ -105,17 +111,17 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute bg-white dark:bg-slate-900/98 border border-slate-300 dark:border-white/10 rounded-2xl p-6 shadow-2xl w-96 max-w-[90vw]">
+      <div className="absolute bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/10 rounded-2xl p-6 shadow-2xl w-96 max-w-[90vw]">
         <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">
           {activityToEdit ? t('leadDetails.editActivityTitle') : t('leadDetails.addActivityTitle')}
         </h2>
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">{t('leadDetails.activityTypeLabel')}</label>
+            <label className="text-sm font-medium text-slate-500 dark:text-slate-300 mb-2 block">{t('leadDetails.activityTypeLabel')}</label>
             <select
               value={newActivity.type}
               onChange={(e) => setNewActivity(prev => ({ ...prev, type: e.target.value as 'nota' | 'atividade' | 'interacao' }))}
-              className="w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white"
+              className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 text-slate-900 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none"
             >
               <option value="nota">{t('leadDetails.activityTypeNote')}</option>
               <option value="atividade">{t('leadDetails.activityTypeActivity')}</option>
@@ -124,24 +130,24 @@ export const AddActivityModal: React.FC<AddActivityModalProps> = ({
           </div>
 
           <div>
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">{t('leadDetails.activityTitleLabel')}</label>
+            <label className="text-sm font-medium text-slate-500 dark:text-slate-300 mb-2 block">{t('leadDetails.activityTitleLabel')}</label>
             <input
               type="text"
               value={newActivity.title}
               onChange={(e) => setNewActivity(prev => ({ ...prev, title: e.target.value }))}
               placeholder="Ex: Ligação realizada, Email enviado..."
-              className="w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-500"
+              className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">{t('leadDetails.activityDescriptionLabel')}</label>
+            <label className="text-sm font-medium text-slate-500 dark:text-slate-300 mb-2 block">{t('leadDetails.activityDescriptionLabel')}</label>
             <textarea
               value={newActivity.description}
               onChange={(e) => setNewActivity(prev => ({ ...prev, description: e.target.value }))}
               placeholder={t('leadDetails.activityDescriptionPlaceholder')}
               rows={3}
-              className="w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-500 resize-none"
+              className="w-full px-3 py-2 rounded-lg bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 resize-none outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             />
           </div>
 

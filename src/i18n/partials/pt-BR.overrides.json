@@ -59,6 +59,7 @@
       "passwordMatch": "As senhas precisam coincidir",
       "confirmRequired": "Confirmação é obrigatória",
       "tenantNameRequired": "Nome da empresa é obrigatório",
+      "phoneRequired": "Telefone é obrigatório",
       "personalEmailInvalid": "Email pessoal inválido"
     },
     "toasts": {

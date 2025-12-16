@@ -21,7 +21,7 @@ import ProdutosAdmin from './pages/ProdutosAdmin'
 import Tarefas from './pages/Tarefas'
 import TarefaNova from './pages/TarefaNova'
 import Configuracoes from './pages/Configuracoes'
-import MinhaEquipe from './pages/MinhaEquipe'
+import MinhaEquipeBeta from './pages/MinhaEquipeBeta'
 import JoinTeam from './pages/JoinTeam'
 import ResetPassword from './pages/ResetPassword'
 import EsqueciSenha from './pages/EsqueciSenha'
@@ -148,8 +148,11 @@ function App() {
                 <Route path="tarefas" element={<Tarefas />} />
                 <Route path="tarefa-nova" element={<TarefaNova />} />
                 <Route path="configuracoes" element={<Configuracoes />} />
-                <Route path="equipe" element={<MinhaEquipe />} />
-                <Route path="minha-equipe" element={<MinhaEquipe />} />
+                {/* Rotas de equipe - todas direcionam para MinhaEquipeBeta */}
+                <Route path="equipe" element={<Navigate to="/app/equipe-beta" replace />} />
+                <Route path="minha-equipe" element={<Navigate to="/app/equipe-beta" replace />} />
+                <Route path="equipe-beta" element={<MinhaEquipeBeta />} />
+
                 <Route path="automacoes" element={<Automacoes />} />
                 <Route path="automacoes/webhooks" element={<WebhooksPage />} />
                 <Route path="documentacao" element={<Documentacao />} />

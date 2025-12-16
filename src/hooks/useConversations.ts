@@ -15,6 +15,7 @@ export interface Conversation {
   avatar?: string
   avatar_url?: string
   status?: string
+  categoria?: string
 }
 
 export function useConversations() {
@@ -31,7 +32,7 @@ export function useConversations() {
       .from('conversations')
       .select(`
         *,
-        clientes!inner(nome, telefone, status)
+        clientes!inner(nome, telefone, status, categoria)
       `)
       .eq('tenant_id', tenant.id)
       .order('last_message_at', { ascending: false })
@@ -51,7 +52,8 @@ export function useConversations() {
         unread_count: conv.unread_count || 0,
         avatar: conv.avatar_url || undefined,
         avatar_url: conv.avatar_url || undefined,
-        status: conv.clientes?.status
+        status: conv.clientes?.status,
+        categoria: conv.clientes?.categoria || 'trabalho'
       }))
 
       // Garantir unicidade por número de contato (manter a conversa mais recente)

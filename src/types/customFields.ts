@@ -13,6 +13,7 @@ export type CustomFieldType =
   | 'boolean'
   | 'select'
   | 'multiselect'
+  | 'tags'
   | 'url'
   | 'email'
   | 'phone'
@@ -29,7 +30,7 @@ export interface CustomFieldDefinition {
   field_default?: string | null
   field_placeholder?: string | null
   field_help_text?: string | null
-  
+
   // Validações
   required: boolean
   min_value?: number | null
@@ -37,16 +38,16 @@ export interface CustomFieldDefinition {
   min_length?: number | null
   max_length?: number | null
   pattern?: string | null // Regex
-  
+
   // Organização
   field_group?: string | null
   display_order: number
-  
+
   // Visibilidade
   show_in_list: boolean
   show_in_filters: boolean
   searchable: boolean
-  
+
   active: boolean
   created_at: string
   updated_at: string
@@ -86,39 +87,39 @@ export interface ProdutoUniversal {
   id: string
   tenant_id: string
   equipe_id?: string | null
-  
+
   // Informações básicas
   nome: string
   descricao?: string | null
   categoria: string // 'imovel', 'produto', 'servico', etc
   subcategoria?: string | null
   codigo_referencia?: string | null
-  
+
   // Preço e estoque
   preco?: number | null
   preco_custo?: number | null
   unidade_medida: string
   quantidade_estoque?: number | null
-  
+
   // Status e destaque
   ativo: boolean
   destaque: boolean
-  
+
   // Mídia
   capa_url?: string | null
   galeria_urls?: string[] | null
   arquivo_urls?: string[] | null
-  
+
   // Tags e metadados
   tags?: string[] | null
-  
+
   // Timestamps
   created_at: string
   updated_at: string
-  
+
   // Campos personalizados (carregados dinamicamente)
   custom_fields?: Record<string, FormattedCustomField>
-  
+
   // Relacionamento
   equipe?: {
     id: string
@@ -144,7 +145,7 @@ export interface ProdutoFormData {
   capa_url?: string | null
   galeria_urls?: string[]
   arquivo_urls?: string[]
-  
+
   // Custom fields (chave => valor)
   custom_fields?: Record<string, string | number | boolean | string[] | null>
 }
@@ -159,7 +160,7 @@ export interface ProdutoFilters {
   preco_max?: number
   tags?: string[]
   search?: string
-  
+
   // Custom field filters (chave => valor)
   custom_filters?: Record<string, string | number | boolean | string[]>
 }

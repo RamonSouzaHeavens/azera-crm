@@ -14,7 +14,8 @@ import {
   Phone,
   FileText,
   Image as ImageIcon,
-  AlertCircle
+  AlertCircle,
+  Tags
 } from 'lucide-react'
 
 interface CustomFieldInputProps {
@@ -48,6 +49,8 @@ export function CustomFieldInput({ field, value, onChange, error, disabled }: Cu
       case 'select':
       case 'multiselect':
         return <ChevronDown className={iconClass} />
+      case 'tags':
+        return <Tags className={iconClass} />
       case 'url':
         return <LinkIcon className={iconClass} />
       case 'email':
@@ -64,8 +67,8 @@ export function CustomFieldInput({ field, value, onChange, error, disabled }: Cu
   }, [field.field_type])
 
   const baseInputClass = `w-full px-4 py-2.5 rounded-xl bg-white/5 border text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 transition-all ${
-    error 
-      ? 'border-rose-500/50 focus:border-rose-500 focus:ring-rose-500/20' 
+    error
+      ? 'border-rose-500/50 focus:border-rose-500 focus:ring-rose-500/20'
       : 'border-white/10 focus:border-cyan-500 focus:ring-cyan-500/20'
   } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`
 
@@ -225,6 +228,51 @@ export function CustomFieldInput({ field, value, onChange, error, disabled }: Cu
                 <span className="text-sm text-slate-300">{option}</span>
               </label>
             ))}
+          </div>
+        )
+      }
+
+      case 'tags': {
+        const tags = (value as string[]) || []
+        return (
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag, idx) => (
+                <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded-md text-sm">
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newTags = tags.filter((_, i) => i !== idx)
+                      onChange(newTags.length ? newTags : null)
+                    }}
+                    disabled={disabled}
+                    className="hover:text-emerald-100 disabled:opacity-50"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </span>
+              ))}
+            </div>
+            <input
+              type="text"
+              placeholder={field.field_placeholder || "Digite e pressione Enter..."}
+              disabled={disabled}
+              className={baseInputClass}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  const input = e.currentTarget
+                  const newTag = input.value.trim()
+                  if (newTag && !tags.includes(newTag)) {
+                    onChange([...tags, newTag])
+                    input.value = ''
+                  }
+                }
+              }}
+            />
           </div>
         )
       }

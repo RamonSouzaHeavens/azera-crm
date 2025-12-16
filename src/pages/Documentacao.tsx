@@ -18,19 +18,19 @@ export default function Documentacao() {
   // Acesso negado (não owner)
   if (!possuiAcesso) {
     return (
-      <div className="min-h-full bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
+      <div className="min-h-full bg-slate-900 flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
-          <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-8 h-8 text-red-600 dark:text-red-400" />
+          <div className="w-16 h-16 rounded-full bg-red-900/30 flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-8 h-8 text-red-400" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+          <h1 className="text-2xl font-bold text-white mb-2">
             {t('documentation.accessRestricted.title')}
           </h1>
-          <p className="text-slate-600 dark:text-slate-400 mb-6">
+          <p className="text-slate-400 mb-6">
             {t('documentation.accessRestricted.description')}
           </p>
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 rounded-lg p-4">
-            <p className="text-sm text-blue-700 dark:text-blue-300">
+          <div className="bg-blue-900/20 border border-blue-900/30 rounded-lg p-4">
+            <p className="text-sm text-blue-300">
               {t('documentation.accessRestricted.contactOwner')}
             </p>
           </div>

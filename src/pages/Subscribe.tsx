@@ -131,38 +131,53 @@ const Subscribe = () => {
           </div>
 
           {/* Launch Offer Banner */}
-          <div className="relative w-full bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-800">
-            {/* Decorative Background */}
-            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-blue-600/10 to-purple-600/10 dark:from-blue-900/20 dark:to-purple-900/20">
-              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>
-            </div>
+          <div className={`relative w-full rounded-3xl border overflow-hidden ${isDark
+              ? 'bg-white/5 border-white/10'
+              : 'bg-slate-50 border-slate-200'
+            }`}>
+            {/* Decorative top gradient */}
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-purple-600" />
 
             <div className="relative p-6 md:p-8 flex flex-col md:flex-row items-center gap-6 md:gap-8">
               {/* Icon */}
               <div className="flex-shrink-0">
-                <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-lg border-4 border-white dark:border-slate-700">
-                  <Rocket className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isDark
+                    ? 'bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-cyan-500/30'
+                    : 'bg-gradient-to-br from-cyan-100 to-purple-100 border border-cyan-200'
+                  }`}>
+                  <Rocket className={`w-8 h-8 ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`} />
                 </div>
               </div>
 
               {/* Content */}
               <div className="flex-1 text-center md:text-left space-y-2">
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                  Oferta de Lançamento!
-                </h2>
-                <p className="text-slate-600 dark:text-slate-400 max-w-xl">
-                  Desbloqueie todo o potencial do Azera CRM com <span className="font-bold text-blue-600 dark:text-blue-400">50% de desconto</span> nos primeiros 3 meses. Aproveite automações ilimitadas e suporte prioritário.
+                <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${isDark
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                      : 'bg-cyan-100 text-cyan-700 border border-cyan-200'
+                    }`}>
+                    🚀 Oferta de Lançamento
+                  </span>
+                </div>
+                <p className={`max-w-xl ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Aproveite o preço especial de lançamento: de <span className="line-through">R$ 80</span> por apenas <span className={`font-bold ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`}>R$ 50/mês</span>. Automações ilimitadas e suporte prioritário inclusos.
                 </p>
               </div>
 
-              {/* Action */}
-              <div className="flex-shrink-0">
+              {/* Price + Action */}
+              <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                <div className={`px-3 py-1 rounded-full text-sm font-bold ${isDark
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                  }`}>
+                  -37% OFF
+                </div>
                 <button
                   onClick={() => window.open('https://wa.me/5531991318312?text=Oi quero ativar minha assinatura com a oferta de lançamento', '_blank')}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25 transform transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2"
+                  className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/25 transform transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2"
                 >
                   <Zap className="w-5 h-5 fill-current" />
-                  R$ 50 - Ativar Oferta
+                  R$ 50/mês - Ativar
                 </button>
               </div>
             </div>

@@ -5,6 +5,17 @@ import type { Subscription } from '../types/subscription'
 import { isSubscriptionActive } from '../lib/subscription'
 import { useAuthStore } from '../stores/authStore'
 
+// Flag para bypass em desenvolvimento - defina como true para testar funcionalidades premium
+const DEV_BYPASS_SUBSCRIPTION = import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_SUBSCRIPTION === 'true'
+
+/**
+ * Modelo de negócio:
+ * - Cada usuário precisa da sua própria assinatura
+ * - Vendedores NÃO herdam assinatura do owner/tenant
+ * - Funcionalidades gratuitas: equipe básica, até 5 produtos, leads ilimitados
+ * - Funcionalidades PREMIUM (requer assinatura): distribuição de leads, canais,
+ *   ferramentas pro, automações, chaves API
+ */
 const fetchSubscription = async (userId: string): Promise<Subscription | null> => {
   const { data, error } = await supabase
     .from('subscriptions')
@@ -13,7 +24,14 @@ const fetchSubscription = async (userId: string): Promise<Subscription | null> =
     .maybeSingle()
 
   if (error && error.code !== 'PGRST116') {
+    console.error('[useSubscription] Erro ao buscar subscription:', error)
     throw error
+  }
+
+  if (data) {
+    console.log('[useSubscription] Subscription encontrada:', data.status)
+  } else {
+    console.log('[useSubscription] Nenhuma subscription encontrada para user')
   }
 
   return data ?? null
@@ -54,7 +72,6 @@ export const useSubscription = () => {
         },
         () => {
           console.log('[useSubscription] Realtime update detected, refetching...')
-          // Refetch diretamente sem queryClient
           query.refetch()
         }
       )
@@ -65,11 +82,18 @@ export const useSubscription = () => {
     }
   }, [userId, query])
 
+  // Calcular isActive considerando DEV_BYPASS
+  const isActive = DEV_BYPASS_SUBSCRIPTION || isSubscriptionActive(query.data?.status)
+
   return {
     subscription: query.data ?? null,
     loading: query.isLoading,
     error: (query.error as Error | null) ?? null,
-    isActive: isSubscriptionActive(query.data?.status),
-    refetch: query.refetch
+    isActive,
+    refetch: query.refetch,
+    // Flag para indicar se está em modo bypass (útil para UI)
+    isDevBypass: DEV_BYPASS_SUBSCRIPTION
   }
 }
+
+

@@ -910,24 +910,183 @@ export default function MinhaEquipe() {
     }
 
     setDeletingTeam(true)
+    const toastId = toast.loading('Excluindo equipe e todos os dados relacionados...')
+
     try {
       const tenantId = equipe.id
 
-      const { error: membershipsError } = await supabase
-        .from('memberships')
-        .delete()
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      console.log('Iniciando exclusão da equipe:', tenantId)
+
+      // 1. Clear default_tenant_id from all profiles
+      toast.loading('Limpando perfis de usuário...', { id: toastId })
+      const { error: profilesError } = await supabase
+        .from('profiles')
+        .update({ default_tenant_id: null })
+        .eq('default_tenant_id', tenantId)
+
+      if (profilesError) {
+        console.error('Erro ao limpar default_tenant_id:', profilesError)
+      }
+
+      // 2. Delete child tables first (in order of dependencies)
+
+      // Messages and conversations
+      toast.loading('Removendo mensagens e conversas...', { id: toastId })
+      const { data: conversations } = await supabase
+        .from('conversations')
+        .select('id')
         .eq('tenant_id', tenantId)
 
-      if (membershipsError) throw membershipsError
+      if (conversations && conversations.length > 0) {
+        const conversationIds = conversations.map(c => c.id)
+        await supabase.from('messages').delete().in('conversation_id', conversationIds)
+      }
+      await supabase.from('conversations').delete().eq('tenant_id', tenantId)
 
+      // Webhook related
+      toast.loading('Removendo webhooks...', { id: toastId })
+      const { data: webhookSubs } = await supabase
+        .from('webhook_subscriptions')
+        .select('id')
+        .eq('tenant_id', tenantId)
+
+      const { data: webhookEvents } = await supabase
+        .from('webhook_events')
+        .select('id')
+        .eq('tenant_id', tenantId)
+
+      if (webhookSubs && webhookSubs.length > 0) {
+        const subIds = webhookSubs.map(s => s.id)
+        await supabase.from('webhook_deliveries').delete().in('subscription_id', subIds)
+      }
+
+      if (webhookEvents && webhookEvents.length > 0) {
+        const eventIds = webhookEvents.map(e => e.id)
+        await supabase.from('webhook_deliveries').delete().in('event_id', eventIds)
+      }
+
+      await supabase.from('webhook_subscriptions').delete().eq('tenant_id', tenantId)
+      await supabase.from('webhook_events').delete().eq('tenant_id', tenantId)
+      await supabase.from('webhook_logs').delete().eq('tenant_id', tenantId)
+
+      // Automations
+      toast.loading('Removendo automações...', { id: toastId })
+      const { data: automacoes } = await supabase
+        .from('automacoes')
+        .select('id')
+        .eq('tenant_id', tenantId)
+
+      if (automacoes && automacoes.length > 0) {
+        const automacaoIds = automacoes.map(a => a.id)
+        await supabase.from('automacao_logs').delete().in('automacao_id', automacaoIds)
+      }
+      await supabase.from('automacoes').delete().eq('tenant_id', tenantId)
+
+      // Tasks and related
+      toast.loading('Removendo tarefas...', { id: toastId })
+      const { data: tarefas } = await supabase
+        .from('tarefas')
+        .select('id')
+        .eq('tenant_id', tenantId)
+
+      if (tarefas && tarefas.length > 0) {
+        const tarefaIds = tarefas.map(t => t.id)
+        await supabase.from('tarefa_checklist').delete().in('tarefa_id', tarefaIds)
+        await supabase.from('tarefas_produtos').delete().in('tarefa_id', tarefaIds)
+      }
+      await supabase.from('tarefa_anexos').delete().eq('tenant_id', tenantId)
+      await supabase.from('tarefas').delete().eq('tenant_id', tenantId)
+      await supabase.from('lead_tasks').delete().eq('tenant_id', tenantId)
+
+      // Products and custom fields
+      toast.loading('Removendo produtos...', { id: toastId })
+      const { data: produtos } = await supabase
+        .from('produtos')
+        .select('id')
+        .eq('tenant_id', tenantId)
+
+      if (produtos && produtos.length > 0) {
+        const produtoIds = produtos.map(p => p.id)
+        await supabase.from('product_custom_field_values').delete().in('produto_id', produtoIds)
+      }
+      await supabase.from('cliente_produtos').delete().eq('tenant_id', tenantId)
+      await supabase.from('produtos').delete().eq('tenant_id', tenantId)
+      await supabase.from('produtos_equipe').delete().eq('tenant_id', tenantId)
+      await supabase.from('product_custom_fields').delete().eq('tenant_id', tenantId)
+
+      // Leads/Clients and related
+      toast.loading('Removendo leads e clientes...', { id: toastId })
+      const { data: clientes } = await supabase
+        .from('clientes')
+        .select('id')
+        .eq('tenant_id', tenantId)
+
+      if (clientes && clientes.length > 0) {
+        const clienteIds = clientes.map(c => c.id)
+        await supabase.from('lead_custom_field_values').delete().in('lead_id', clienteIds)
+      }
+      await supabase.from('lead_timeline').delete().eq('tenant_id', tenantId)
+      await supabase.from('lead_attachments').delete().eq('tenant_id', tenantId)
+      await supabase.from('atividades').delete().eq('tenant_id', tenantId)
+      await supabase.from('vendas').delete().eq('tenant_id', tenantId)
+      await supabase.from('clientes').delete().eq('tenant_id', tenantId)
+      await supabase.from('lead_custom_fields').delete().eq('tenant_id', tenantId)
+
+      // Other tenant data
+      toast.loading('Removendo dados da equipe...', { id: toastId })
+      await supabase.from('contacts').delete().eq('tenant_id', tenantId)
+      await supabase.from('despesas').delete().eq('tenant_id', tenantId)
+      await supabase.from('processes').delete().eq('tenant_id', tenantId)
+      await supabase.from('equipes').delete().eq('tenant_id', tenantId)
+      await supabase.from('campanhas').delete().eq('tenant_id', tenantId)
+      await supabase.from('lead_origins').delete().eq('tenant_id', tenantId)
+      await supabase.from('lead_loss_reasons').delete().eq('tenant_id', tenantId)
+      await supabase.from('pipeline_stages').delete().eq('tenant_id', tenantId)
+      await supabase.from('task_stages').delete().eq('tenant_id', tenantId)
+      await supabase.from('integrations').delete().eq('tenant_id', tenantId)
+      await supabase.from('api_keys').delete().eq('tenant_id', tenantId)
+      await supabase.from('audit_logs').delete().eq('tenant_id', tenantId)
+      await supabase.from('sales_playbook_objections').delete().eq('team_id', tenantId)
+      await supabase.from('company_settings').delete().eq('tenant_id', tenantId)
+
+      // Team invites
+      toast.loading('Removendo convites...', { id: toastId })
+      await supabase.from('team_invites').delete().eq('tenant_id', tenantId)
+
+      // Subscriptions and plans
+      toast.loading('Removendo assinaturas...', { id: toastId })
+      await supabase.from('subscriptions').delete().eq('tenant_id', tenantId)
+      await supabase.from('plans').delete().eq('tenant_id', tenantId)
+
+      // Delete the tenant BEFORE memberships to avoid RLS issues
+      toast.loading('Excluindo equipe...', { id: toastId })
       const { error: tenantError } = await supabase
         .from('tenants')
         .delete()
         .eq('id', tenantId)
 
-      if (tenantError) throw tenantError
+      if (tenantError) {
+        console.error('Erro ao deletar tenant:', tenantError)
+        throw tenantError
+      }
 
-      toast.success(t('team.deleteSuccess'))
+      // Memberships - delete LAST to maintain RLS permissions during deletion
+      toast.loading('Removendo membros...', { id: toastId })
+      const { error: membershipsError } = await supabase
+        .from('memberships')
+        .delete()
+        .eq('tenant_id', tenantId)
+
+      if (membershipsError) {
+        console.error('Erro ao deletar memberships:', membershipsError)
+        // Don't throw - tenant is already deleted
+      }
+
+      toast.success('Equipe excluída com sucesso!', { id: toastId })
 
       setShowDeleteTeamModal(false)
       setDeleteTeamConfirmText('')
@@ -941,13 +1100,14 @@ export default function MinhaEquipe() {
       authStore.setHasTenant(false)
       authStore.setLoading(false)
 
+      // Force a complete page reload to clear all state
       setTimeout(() => {
-        navigate('/dashboard')
-      }, 500)
+        window.location.href = '/dashboard'
+      }, 1000)
 
     } catch (e) {
       console.error('Erro ao excluir equipe:', e)
-      toast.error(t('team.deleteError'))
+      toast.error('Erro ao excluir equipe. Verifique o console para mais detalhes.', { id: toastId })
       setDeletingTeam(false)
     }
   }

@@ -7,7 +7,12 @@ import { useAuthStore } from '../stores/authStore'
 import { expenseService } from '../services/expenseService'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { uploadAvatar, updateUserProfile, getUserProfile } from '../services/profileService'
+import { checkAndUnlockAchievements } from '../services/achievementService'
+
+// Carousel Images
+import CardsImage1 from '../images/Cards dashboard 1.jpg'
+import CardsImage2 from '../images/Cards dashboard 2.jpg'
+import CardsImage3 from '../images/Cards dashboard 3.jpg'
 
 // --- Types ---
 type LeadStatus = 'lead' | 'negociacao' | 'fechado' | 'perdido'
@@ -130,7 +135,7 @@ async function fetchDashboardData(
   ] = await Promise.all([
     supabase.from('clientes').select('id, status').eq('tenant_id', tenantId),
     supabase.from('vendas').select('valor, data_venda').eq('tenant_id', tenantId).gte('data_venda', sixStart.toISOString()).lt('data_venda', nextStart.toISOString()),
-    supabase.from('tarefas').select('id, titulo, status, created_at, clientes(nome)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(10),
+    supabase.from('tarefas').select('id, titulo, status, created_at, clientes(nome)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(3),
     supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('status', 'concluida'),
     supabase.from('clientes').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).gte('created_at', currentStart.toISOString()).lt('created_at', nextStart.toISOString()),
     supabase.from('clientes').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).gte('created_at', prevStart.toISOString()).lt('created_at', currentStart.toISOString()),
@@ -443,13 +448,81 @@ const PipelineWidget = ({ pipeline }: { pipeline: PipelineSlice[] }) => {
   )
 }
 
+// --- Image Carousel Component ---
+
+const carouselImages = [CardsImage1, CardsImage2, CardsImage3]
+
+const ImageCarousel = ({ reduceMotion }: { reduceMotion: boolean | null }) => {
+  const [currentIndex, setCurrentIndex] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % carouselImages.length)
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <motion.div
+      className="bg-surface border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden relative shadow-xl"
+      variants={item}
+      whileHover={hoverLift(reduceMotion ?? false)}
+      style={{ transformStyle: 'preserve-3d' }}
+    >
+      {/* Container que se adapta ao tamanho natural da imagem */}
+      <div className="relative w-full">
+        {/* Imagem de referência para manter altura - primeira imagem visível para definir tamanho */}
+        <img
+          src={carouselImages[0]}
+          alt=""
+          className="w-full h-auto opacity-0"
+          aria-hidden="true"
+        />
+
+        {/* Animated carousel images - posicionadas absolutamente sobre a referência */}
+        <AnimatePresence initial={false}>
+          <motion.img
+            key={currentIndex}
+            src={carouselImages[currentIndex]}
+            alt={`Card ${currentIndex + 1}`}
+            className="absolute inset-0 w-full h-full object-contain rounded-3xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              duration: 0.6,
+              ease: "easeInOut"
+            }}
+          />
+        </AnimatePresence>
+
+        {/* Gradient overlay for depth */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent pointer-events-none rounded-3xl" />
+
+        {/* Navigation dots */}
+        <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-3 z-10">
+          {carouselImages.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentIndex(idx)}
+              className={`transition-all duration-500 rounded-full ${idx === currentIndex
+                ? 'w-8 h-2.5 bg-white shadow-lg'
+                : 'w-2.5 h-2.5 bg-white/50 hover:bg-white/80'
+                }`}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
 // --- Main Component ---
 export default function Dashboard() {
-  const { user, member, tenant, setProfile, profile } = useAuthStore()
+  const { user, member, tenant, profile } = useAuthStore()
   const navigate = useNavigate()
   const reduceMotion = useReducedMotion()
-  const [uploadingAvatar, setUploadingAvatar] = useState(false)
-
   const tenantId = useMemo(() => tenant?.id ?? member?.tenant_id ?? '', [tenant?.id, member?.tenant_id])
   const userName = useMemo(() => profile?.display_name || user?.user_metadata?.name || 'Usuário', [user, profile])
 
@@ -478,13 +551,17 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({})
 
+  // Apenas owners podem ver o centro financeiro (despesas, receita prevista, etc)
   const podeVerFinanceiro = useMemo(() => {
-    if (!member) return true
-    return member.role === 'owner' || member.role === 'admin'
+    return member?.role === 'owner'
   }, [member])
 
   useEffect(() => {
-    if (!tenantId) return
+    // Se não tem tenant, mostrar estado vazio (não ficar travado no loading)
+    if (!tenantId) {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     fetchDashboardData(tenantId, new Date())
       .then(data => {
@@ -522,6 +599,11 @@ export default function Dashboard() {
         .eq('id', taskId)
 
       if (error) throw error
+
+      // Se foi marcada como concluída, verificar conquistas
+      if (newStatus && user?.id && tenantId) {
+        checkAndUnlockAchievements(user.id, tenantId)
+      }
     } catch (error) {
       console.error('Erro ao atualizar tarefa:', error)
       // Revert optimistic update
@@ -530,49 +612,10 @@ export default function Dashboard() {
     }
   }
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Por favor, selecione uma imagem.')
-      return
-    }
-
-    try {
-      setUploadingAvatar(true)
-      const publicUrl = await uploadAvatar(file)
-      if (!publicUrl) throw new Error('Falha no upload')
-
-      const success = await updateUserProfile({ avatar_url: publicUrl })
-      if (!success) throw new Error('Falha ao atualizar perfil')
-
-      // Update store
-      const updatedProfile = await getUserProfile()
-      if (updatedProfile) {
-        setProfile({
-          id: updatedProfile.user_id,
-          display_name: updatedProfile.display_name,
-          avatar_url: updatedProfile.avatar_url,
-          phone: updatedProfile.phone,
-          default_tenant_id: null,
-          created_at: updatedProfile.created_at
-        })
-      }
-
-      toast.success('Foto atualizada com sucesso!')
-    } catch (error) {
-      console.error('Erro ao atualizar foto:', error)
-      toast.error('Erro ao atualizar foto')
-    } finally {
-      setUploadingAvatar(false)
-    }
-  }
-
   const metaPercentage = stats.metaMes! > 0 ? (stats.receitaMes! / stats.metaMes!) * 100 : 0
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-full bg-background p-6 overflow-hidden">
       <LaunchOfferModal />
       <div className="max-w-[1600px] mx-auto">
         <motion.div
@@ -720,49 +763,8 @@ export default function Dashboard() {
 
             {/* Right Sidebar - Same height as left column */}
             <div className="space-y-6">
-              {/* Image/Photo Card */}
-              <motion.div
-                className="bg-surface border border-slate-200 dark:border-slate-800 rounded-xl p-6 flex items-center justify-center aspect-square relative group overflow-hidden"
-                variants={item}
-                whileHover={hoverLift(reduceMotion ?? false)}
-                style={{ transformStyle: 'preserve-3d' }}
-              >
-                {user?.user_metadata?.avatar_url || user?.user_metadata?.picture || (useAuthStore.getState().profile?.avatar_url) ? (
-                  <img
-                    src={useAuthStore.getState().profile?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture}
-                    alt="Profile"
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                ) : (
-                  <div className="text-center text-text opacity-50">
-                    <div className="w-full h-full flex items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-8">
-                      <div>
-                        <div className="text-6xl mb-2">📸</div>
-                        <p className="text-sm font-medium">UMA FOTO AQUI</p>
-                        <p className="text-xs opacity-60 mt-1">Adicione uma imagem</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Upload Overlay */}
-                <div className="absolute inset-0 bg-white/10 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <label className="cursor-pointer p-3 bg-white/20 backdrop-blur rounded-full hover:bg-white/30 transition-colors shadow-lg">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleAvatarUpload}
-                      disabled={uploadingAvatar}
-                    />
-                    {uploadingAvatar ? (
-                      <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Users className="w-6 h-6 text-white" />
-                    )}
-                  </label>
-                </div>
-              </motion.div>
+              {/* Image Carousel */}
+              <ImageCarousel reduceMotion={reduceMotion} />
 
               {/* Financial Cards */}
               {podeVerFinanceiro && (

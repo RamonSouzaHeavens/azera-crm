@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   Plus, Grid3X3, Kanban, Search, X, AlarmClock, CalendarDays,
   Users, Tag, ListChecks, Check, Timer, Trash2, FileText,
-  ChevronDown, ChevronUp, Filter, Settings, Edit
+  ChevronDown, ChevronUp, Filter, Settings, Edit, GripVertical
 } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import toast from 'react-hot-toast'
@@ -15,6 +15,8 @@ import { useAuthStore } from '../stores/authStore'
 import { addResponsavel } from '../services/responsavelService'
 import { TaskAttachments } from '../components/team/TaskAttachments'
 import { loadTaskStages, createTaskStage, updateTaskStage, deleteTaskStage } from '../services/taskPipelineService'
+import { getTeamOverview } from '../services/equipeService'
+import { checkAndUnlockAchievements } from '../services/achievementService'
 
 // =====================
 // Tipos
@@ -110,7 +112,7 @@ const PRIORITY_MAP: Record<TaskPriority, { labelKey: string; pill: string }> = {
 export default function Tarefas() {
   const navigate = useNavigate()
   const { t: t18n } = useTranslation()
-  const { tenant, member } = useAuthStore()
+  const { tenant, member, user } = useAuthStore()
   const tenantId = useMemo(() => tenant?.id ?? member?.tenant_id ?? '', [tenant?.id, member?.tenant_id])
 
   const [loading, setLoading] = useState(true)
@@ -185,15 +187,31 @@ export default function Tarefas() {
   const loadUsuarios = useCallback(async () => {
     if (!tenantId) return
     try {
-      // Ajuste conforme sua RPC ou tabela de perfis
-      const { data, error } = await supabase.rpc('get_team_overview')
-      if (error) throw error
-      if (data?.members) {
-        setUsuarios(data.members.map((m: any) => ({ id: m.user_id, display_name: m.nome })))
+      const overview = await getTeamOverview()
+
+      if (overview?.members && overview.members.length > 0) {
+        setUsuarios(overview.members.map((m: any) => ({
+          id: m.user_id || m.id,
+          display_name: m.nome || m.email || 'Usuário'
+        })))
+      } else {
+        // Fallback: usar usuário atual
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user?.id) {
+          setUsuarios([{ id: user.id, display_name: user.email || 'Você' }])
+        } else {
+          setUsuarios([])
+        }
       }
     } catch (err) {
       console.warn('Erro ao carregar usuários:', err)
-      setUsuarios([])
+      // Fallback em caso de erro
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user?.id) {
+        setUsuarios([{ id: user.id, display_name: user.email || 'Você' }])
+      } else {
+        setUsuarios([])
+      }
     }
   }, [tenantId])
 
@@ -335,6 +353,8 @@ export default function Tarefas() {
 
   const handleSaveTask = async () => {
     if (!detalhe) return
+    // Guardar status anterior para verificar se foi concluída
+    const previousStatus = tarefas.find(t => t.id === detalhe.id)?.status
     try {
       const updates: any = {
         titulo: detalhe.titulo,
@@ -354,6 +374,11 @@ export default function Tarefas() {
       const { error } = await supabase.from('tarefas').update(updates).eq('id', detalhe.id)
       if (error) throw error
 
+      // Se foi marcada como concluída, verificar conquistas
+      if (detalhe.status === 'concluida' && previousStatus !== 'concluida' && user?.id && tenantId) {
+        checkAndUnlockAchievements(user.id, tenantId)
+      }
+
       toast.success('Tarefa salva!')
       setHasUnsavedChanges(false)
       loadTarefas(filtros)
@@ -364,6 +389,8 @@ export default function Tarefas() {
   }
 
   const handleUpdateTask = async (id: string, updates: Partial<Tarefa>) => {
+    // Guardar status anterior para verificar se foi concluída
+    const previousTask = tarefas.find(t => t.id === id)
     try {
       // Limpeza de campos undefined e tratamento de JSON
       const cleanUpdates: any = {}
@@ -378,6 +405,11 @@ export default function Tarefas() {
 
       const { error } = await supabase.from('tarefas').update(cleanUpdates).eq('id', id)
       if (error) throw error
+
+      // Se foi marcada como concluída, verificar conquistas
+      if (updates.status === 'concluida' && previousTask?.status !== 'concluida' && user?.id && tenantId) {
+        checkAndUnlockAchievements(user.id, tenantId)
+      }
 
       // Atualização otimista local
       setTarefas(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t))
@@ -453,6 +485,19 @@ export default function Tarefas() {
     updateDetalhe({ checklist: next })
   }
 
+  const reorderChecklist = (result: DropResult) => {
+    if (!result.destination || !detalhe?.checklist) return
+    if (result.source.index === result.destination.index) return
+
+    const items = Array.from(detalhe.checklist)
+    const [removed] = items.splice(result.source.index, 1)
+    items.splice(result.destination.index, 0, removed)
+
+    // Atualizar ordem
+    const reordered = items.map((item, idx) => ({ ...item, ordem: idx }))
+    updateDetalhe({ checklist: reordered })
+  }
+
   const addTempoGasto = () => setShowTimeModal(true)
 
   const confirmAddTime = () => {
@@ -510,18 +555,20 @@ export default function Tarefas() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0C1326] text-slate-900 dark:text-slate-200 overflow-hidden relative">
+    <div className="flex flex-col h-full bg-background text-slate-900 dark:text-slate-200 overflow-hidden relative">
 
-      {/* Background Decorativo */}
-      <div className="absolute inset-0 pointer-events-none opacity-30">
+      {/* Background Decorativo (HUD glow grid background + overlay) */}
+      <div className="pointer-events-none absolute inset-0 opacity-40">
         <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-600/10 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.15),_transparent_55%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:120px_120px]" />
       </div>
 
       {/* Conteúdo Principal */}
       <div className="flex-1 flex flex-col relative z-10 overflow-hidden">
 
         {/* Header & Filtros */}
-        <header className="p-6 border-b border-slate-200 dark:border-white/10 bg-white/50 dark:bg-black/20 backdrop-blur-sm">
+        <header className="p-6 border-b border-slate-200 dark:border-white/10 bg-transparent backdrop-blur-sm">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
               <div className="flex items-center gap-4">
@@ -643,9 +690,9 @@ export default function Tarefas() {
               <div className="h-full overflow-x-auto overflow-y-hidden p-6">
                 <div className="flex gap-6 h-full min-w-max">
                   {taskStages.map(stage => (
-                    <div key={stage.key} className="w-80 flex flex-col h-full rounded-2xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/5">
+                    <div key={stage.key} className="w-80 flex flex-col h-full rounded-2xl bg-transparent border border-slate-200 dark:border-white/5">
                       {/* Header da Coluna */}
-                      <div className="p-4 flex items-center justify-between border-b border-slate-200 dark:border-white/5 bg-white/50 dark:bg-white/5 rounded-t-2xl backdrop-blur-sm">
+                      <div className="p-4 flex items-center justify-between border-b border-slate-200 dark:border-white/5 bg-transparent rounded-t-2xl backdrop-blur-sm">
                         <div className="flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-200">
                           <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stage.color }} />
                           {stage.label}
@@ -672,7 +719,7 @@ export default function Tarefas() {
                                     {...provided.dragHandleProps}
                                     onClick={() => openTask(t.id)}
                                     className={`
-                                      p-4 rounded-xl bg-white dark:bg-[#151e32] border border-slate-200 dark:border-white/5 shadow-sm
+                                      p-4 rounded-xl bg-white dark:bg-white/5 backdrop-blur-md border border-slate-200 dark:border-white/10 shadow-sm
                                       hover:shadow-md hover:border-indigo-500/30 transition-all cursor-grab group
                                       ${snapshot.isDragging ? 'rotate-2 scale-105 shadow-xl ring-2 ring-indigo-500 z-50' : ''}
                                     `}
@@ -775,9 +822,9 @@ export default function Tarefas() {
                   <select
                     value={detalhe.status}
                     onChange={e => updateDetalhe({ status: e.target.value })}
-                    className="w-full mt-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-sm"
+                    className="w-full mt-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-sm text-slate-900 dark:text-slate-100"
                   >
-                    {taskStages.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                    {taskStages.map(s => <option key={s.key} value={s.key} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">{s.label}</option>)}
                   </select>
                 </div>
                 <div>
@@ -785,12 +832,12 @@ export default function Tarefas() {
                   <select
                     value={detalhe.prioridade}
                     onChange={e => updateDetalhe({ prioridade: e.target.value as TaskPriority })}
-                    className="w-full mt-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-sm"
+                    className="w-full mt-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-sm text-slate-900 dark:text-slate-100"
                   >
-                    <option value="baixa">Baixa</option>
-                    <option value="media">Média</option>
-                    <option value="alta">Alta</option>
-                    <option value="urgente">Urgente</option>
+                    <option value="baixa" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Baixa</option>
+                    <option value="media" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Média</option>
+                    <option value="alta" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Alta</option>
+                    <option value="urgente" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Urgente</option>
                   </select>
                 </div>
                 <div>
@@ -800,7 +847,7 @@ export default function Tarefas() {
                       <input
                         value={detalhe.responsavel_nome || ''}
                         onChange={e => updateDetalhe({ responsavel_nome: e.target.value, responsavel_id: null })}
-                        className="flex-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-sm"
+                        className="flex-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400"
                         placeholder="Nome manual"
                         autoFocus
                       />
@@ -816,12 +863,12 @@ export default function Tarefas() {
                           updateDetalhe({ responsavel_id: e.target.value || null, responsavel_nome: null })
                         }
                       }}
-                      className="w-full mt-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-sm"
+                      className="w-full mt-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-sm text-slate-900 dark:text-slate-100"
                     >
-                      <option value="">Sem responsável</option>
-                      {usuarios.map(u => <option key={u.id} value={u.id}>{u.display_name}</option>)}
-                      <option value="custom" className="font-semibold text-indigo-400">+ Outro (Manual)</option>
-                      {detalhe.responsavel_nome && <option value="" disabled selected>{detalhe.responsavel_nome} (Manual)</option>}
+                      <option value="" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">Sem responsável</option>
+                      {usuarios.map(u => <option key={u.id} value={u.id} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">{u.display_name}</option>)}
+                      <option value="custom" className="bg-white dark:bg-slate-800 font-semibold text-indigo-600 dark:text-indigo-400">+ Outro (Manual)</option>
+                      {detalhe.responsavel_nome && <option value="" disabled className="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">{detalhe.responsavel_nome} (Manual)</option>}
                     </select>
                   )}
                 </div>
@@ -831,40 +878,73 @@ export default function Tarefas() {
                     type="date"
                     value={detalhe.data_vencimento ? detalhe.data_vencimento.substring(0, 10) : ''}
                     onChange={e => updateDetalhe({ data_vencimento: e.target.value || null })}
-                    className="w-full mt-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-sm"
+                    className="w-full mt-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg p-2 text-sm text-slate-900 dark:text-slate-100 [color-scheme:light] dark:[color-scheme:dark]"
                   />
                 </div>
               </div>
 
               <div className="h-px bg-slate-200 dark:bg-white/5" />
 
-              {/* Checklist */}
+              {/* Checklist com Drag and Drop */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold flex items-center gap-2"><ListChecks className="w-4 h-4 text-indigo-500" /> Checklist</h3>
                   <button onClick={addChecklistItem} className="text-xs text-indigo-500 hover:underline">+ Adicionar Item</button>
                 </div>
-                <div className="space-y-2">
-                  {detalhe.checklist?.map(item => (
-                    <div key={item.id} className="flex items-center gap-2 group">
-                      <input
-                        type="checkbox"
-                        checked={item.done}
-                        onChange={() => toggleChecklist(item.id)}
-                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <input
-                        value={item.texto}
-                        onChange={e => editChecklistText(item.id, e.target.value)}
-                        className={`flex-1 bg-transparent border-none text-sm p-1 focus:ring-0 ${item.done ? 'line-through text-slate-400' : ''}`}
-                      />
-                      <button onClick={() => removeChecklistItem(item.id)} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500"><X className="w-4 h-4" /></button>
-                    </div>
-                  ))}
-                  {(!detalhe.checklist || detalhe.checklist.length === 0) && (
-                    <p className="text-xs text-slate-400 italic">Nenhum item na lista.</p>
-                  )}
-                </div>
+                <DragDropContext onDragEnd={reorderChecklist}>
+                  <Droppable droppableId="checklist-items">
+                    {(provided) => (
+                      <div
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        className="space-y-2"
+                      >
+                        {detalhe.checklist?.map((item, index) => (
+                          <Draggable key={item.id} draggableId={item.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={`flex items-center gap-2 group p-2 rounded-lg transition-colors ${snapshot.isDragging
+                                  ? 'bg-indigo-50 dark:bg-indigo-900/30 shadow-lg ring-2 ring-indigo-500/50'
+                                  : 'hover:bg-slate-50 dark:hover:bg-white/5'
+                                  }`}
+                              >
+                                <div
+                                  {...provided.dragHandleProps}
+                                  className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-indigo-500 transition-colors"
+                                >
+                                  <GripVertical className="w-4 h-4" />
+                                </div>
+                                <input
+                                  type="checkbox"
+                                  checked={item.done}
+                                  onChange={() => toggleChecklist(item.id)}
+                                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <input
+                                  value={item.texto}
+                                  onChange={e => editChecklistText(item.id, e.target.value)}
+                                  className={`flex-1 bg-transparent border-none text-sm p-1 focus:ring-0 ${item.done ? 'line-through text-slate-400' : ''}`}
+                                />
+                                <button
+                                  onClick={() => removeChecklistItem(item.id)}
+                                  className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 transition-opacity"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+                {(!detalhe.checklist || detalhe.checklist.length === 0) && (
+                  <p className="text-xs text-slate-400 italic mt-2">Nenhum item na lista.</p>
+                )}
               </div>
 
               <div className="h-px bg-slate-200 dark:bg-white/5" />

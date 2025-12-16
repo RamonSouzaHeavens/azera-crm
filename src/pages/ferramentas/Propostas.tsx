@@ -23,6 +23,9 @@ import { DocumentPreview, FormData } from '../../components/ferramentas/Document
 import { supabase } from '../../lib/supabase'
 import { Proposal, ProposalStatus, useProposals } from '../../hooks/useProposals'
 import { aiService } from '../../services/aiService'
+import { getTeamOverview } from '../../services/equipeService'
+import { useAuthStore } from '../../stores/authStore'
+import { checkAndUnlockAchievements } from '../../services/achievementService'
 import jsPDF from 'jspdf'
 
 const formatCurrency = (value: number) =>
@@ -120,6 +123,11 @@ export default function Propostas() {
   const [isContractGenerating, setIsContractGenerating] = useState(false)
   const [isContractRegistering, setIsContractRegistering] = useState(false)
 
+  // Estado para membros da equipe (responsável)
+  const { tenant, user, member } = useAuthStore()
+  const [teamMembers, setTeamMembers] = useState<Array<{ id: string; name: string }>>([{ id: '', name: 'Selecione...' }])
+  const [responsavelId, setResponsavelId] = useState('')
+
   const {
     proposals,
     loading: proposalsLoading,
@@ -155,6 +163,31 @@ export default function Propostas() {
       setContractAIResult(null)
     }
   }, [selectedTemplate])
+
+  // Carregar membros da equipe
+  useEffect(() => {
+    const loadMembers = async () => {
+      if (!tenant?.id) return
+      try {
+        const overview = await getTeamOverview()
+        if (overview?.members && overview.members.length > 0) {
+          const team = overview.members.map((m: any) => ({
+            id: m.user_id || m.id,
+            name: m.nome || m.email || 'Usuário'
+          }))
+          setTeamMembers([{ id: '', name: 'Selecione...' }, ...team])
+        } else if (user?.id) {
+          setTeamMembers([{ id: '', name: 'Selecione...' }, { id: user.id, name: user.email || 'Você' }])
+        }
+      } catch (err) {
+        console.error('Erro ao carregar membros:', err)
+        if (user?.id) {
+          setTeamMembers([{ id: '', name: 'Selecione...' }, { id: user.id, name: user.email || 'Você' }])
+        }
+      }
+    }
+    loadMembers()
+  }, [tenant?.id, user?.id, user?.email])
 
   const selectClient = (client: any) => {
     setFormData((prev) => ({ ...prev, clientName: client.nome }))
@@ -446,6 +479,11 @@ export default function Propostas() {
   const markProposalAsSent = async (id: string) => {
     try {
       await updateProposalStatus(id, 'sent')
+
+      // Verificar conquistas ao enviar proposta
+      if (user?.id && member?.tenant_id) {
+        checkAndUnlockAchievements(user.id, member.tenant_id)
+      }
     } catch (error) {
       console.error(error)
       toast.error('Nao foi possivel marcar como enviada.')
@@ -531,11 +569,10 @@ export default function Propostas() {
               <div
                 key={template.id}
                 onClick={() => setSelectedTemplate(template.id)}
-                className={`cursor-pointer rounded-2xl border p-3 transition ${
-                  selectedTemplate === template.id
-                    ? 'bg-white dark:bg-slate-800 border-cyan-500 shadow-lg'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-400'
-                }`}
+                className={`cursor-pointer rounded-2xl border p-3 transition ${selectedTemplate === template.id
+                  ? 'bg-white dark:bg-slate-800 border-cyan-500 shadow-lg'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center border border-slate-200 dark:border-slate-700">
@@ -560,11 +597,10 @@ export default function Propostas() {
                     <button
                       key={step.id}
                       onClick={() => setContractStep(step.id)}
-                      className={`rounded-xl border p-3 text-left transition ${
-                        contractStep === step.id
-                          ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20'
-                          : 'border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'
-                      }`}
+                      className={`rounded-xl border p-3 text-left transition ${contractStep === step.id
+                        ? 'border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20'
+                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500'
+                        }`}
                     >
                       <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-100">{step.title}</p>
                       <p className="text-[10px] text-slate-500 mt-1">{step.description}</p>
@@ -771,9 +807,8 @@ export default function Propostas() {
               </div>
             ) : (
               <div
-                className={`space-y-4 transition-all duration-300 ${
-                  selectedTemplate ? 'opacity-100' : 'opacity-40 pointer-events-none grayscale'
-                }`}
+                className={`space-y-4 transition-all duration-300 ${selectedTemplate ? 'opacity-100' : 'opacity-40 pointer-events-none grayscale'
+                  }`}
               >
                 <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-slate-500 font-bold">
                   <Pencil className="w-4 h-4 text-cyan-600" />
@@ -821,6 +856,18 @@ export default function Propostas() {
                       className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:border-cyan-500 focus:outline-none"
                     />
                   </div>
+                </div>
+                <div>
+                  <label className="text-[11px] uppercase tracking-wider text-slate-500 block mb-1">Responsável</label>
+                  <select
+                    value={responsavelId}
+                    onChange={(e) => setResponsavelId(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:border-cyan-500 focus:outline-none"
+                  >
+                    {teamMembers.map(member => (
+                      <option key={member.id || 'empty'} value={member.id}>{member.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="text-[11px] uppercase tracking-wider text-slate-500 block mb-1">Observacoes</label>

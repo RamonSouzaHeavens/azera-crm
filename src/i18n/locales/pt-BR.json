@@ -19,7 +19,36 @@
     "yes": "Sim",
     "delete": "Excluir",
     "save": "Salvar",
-    "saved": "Salvo"
+    "saved": "Salvo",
+    "saving": "Salvando...",
+    "loading": "Carregando...",
+    "add": "Adicionar",
+    "error": "Erro",
+    "success": "Sucesso",
+    "loadMore": "Carregar mais",
+    "confirm": "Confirmar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "previous": "Anterior",
+    "update": "Atualizar",
+    "updated": "Atualizado",
+    "create": "Criar",
+    "creating": "Criando...",
+    "deleting": "Excluindo...",
+    "deleted": "Excluído",
+    "email": "Email",
+    "status": "Status",
+    "active": "Ativo",
+    "inactive": "Inativo",
+    "pending": "Pendente",
+    "actions": "Ações",
+    "details": "Detalhes",
+    "description": "Descrição",
+    "title": "Título",
+    "date": "Data",
+    "time": "Hora",
+    "required": "Obrigatório",
+    "optional": "Opcional"
   },
   "apiKeys": {
     "accessRestricted": "Acesso Restrito",
@@ -277,7 +306,11 @@
     "troubleshoot2": "Confirme se o token está correto e não expirou.",
     "troubleshoot3": "Certifique-se de que o webhook está configurado corretamente.",
     "confirmDisconnect": "Confirmar Desconexão",
-    "disconnectWarning": "Ao desconectar, você perderá a capacidade de enviar e receber mensagens pelo WhatsApp. Tem certeza?"
+    "disconnectWarning": "Ao desconectar, você perderá a capacidade de enviar e receber mensagens pelo WhatsApp. Tem certeza?",
+    "instagramId": "ID do Instagram Business Account",
+    "instagramIdPlaceholder": "Ex: 17841400000000000",
+    "accessToken": "Token de Acesso",
+    "accessTokenPlaceholder": "Token gerado no Meta for Developers"
   },
   "chat": {
     "conversations": "Conversas"
@@ -372,9 +405,11 @@
     }
   },
   "documentation": {
-    "accessRestricted": "Acesso Restrito",
-    "accessRestrictedDesc": "O painel de Documentação é acessível apenas para proprietários da equipe.",
-    "contactOwner": "Se você acredita que deveria ter acesso, entre em contato com o proprietário da equipe.",
+    "accessRestricted": {
+      "title": "Acesso Restrito",
+      "description": "O painel de Documentação é acessível apenas para proprietários da equipe.",
+      "contactOwner": "Se você acredita que deveria ter acesso, entre em contato com o proprietário da equipe."
+    },
     "tabs": {
       "home": "🏠 Início",
       "beginners": "🎓 Iniciantes",
@@ -899,6 +934,7 @@
     "newLead": "Novo Lead",
     "pipeline": "Pipeline",
     "title": "Leads",
+    "subtitle": "Gerencie seus leads e oportunidades",
     "searchPlaceholder": "Buscar leads...",
     "list": "Lista",
     "grid": "Grade",
@@ -960,7 +996,78 @@
     "campaign": "Campanha",
     "noNotes": "Sem notas",
     "emptyTitle": "Nenhum lead encontrado",
-    "emptyDescription": "Comece criando seu primeiro lead ou ajuste os filtros"
+    "emptyDescription": "Comece criando seu primeiro lead ou ajuste os filtros",
+    "unclassified": "Sem classificação",
+    "createLeadError": "Erro ao criar lead",
+    "leadsTotal": "leads no total",
+    "leadsFiltered": "leads selecionados",
+    "standardFields": "Campos Padrão",
+    "export": "Exportar",
+    "exportTitle": "Exportar Leads",
+    "exportSubtitle": "Exporte seus leads em formato CSV",
+    "exportScope": "Escopo da exportação",
+    "exportAll": "Todos os leads",
+    "exportFiltered": "Leads filtrados",
+    "exportFields": "Campos para exportar",
+    "exportIncludeCustomFields": "Incluir campos personalizados",
+    "exportDownload": "Baixar CSV",
+    "exportSuccess": "Leads exportados com sucesso!",
+    "exportError": "Erro ao exportar leads",
+    "exportNoLeads": "Nenhum lead para exportar",
+    "exporting": "Exportando...",
+    "import": "Importar",
+    "importTitle": "Importar Leads",
+    "importSubtitle": "Importe leads de outros CRMs via CSV",
+    "importDragDrop": "Arraste um arquivo CSV aqui",
+    "importOr": "ou",
+    "importSelectFile": "Selecionar arquivo",
+    "importInvalidFile": "Por favor, selecione um arquivo CSV",
+    "importEmptyFile": "O arquivo está vazio ou inválido",
+    "importParseError": "Erro ao processar o arquivo",
+    "importPreview": "Pré-visualização",
+    "importMappingTitle": "Mapeamento de Campos",
+    "importMappingSubtitle": "Associe as colunas do CSV aos campos do CRM",
+    "importUnknownFields": "Campos não reconhecidos",
+    "importUnknownFieldsDesc": "Os seguintes campos do CSV não existem no nosso CRM. Escolha o que fazer com cada um:",
+    "importIgnoreField": "Ignorar campo",
+    "importCreateCustomField": "Criar campo personalizado",
+    "importFieldType": "Tipo do campo",
+    "importSampleValues": "Exemplos",
+    "importSummary": "Resumo da Importação",
+    "importReview": "Revise as informações abaixo antes de confirmar.",
+    "importLeadsCount": "leads serão importados",
+    "importNewFieldsCount": "novos campos serão criados",
+    "importMappedFields": "Campos que serão importados",
+    "importConfirm": "Confirmar Importação",
+    "importSuccess": "{{count}} leads importados com sucesso!",
+    "importError": "Erro ao importar leads",
+    "importPartialSuccess": "{{success}} leads importados, {{failed}} com erro",
+    "importing": "Importando...",
+    "importTip": "Dica",
+    "importTipText": "O arquivo CSV deve ter os cabeçalhos na primeira linha. Campos como Nome, Email e Telefone são detectados automaticamente.",
+    "importStep1": "Upload",
+    "importStep2": "Mapear",
+    "importStep3": "Campos",
+    "importStep4": "Importar",
+    "csvColumn": "Coluna do CSV",
+    "crmField": "Campo do CRM",
+    "doNotImport": "Não importar",
+    "fieldTypeText": "Texto",
+    "fieldTypeNumber": "Número",
+    "fieldTypeDate": "Data",
+    "fieldTypeBoolean": "Sim/Não",
+    "importAdaptiveTitle": "Tecnologia Adaptativa",
+    "importAdaptiveText": "Não se preocupe com campos diferentes! Nossa tecnologia detecta automaticamente todos os campos do seu arquivo e permite criar novos campos personalizados para preservar todas as informações.",
+    "importDetectedNewFields": "Identificamos {{count}} campos que não existem no seu CRM:",
+    "importNewFieldsExplanation": "Configure abaixo se deseja criar esses campos como personalizados ou ignorá-los.",
+    "importRecognizedFields": "Campos Reconhecidos",
+    "importNewFieldsConfig": "Novos Campos - Configure abaixo",
+    "importCreateField": "Criar campo",
+    "importIgnoredFields": "Campos que serão ignorados",
+    "importStep2Mapping": "Mapear e Configurar",
+    "fieldTypeSelect": "Seleção Única",
+    "fieldTypeMultiselect": "Seleção Múltipla",
+    "fieldTypeTags": "Tags"
   },
   "team": {
     "active": "Ativo",
@@ -1069,17 +1176,18 @@
       "metaDistribution": "Distribuição Meta",
       "ads": "Anúncios",
       "invites": "Convites",
-      "settings": "Configurações"
+      "settings": "Configurações",
+      "logs": "Logs",
+      "events": "Eventos"
     },
     "teamCreated": "Equipe criada",
     "teamName": "Nome da equipe",
     "teamNamePlaceholder": "Nome oficial da equipe",
     "title": "Minha equipe",
     "refresh": "Atualizar",
-    "tabs": {
-      "logs": "Logs",
-      "events": "Eventos"
-    },
+    "you": "você",
+    "codeInstruction": "Cole o código de convite ou link enviado pelo administrador da equipe.",
+    "typeToConfirm": "Digite \"{{name}}\" para confirmar",
     "addModal": {
       "title": "Novo Webhook",
       "namePlaceholder": "Ex: Integração Zapier",
@@ -1155,7 +1263,6 @@
     "newProperty": "Novo Imóvel",
     "importCsv": "Importar CSV",
     "limitReached": "Limitação de Produtos Ativa",
-    "limitDescription": "Limite de produtos atingido. Faça upgrade para adicionar mais.",
     "upgrade": "Fazer Upgrade",
     "selectAll": "Selecionar Todos",
     "deselectAll": "Desmarcar Todos",
@@ -1254,7 +1361,18 @@
     "confirmDeleteProperty": "Deseja excluir o produto \"{{title}}\"?",
     "deletePropertyWarning": "⚠️ Esta ação verificará e removerá todas as dependências relacionadas",
     "dependencyError": "❌ Erro de dependência: ainda existem registros relacionados. Verifique tarefas, vendas ou outras relações.",
-    "foreignKeyError": "❌ Erro de chave estrangeira: existem registros que dependem deste produto."
+    "foreignKeyError": "❌ Erro de chave estrangeira: existem registros que dependem deste produto.",
+    "deleteSuccessWithDependencies": "✅ Produto excluído junto com {{count}} dependência(s).",
+    "deleteSuccessSingle": "✅ Produto excluído com sucesso!",
+    "genericError": "Erro: {{message}}",
+    "deleteError": "Erro ao excluir: {{message}}",
+    "deleteWithDependencies": "Excluir com dependências",
+    "bulkDeleteLoading": "Excluindo {{count}} produto(s)...",
+    "bulkDeleteSuccess": "✅ {{count}} produto(s) excluído(s) com sucesso!",
+    "bulkDeleteFailed": "❌ Falha ao excluir {{count}} produto(s): {{errors}}",
+    "andMoreErrors": "e mais {{count}} erro(s)",
+    "bulkDeleteGenericError": "❌ Erro ao executar exclusão em lote",
+    "limitDescription": "Você atingiu {{current}} de {{max}} produtos do seu plano. Faça upgrade para liberar mais cadastros."
   },
   "importCsv": {
     "title": "Importar Imóveis",
@@ -1481,6 +1599,28 @@
       "description": "Acesse \"Configurações\" para editar suas informações pessoais, foto de perfil, dados de contato e preferências do sistema."
     }
   },
+  "gamification": {
+    "title": "Ranking",
+    "subtitle": "Conquiste XP e suba no ranking da sua equipe!",
+    "leaderboard": {
+      "title": "Classificação",
+      "empty": "Nenhum ranking ainda",
+      "emptyHint": "Complete ações no CRM para ganhar XP!"
+    },
+    "profile": {
+      "level": "Nível",
+      "progress": "Progresso",
+      "nextLevel": "Próximo nível",
+      "badges": "Conquistas",
+      "noStats": "Suas estatísticas aparecerão aqui em breve!"
+    },
+    "xpActions": {
+      "leadCreated": "+50 XP: Lead criado",
+      "leadProposed": "+100 XP: Lead em Proposta",
+      "leadClosed": "+200 XP: Venda fechada",
+      "taskCompleted": "+30 XP: Tarefa concluída"
+    }
+  },
   "expenseManager": {
     "accessRestricted": {
       "title": "Acesso restrito",
@@ -1522,7 +1662,9 @@
       "types": {
         "fixed": "Fixa",
         "variable": "Variável",
-        "oneTime": "Pontual"
+        "oneTime": "Pontual",
+        "monthly": "Mensal (renova dia 01)",
+        "personal": "Pessoal"
       }
     },
     "categories": {
@@ -2251,19 +2393,5 @@
       "termsLink": "Terms",
       "cookiesLink": "Cookies"
     }
-  },
-  "team": {
-    "tabs": {
-      "overview": "Visão Geral",
-      "members": "Membros",
-      "products": "Produtos",
-      "leads": "Leads",
-      "metaConnection": "Conexão Meta",
-      "metaDistribution": "Distribuição Meta",
-      "ads": "Anúncios",
-      "invites": "Convites",
-      "settings": "Configurações"
-    },
-    "you": "(você)"
   }
 }

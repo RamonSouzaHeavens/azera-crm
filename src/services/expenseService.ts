@@ -6,7 +6,7 @@ export interface Despesa {
   categoria: string
   descricao: string
   valor: number
-  tipo: 'fixa' | 'variavel' | 'pontual'
+  tipo: 'fixa' | 'variavel' | 'pontual' | 'mensal' | 'pessoal'
   status?: 'ativa' | 'pausada' | 'finalizada'
   data_vencimento?: string | null
   data_pagamento?: string | null
@@ -22,7 +22,7 @@ export interface NovaDespesa {
   categoria: string
   descricao: string
   valor: number
-  tipo: 'fixa' | 'variavel' | 'pontual'
+  tipo: 'fixa' | 'variavel' | 'pontual' | 'mensal' | 'pessoal'
   data_vencimento?: string | null
   ativa?: boolean
   responsavel_id?: string | null

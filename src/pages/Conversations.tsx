@@ -13,7 +13,6 @@ import {
   ArrowLeft,
   Copy,
   Plus,
-  Instagram,
   Zap,
   Clock,
   CheckCheck
@@ -37,6 +36,7 @@ import { useAuthStore } from '../stores/authStore';
 import { AddActivityModal } from '../components/team/AddActivityModal';
 import { loadPipelineStages } from '../services/pipelineService';
 import { useFetchAvatar } from '../hooks/useFetchAvatar';
+import { useObjectionCards } from '../hooks/useObjectionPlaybook';
 
 interface MinimalConversation {
   id?: string;
@@ -69,16 +69,24 @@ export default function ConversationsPage() {
   const [activeTab, setActiveTab] = useState<'info' | 'notes' | 'files'>('info');
   const [modalAddActivity, setModalAddActivity] = useState(false);
   const [timelineKey, setTimelineKey] = useState(0);
+  const [categoryTab, setCategoryTab] = useState<'trabalho' | 'pessoal'>('trabalho');
+  const [visibleMessagesCount, setVisibleMessagesCount] = useState(20);
 
   const navigate = useNavigate();
   const { user, tenant } = useAuthStore();
-  const { conversations, loading, markConversationRead } = useConversations();
+  const { conversations, loading, markConversationRead, refetch: refetchConversations } = useConversations();
   const { messages, loading: messagesLoading, sending, sendMessage, messagesEndRef } = useMessages(selectedId);
   const { integration: activeIntegration } = useActiveIntegration();
   const { isRecording, recordingDuration, startRecording, stopRecording, cancelRecording, audioBlob, clearAudio } = useAudioRecorder();
   const { deleteConversation, loading: deletingConversation } = useDeleteConversation();
   const { fetchAvatar } = useFetchAvatar();
   const [localAvatars, setLocalAvatars] = useState<Record<string, string>>({});
+
+  const [showPlaybooks, setShowPlaybooks] = useState(false);
+  const { cards: playbooks, loading: loadingPlaybooks } = useObjectionCards();
+
+  // Estado para imagem colada
+  const [pastedImage, setPastedImage] = useState<{ file: File; preview: string } | null>(null);
 
   const selectedConversa = conversations.find(c => c.id === selectedId);
 
@@ -126,6 +134,11 @@ export default function ConversationsPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, selectedId]);
 
+  // Resetar contador de mensagens visíveis quando mudar de conversa
+  useEffect(() => {
+    setVisibleMessagesCount(20);
+  }, [selectedId]);
+
   // Atualizar lead state
   useEffect(() => {
     if (selectedConversa) {
@@ -135,17 +148,27 @@ export default function ConversationsPage() {
         nome: selectedConversa.contact_name,
         telefone: selectedConversa.contact_number,
         email: undefined,
-        status: selectedConversa.status
+        status: selectedConversa.status,
+        categoria: selectedConversa.categoria || 'trabalho'
       } as any);
     } else {
       setLead(null);
     }
   }, [selectedConversa]);
 
-  // Filtrar conversas
+  // Mensagens visíveis (últimas N mensagens)
+  const visibleMessages = messages.slice(-visibleMessagesCount);
+  const hasMoreMessages = messages.length > visibleMessagesCount;
+
+  const loadMoreMessages = () => {
+    setVisibleMessagesCount(prev => prev + 20);
+  };
+
+  // Filtrar conversas por pesquisa e categoria
   const filteredConversations = conversations.filter(c =>
-    c.contact_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.last_message_content?.toLowerCase().includes(searchTerm.toLowerCase())
+    (c.categoria || 'trabalho') === categoryTab &&
+    (c.contact_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.last_message_content?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleSend = async () => {
@@ -164,6 +187,34 @@ export default function ConversationsPage() {
     if (e.target.files?.length) {
       toast.error("Envio de arquivo requer implementação de upload");
     }
+  };
+
+  // Função para lidar com Ctrl+V de imagem
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) {
+          const preview = URL.createObjectURL(file);
+          setPastedImage({ file, preview });
+          toast.success('Imagem pronta para envio! 📷');
+        }
+        break;
+      }
+    }
+  };
+
+  // Limpar imagem colada
+  const clearPastedImage = () => {
+    if (pastedImage?.preview) {
+      URL.revokeObjectURL(pastedImage.preview);
+    }
+    setPastedImage(null);
   };
 
   const confirmDeleteConversation = async () => {
@@ -266,14 +317,20 @@ export default function ConversationsPage() {
 
   return (
     <RequireRole roles={['owner', 'admin', 'manager']}>
-      <div className="flex flex-col h-full relative overflow-hidden bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+      <div className="flex flex-col h-full relative overflow-hidden bg-background text-slate-900 dark:text-slate-200">
+        {/* HUD glow grid background + overlay */}
+        <div className="pointer-events-none absolute inset-0 opacity-40">
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-600/10 blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.15),_transparent_55%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:120px_120px]" />
+        </div>
 
-        <div className="flex-1 overflow-hidden flex">
+        <div className="flex-1 overflow-hidden flex p-4 gap-4 relative z-10">
 
           {/* =================================================================================
               LEFT COLUMN - LIST
           ================================================================================= */}
-          <div className={`w-full md:w-80 lg:w-96 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 h-full ${selectedId ? 'hidden md:flex' : 'flex'}`}>
+          <div className={`w-full md:w-80 lg:w-96 flex flex-col rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 h-full shadow-sm overflow-hidden ${selectedId ? 'hidden md:flex' : 'flex'}`}>
 
             {/* Header / Search */}
             <div className="p-4 border-b border-gray-100 dark:border-gray-800">
@@ -297,13 +354,32 @@ export default function ConversationsPage() {
                   className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border border-transparent focus:border-emerald-500/30 focus:bg-white dark:focus:bg-gray-900 rounded-lg text-sm focus:ring-4 focus:ring-emerald-500/10 transition-all outline-none"
                 />
               </div>
+
+              {/* Abas Trabalho | Pessoal */}
+              <div className="flex items-center gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <button
+                  onClick={() => setCategoryTab('trabalho')}
+                  className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${categoryTab === 'trabalho'
+                    ? 'bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                >
+                  💼 Trabalho
+                </button>
+                <button
+                  onClick={() => setCategoryTab('pessoal')}
+                  className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${categoryTab === 'pessoal'
+                    ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                >
+                  👤 Pessoal
+                </button>
+              </div>
             </div>
 
             {/* List */}
             <div className="flex-1 overflow-y-auto">
-              {/* Optional: "Pinned" section visual header if you wanted to implement later */}
-              {/* <div className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider mt-2">All Conversations</div> */}
-
               {filteredConversations.map((conversa) => (
                 <div
                   key={conversa.id}
@@ -331,9 +407,7 @@ export default function ConversationsPage() {
                           );
                         }
                         return (
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm bg-gradient-to-br ${conversa.channel === 'instagram'
-                            ? 'from-[#833AB4] via-[#FD1D1D] to-[#FCAF45]'
-                            : selectedId === conversa.id
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm bg-gradient-to-br ${selectedId === conversa.id
                               ? 'from-emerald-500 to-emerald-700'
                               : 'from-gray-400 to-gray-600'
                             }`}>
@@ -344,11 +418,6 @@ export default function ConversationsPage() {
                       {conversa.channel === 'whatsapp' && (
                         <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center">
                           <MessageCircle className="w-3 h-3 text-emerald-500 fill-current" />
-                        </div>
-                      )}
-                      {conversa.channel === 'instagram' && (
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center">
-                          <Instagram className="w-3 h-3 text-[#E4405F]" />
                         </div>
                       )}
                     </div>
@@ -383,7 +452,7 @@ export default function ConversationsPage() {
           {/* =================================================================================
               MIDDLE COLUMN - CHAT AREA
           ================================================================================= */}
-          <div className={`flex-1 flex flex-col bg-white dark:bg-slate-900 relative ${!selectedId ? 'hidden md:flex items-center justify-center' : 'flex'}`}>
+          <div className={`flex-1 flex flex-col rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 relative shadow-sm overflow-hidden ${!selectedId ? 'hidden md:flex items-center justify-center' : 'flex'}`}>
 
             {!selectedId ? (
               <div className="text-center p-8 opacity-50">
@@ -408,16 +477,6 @@ export default function ConversationsPage() {
                     <div className="flex flex-col">
                       <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                         {selectedConversa?.contact_name}
-                        {selectedConversa?.channel === 'instagram' && (
-                          <span className="px-2 py-0.5 rounded-full bg-pink-50 text-[#E4405F] text-[10px] font-bold border border-pink-100 flex items-center gap-1">
-                            <Instagram className="w-3 h-3" /> Instagram
-                          </span>
-                        )}
-                        {selectedConversa?.channel === 'whatsapp' && (
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold border border-emerald-100 flex items-center gap-1">
-                            <MessageCircle className="w-3 h-3" /> WhatsApp
-                          </span>
-                        )}
                       </h2>
                       <div className="flex items-center gap-2 text-xs text-gray-500">
                         <span>{selectedConversa?.contact_number}</span>
@@ -430,24 +489,35 @@ export default function ConversationsPage() {
                   </div>
                 </div>
 
-                {/* Messages Area - Clean & Modern */}
+                {/* Messages Area */}
                 <div className="flex-1 overflow-y-auto p-6 bg-slate-50 dark:bg-slate-900/50">
                   <div className="max-w-3xl mx-auto space-y-6">
-                    {/* Date Separator Example (could be dynamic) */}
-                    {messages.length > 0 && (
+
+                    {/* Botão Carregar Mais */}
+                    {hasMoreMessages && (
+                      <div className="flex items-center justify-center">
+                        <button
+                          onClick={loadMoreMessages}
+                          className="px-4 py-2 text-xs font-medium text-gray-500 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 rounded-full shadow-sm transition-all hover:shadow-md"
+                        >
+                          ⬆️ Carregar mais ({messages.length - visibleMessagesCount} mensagens anteriores)
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Date Separator */}
+                    {visibleMessages.length > 0 && (
                       <div className="flex items-center justify-center my-4">
                         <span className="text-[10px] font-semibold text-gray-400 bg-gray-200 dark:bg-gray-800 px-3 py-1 rounded-full uppercase tracking-wider">
-                          {format(new Date(messages[0].created_at), 'MMMM dd, yyyy')}
+                          {format(new Date(visibleMessages[0].created_at), 'MMMM dd, yyyy')}
                         </span>
                       </div>
                     )}
 
-                    {messages.map((msg, index) => {
+                    {visibleMessages.map((msg, index) => {
                       const textContent = parseMessageText(msg.content);
                       const isOutbound = msg.direction === 'outbound';
-
-                      // Check if previous message was from same sender to group visually
-                      const isSequence = index > 0 && messages[index - 1].direction === msg.direction;
+                      const isSequence = index > 0 && visibleMessages[index - 1].direction === msg.direction;
 
                       const msgRecord = msg as unknown as Record<string, unknown>;
                       let mediaUrl = msgRecord.media_url as string | null | undefined;
@@ -500,9 +570,7 @@ export default function ConversationsPage() {
                           {!isOutbound && isSequence && <div className="w-8 flex-shrink-0" />}
 
                           <div
-                            className={`relative max-w-[85%] md:max-w-lg rounded-2xl p-1 shadow-sm border ${isOutbound && selectedConversa?.channel === 'instagram'
-                              ? 'bg-gradient-to-r from-[#833AB4] to-[#FD1D1D] text-white rounded-br-none border-transparent'
-                              : isOutbound
+                            className={`relative max-w-[85%] md:max-w-lg rounded-2xl p-1 shadow-sm border ${isOutbound
                                 ? 'bg-emerald-500 border-emerald-500 text-white rounded-br-none'
                                 : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 rounded-bl-none'
                               }`}
@@ -541,7 +609,7 @@ export default function ConversationsPage() {
                               </div>
                             )}
 
-                            {/* Text Content - Only show if not a media indicator */}
+                            {/* Text Content */}
                             {textContent &&
                               !textContent.startsWith('🎵') &&
                               !textContent.startsWith('📷') &&
@@ -570,10 +638,9 @@ export default function ConversationsPage() {
                   </div>
                 </div>
 
-                {/* Input Area - Clean Bar */}
+                {/* Input Area */}
                 <div className="p-4 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-gray-800">
                   {isRecording ? (
-                    // Recording UI (Kept functional but styled)
                     <div className="flex items-center gap-4 animate-in fade-in duration-200">
                       <div className="flex-1 bg-red-50 dark:bg-red-900/20 rounded-lg p-3 flex items-center gap-3 border border-red-100 dark:border-red-900/30">
                         <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-sm" />
@@ -590,7 +657,6 @@ export default function ConversationsPage() {
                       </button>
                     </div>
                   ) : audioBlob ? (
-                    // Audio Preview UI
                     <div className="flex items-center gap-4">
                       <div className="flex-1 bg-emerald-50 rounded-lg p-3 flex items-center gap-3 border border-emerald-100">
                         <Mic className="w-5 h-5 text-emerald-600" />
@@ -605,7 +671,6 @@ export default function ConversationsPage() {
                       </button>
                     </div>
                   ) : (
-                    // Standard Text Input
                     <div className="flex items-end gap-3">
                       <div className="flex items-center gap-2 pb-3 text-gray-400">
                         <input
@@ -622,15 +687,84 @@ export default function ConversationsPage() {
                         >
                           <Paperclip className="w-5 h-5" />
                         </label>
-                        <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors" title="Respostas do Playbook">
-                          <Zap className="w-5 h-5 text-yellow-500" />
-                        </button>
+                        <div className="relative">
+                          {showPlaybooks && (
+                            <div className="absolute bottom-12 left-0 w-80 max-h-96 overflow-y-auto bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-20 flex flex-col animate-in fade-in slide-in-from-bottom-2">
+                              <div className="p-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-slate-800/50 sticky top-0 backdrop-blur-sm z-10 flex justify-between items-center">
+                                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Playbook de Vendas</h4>
+                                <button onClick={() => setShowPlaybooks(false)} className="text-gray-400 hover:text-gray-600">
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              {loadingPlaybooks ? (
+                                <div className="p-4 text-center text-sm text-gray-500">Carregando...</div>
+                              ) : playbooks.length === 0 ? (
+                                <div className="p-4 text-center text-sm text-gray-500">Nenhum playbook encontrado.</div>
+                              ) : (
+                                <div className="p-2 space-y-1">
+                                  {playbooks.map((card) => (
+                                    <button
+                                      key={card.id}
+                                      onClick={() => {
+                                        setTextoInput(card.response);
+                                        setShowPlaybooks(false);
+                                      }}
+                                      className="w-full text-left p-3 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-lg group transition-colors"
+                                    >
+                                      <div className="flex items-center justify-between mb-1">
+                                        <span className="font-medium text-sm text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                                          {card.objection}
+                                        </span>
+                                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${card.stage === 'Qualificação' ? 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-900/20 dark:border-sky-800' :
+                                          card.stage === 'Proposta' ? 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:border-amber-800' :
+                                            card.stage === 'Negociação' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800' :
+                                              card.stage === 'Fechamento' ? 'bg-fuchsia-50 text-fuchsia-600 border-fuchsia-100 dark:bg-fuchsia-900/20 dark:border-fuchsia-800' :
+                                                'bg-indigo-50 text-indigo-600 border-indigo-100 dark:bg-indigo-900/20 dark:border-indigo-800'
+                                          }`}>
+                                          {card.stage}
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+                                        {card.response}
+                                      </p>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <button
+                            onClick={() => setShowPlaybooks(!showPlaybooks)}
+                            className={`p-2 rounded-lg transition-colors ${showPlaybooks ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                            title="Respostas do Playbook"
+                          >
+                            <Zap className={`w-5 h-5 ${showPlaybooks ? 'text-yellow-600' : 'text-yellow-500'}`} />
+                          </button>
+                        </div>
                       </div>
 
                       <div className="flex-1 relative">
+                        {/* Preview da imagem colada */}
+                        {pastedImage && (
+                          <div className="mb-2 relative inline-block">
+                            <img
+                              src={pastedImage.preview}
+                              alt="Preview"
+                              className="max-h-32 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm"
+                            />
+                            <button
+                              onClick={clearPastedImage}
+                              className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        )}
                         <textarea
                           value={textoInput}
                           onChange={(e) => setTextoInput(e.target.value)}
+                          onPaste={handlePaste}
                           onKeyPress={(e) => {
                             if (e.key === 'Enter' && !e.shiftKey) {
                               e.preventDefault();
@@ -639,7 +773,7 @@ export default function ConversationsPage() {
                               }
                             }
                           }}
-                          placeholder={t('conversations.messagePlaceholder')}
+                          placeholder={pastedImage ? 'Adicione uma legenda (opcional)...' : t('conversations.messagePlaceholder')}
                           disabled={uploadingMedia}
                           rows={1}
                           className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none min-h-[48px] max-h-[120px] text-sm text-slate-800 dark:text-slate-100 placeholder-gray-400"
@@ -647,17 +781,21 @@ export default function ConversationsPage() {
                         />
                       </div>
 
-                      {textoInput.trim() ? (
+                      {(textoInput.trim() || pastedImage) ? (
                         <button
-                          onClick={handleSend}
+                          onClick={() => {
+                            if (pastedImage) {
+                              toast.error("Envio de imagem requer implementação de upload");
+                              clearPastedImage();
+                            } else {
+                              handleSend();
+                            }
+                          }}
                           disabled={uploadingMedia}
-                          className={`px-4 py-3 text-white font-medium rounded-xl shadow-md transition-all flex items-center gap-2 disabled:opacity-50 ${selectedConversa?.channel === 'instagram'
-                            ? 'bg-gradient-to-r from-[#833AB4] to-[#FD1D1D] hover:opacity-90 shadow-pink-500/20'
-                            : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20'
-                            }`}
+                          className="px-4 py-3 text-white font-medium rounded-xl shadow-md transition-all flex items-center gap-2 disabled:opacity-50 bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20"
                         >
                           <Send className="w-4 h-4" />
-                          <span className="hidden lg:inline">{t('conversations.send')}</span>
+                          <span className="hidden lg:inline">{pastedImage ? 'Enviar Imagem' : t('conversations.send')}</span>
                         </button>
                       ) : (
                         <button
@@ -675,7 +813,7 @@ export default function ConversationsPage() {
             )}
           </div>
 
-          <div className={`w-80 border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 hidden lg:flex flex-col`}>
+          <div className={`w-80 rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 hidden lg:flex flex-col shadow-sm overflow-hidden`}>
             {/* Profile Header */}
             <div className="p-6 border-b border-gray-100 dark:border-gray-800 text-center relative">
               <button onClick={() => toast('Close Details')} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
@@ -696,7 +834,9 @@ export default function ConversationsPage() {
                 })()}
               </div>
               <h3 className="font-bold text-lg text-slate-800 dark:text-white">{selectedConversa?.contact_name || lead?.nome}</h3>
-              <p className="text-sm text-gray-500">{lead?.email || t('conversations.visitor')}</p>
+              <p className="text-sm text-gray-500 text-gray-500">
+                {lead?.email || t('conversations.visitor')}
+              </p>
             </div>
 
             {/* Tabs (Visual) */}
@@ -728,27 +868,36 @@ export default function ConversationsPage() {
                 <div className="space-y-4 animate-in fade-in duration-300">
                   <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('conversations.aboutCustomer')}</h4>
 
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <Mail className="w-4 h-4 text-gray-500" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">{t('conversations.email')}</p>
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate max-w-[180px]">
+                  <div className="space-y-3">
+                    <div className="group bg-gray-50 dark:bg-slate-800/50 p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-emerald-200 transition-colors">
+                      <div className="text-xs text-gray-400 uppercase font-semibold mb-1 flex items-center gap-2">
+                        <Mail className="w-3 h-3" /> Email
+                      </div>
+                      <div className="text-sm text-slate-800 dark:text-slate-200 truncate font-medium">
                         {lead?.email || t('conversations.notProvided')}
-                      </p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <PhoneIcon className="w-4 h-4 text-gray-500" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">{t('conversations.phone')}</p>
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        {lead?.telefone || selectedConversa?.contact_number || t('conversations.notProvided')}
-                      </p>
+                    <div className="group bg-gray-50 dark:bg-slate-800/50 p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-emerald-200 transition-colors">
+                      <div className="text-xs text-gray-400 uppercase font-semibold mb-1 flex items-center gap-2">
+                        <PhoneIcon className="w-3 h-3" /> {t('conversations.phone')}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-slate-800 dark:text-slate-200 font-mono">
+                          {selectedConversa?.contact_number}
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (selectedConversa?.contact_number) {
+                              navigator.clipboard.writeText(selectedConversa.contact_number);
+                              toast.success('Copiado!');
+                            }
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white dark:hover:bg-slate-700 rounded transition-all text-gray-400"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -762,22 +911,73 @@ export default function ConversationsPage() {
                           value={lead?.status || ''}
                           onChange={async (e) => {
                             if (!lead?.id) return;
-                            const newStatus = e.target.value;
+                            const newStatusKey = e.target.value;
+
+                            console.log('[LeadUpdate] Tentativa de atualização de status:', {
+                              leadId: lead.id,
+                              oldStatus: lead.status,
+                              newStatus: newStatusKey,
+                              tenant_id: lead.tenant_id
+                            });
+
+                            if (lead.id === 'temp-id') {
+                              console.error('[LeadUpdate] ERRO CRÍTICO: ID do lead é "temp-id". O lead não está vinculado corretamente à conversa.');
+                              toast.error('Erro: Lead não identificado (ID temporário).');
+                              return;
+                            }
 
                             // Otimista update
-                            setLead(prev => prev ? { ...prev, status: newStatus } : null);
+                            setLead(prev => prev ? { ...prev, status: newStatusKey } : null);
 
                             try {
-                              const { error } = await supabase
+                              const { data: checkData, error: checkError } = await supabase
                                 .from('clientes')
-                                .update({ status: newStatus })
-                                .eq('id', lead.id);
+                                .select('id, tenant_id, status')
+                                .eq('id', lead.id)
+                                .maybeSingle();
 
-                              if (error) throw error;
+                              if (checkError) {
+                                console.error('[LeadUpdate] Erro na verificação pré-update:', checkError);
+                              } else if (!checkData) {
+                                console.error('[LeadUpdate] REGISTRO NÃO ENCONTRADO no banco via SELECT. Possível erro de ID ou RLS de leitura.');
+                                throw new Error('Lead não encontrado ou sem permissão de leitura.');
+                              } else {
+                                console.log('[LeadUpdate] Registro verificado existe:', checkData);
+                              }
+
+                              const currentTenantId = checkData?.tenant_id || lead.tenant_id;
+
+                              // Tentativa real de update
+                              const { data, error } = await supabase
+                                .from('clientes')
+                                .update({
+                                  status: newStatusKey,
+                                  tenant_id: currentTenantId
+                                })
+                                .eq('id', lead.id)
+                                .select();
+
+                              if (error) {
+                                console.error('[LeadUpdate] Erro retornado pelo Supabase no UPDATE:', error);
+                                throw error;
+                              }
+
+                              if (!data || data.length === 0) {
+                                console.error('[LeadUpdate] UPDATE retornou 0 registros. O registro existe (checkOk) mas o UPDATE falhou. RLS de UPDATE bloqueando?');
+                                throw new Error('Atualização bloqueada por permissões (RLS de Update).');
+                              }
+
+                              console.log('[LeadUpdate] Sucesso absoluto. Dados retornados:', data);
                               toast.success('Status atualizado!');
-                            } catch (err) {
-                              toast.error('Erro ao atualizar status');
-                              // Reverter em caso de erro (idealmente buscar do banco novamente)
+
+                              // Atualizar a lista de conversas para refletir o novo status
+                              refetchConversations();
+                            } catch (err: any) {
+                              console.error('[LeadUpdate] Erro capturado no bloco principal:', err);
+                              toast.error(`Erro ao atualizar: ${err.message}`);
+                              if (checkData) {
+                                setLead(prev => prev ? { ...prev, status: checkData.status } : null);
+                              }
                             }
                           }}
                           className="appearance-none pl-3 pr-8 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs rounded-full font-medium border-none focus:ring-2 focus:ring-green-500/50 cursor-pointer outline-none"
@@ -799,6 +999,55 @@ export default function ConversationsPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Categoria (Trabalho / Pessoal) */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Categoria</span>
+                      <div className="relative">
+                        <select
+                          value={lead?.categoria || 'trabalho'}
+                          onChange={async (e) => {
+                            if (!lead?.id || lead.id === 'temp-id') return;
+                            const newCategoria = e.target.value as 'trabalho' | 'pessoal';
+
+                            // Optimistic update
+                            setLead(prev => prev ? { ...prev, categoria: newCategoria } : null);
+
+                            try {
+                              const { data, error } = await supabase
+                                .from('clientes')
+                                .update({ categoria: newCategoria })
+                                .eq('id', lead.id)
+                                .select();
+
+                              if (error) throw error;
+                              if (!data || data.length === 0) {
+                                throw new Error('Atualização não persistida');
+                              }
+
+                              toast.success('Categoria atualizada!');
+                              refetchConversations();
+                            } catch (err: any) {
+                              console.error('[CategoriaUpdate] Erro:', err);
+                              toast.error(`Erro ao atualizar categoria: ${err.message}`);
+                            }
+                          }}
+                          className={`appearance-none pl-3 pr-8 py-1 text-xs rounded-full font-medium border-none focus:ring-2 cursor-pointer outline-none ${lead?.categoria === 'pessoal'
+                            ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 focus:ring-purple-500/50'
+                            : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 focus:ring-blue-500/50'
+                            }`}
+                        >
+                          <option value="trabalho">💼 Trabalho</option>
+                          <option value="pessoal">👤 Pessoal</option>
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                          <svg className={`w-3 h-3 ${lead?.categoria === 'pessoal' ? 'text-purple-700 dark:text-purple-300' : 'text-blue-700 dark:text-blue-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-600">ID do Lead</span>
                       <div className="flex items-center gap-2">

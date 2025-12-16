@@ -60,10 +60,10 @@ export default function ConfiguracoesNova() {
   const setProfile = useAuthStore((state: AuthState) => state.setProfile)
   const userId = user?.id ?? ''
   const tenantId = useMemo(() => tenant?.id ?? member?.tenant_id ?? '', [tenant?.id, member?.tenant_id])
-  const podeGerenciarFinanceiro = useMemo(() => {
-    const role = member?.role ?? ''
-    return role === 'owner' || role === 'admin' || role === 'administrador'
-  }, [member])
+
+  // Apenas owners podem ver/gerenciar o centro financeiro
+  const isOwner = member?.role === 'owner'
+  const podeGerenciarFinanceiro = isOwner
 
   // =======================
   // PERFIL
@@ -161,7 +161,7 @@ export default function ConfiguracoesNova() {
         if (updatedProfile) {
           // Converter UserProfile para ProfileRow
           const profileRow = {
-            id: updatedProfile.user_id,
+            id: updatedProfile.id,
             display_name: updatedProfile.display_name || values.display_name || values.full_name,
             avatar_url: updatedProfile.avatar_url,
             phone: updatedProfile.phone,
@@ -218,7 +218,7 @@ export default function ConfiguracoesNova() {
       if (updatedProfile) {
         // Converter UserProfile para ProfileRow
         const profileRow = {
-          id: updatedProfile.user_id,
+          id: updatedProfile.id,
           display_name: updatedProfile.display_name,
           avatar_url: updatedProfile.avatar_url,
           phone: updatedProfile.phone,
@@ -498,13 +498,16 @@ export default function ConfiguracoesNova() {
   // =======================
   // UI
   // =======================
-  const tabs: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }>; ring: string }[] = [
+  const allTabs: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }>; ring: string; ownerOnly?: boolean }[] = [
     { id: 'perfil', label: t('settings.tabs.profile'), icon: User, ring: 'ring-cyan-500/30' },
     { id: 'empresa', label: t('settings.tabs.company'), icon: Building, ring: 'ring-purple-500/30' },
-    { id: 'financeiro', label: t('settings.tabs.financial'), icon: DollarSign, ring: 'ring-emerald-500/30' },
+    { id: 'financeiro', label: t('settings.tabs.financial'), icon: DollarSign, ring: 'ring-emerald-500/30', ownerOnly: true },
     { id: 'seguranca', label: t('settings.tabs.security'), icon: Shield, ring: 'ring-emerald-500/30' },
     { id: 'documentos_legais', label: t('settings.tabs.documents'), icon: FileText, ring: 'ring-blue-500/30' },
   ]
+
+  // Filtra tabs baseado em permissões
+  const tabs = allTabs.filter(tab => !tab.ownerOnly || isOwner)
 
   return (
     <div className="text-slate-900 dark:text-slate-200 flex flex-col min-h-full relative overflow-hidden">

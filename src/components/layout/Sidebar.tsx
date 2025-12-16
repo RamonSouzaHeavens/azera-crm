@@ -39,13 +39,14 @@ const getNavGroups = (t: (key: string) => string) => {
     { name: t('sidebar.tasks'), href: '/app/tarefas', icon: CheckSquare },
     { name: t('sidebar.products'), href: '/app/produtos', icon: Package },
   ]
+  // Automações: apenas owner e admin podem ver
   const groupAutomacoes = [
     { name: t('sidebar.automations'), href: '/app/automacoes', icon: Zap },
     { name: t('sidebar.apiKeys'), href: '/app/api-keys', icon: Key },
     { name: t('sidebar.documentation'), href: '/app/documentacao', icon: Book },
   ]
   const groupEmpresa = [
-    { name: t('sidebar.team'), href: '/app/equipe', icon: Building2 },
+    { name: t('sidebar.team'), href: '/app/equipe-beta', icon: Building2 },
     { name: t('sidebar.billing'), href: '/app/subscribe', icon: CreditCard },
     { name: t('sidebar.settings'), href: '/app/configuracoes', icon: Settings },
   ]
@@ -91,6 +92,9 @@ export const Sidebar = () => {
   }
 
   const isInTeam = member?.role && ['owner', 'admin', 'manager'].includes(member.role)
+
+  // Vendedores não veem a seção de Automações
+  const canSeeAutomations = member?.role && ['owner', 'admin'].includes(member.role)
 
   // ====== ANIMATION VARIANTS ======
   const containerVariants: Variants = {
@@ -262,62 +266,67 @@ export const Sidebar = () => {
           </>
         )}
 
-        {!collapsed && (
-          <motion.li
-            variants={titleVariants}
-            className="pt-4 text-[9.5px] tracking-wider text-text opacity-50 uppercase mb-3 pl-3"
-          >
-            {t('sidebar.sections.automations')}
-          </motion.li>
-        )}
-        {groupAutomacoes.map((item) => {
-          const Icon = item.icon
-          const active = location.pathname === item.href
-          return (
-            <motion.li
-              key={item.name}
-              variants={itemVariants}
-              whileHover={{ scale: 1.02, x: collapsed ? 0 : 4 }}
-              whileTap={{ scale: 0.98 }}
-              className="mb-1"
-            >
-              <Link
-                to={item.href}
-                onClick={onClick}
-                title={item.name}
-                className={`flex items-center py-3 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden ${collapsed ? 'justify-center px-0' : 'px-3'
-                  } ${active ? 'bg-primary/10 text-primary' : 'text-text hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        {/* Automações: apenas owner e admin podem ver */}
+        {canSeeAutomations && (
+          <>
+            {!collapsed && (
+              <motion.li
+                variants={titleVariants}
+                className="pt-4 text-[9.5px] tracking-wider text-text opacity-50 uppercase mb-3 pl-3"
               >
-                {active && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute inset-0 bg-primary/10"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                <motion.div
-                  animate={{ rotate: active ? [0, -10, 10, -10, 0] : 0 }}
-                  transition={{ duration: 0.5 }}
+                {t('sidebar.sections.automations')}
+              </motion.li>
+            )}
+            {groupAutomacoes.map((item) => {
+              const Icon = item.icon
+              const active = location.pathname === item.href
+              return (
+                <motion.li
+                  key={item.name}
+                  variants={itemVariants}
+                  whileHover={{ scale: 1.02, x: collapsed ? 0 : 4 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="mb-1"
                 >
-                  <Icon className={`w-5 h-5 ${active ? 'text-primary' : 'text-text opacity-70'} ${collapsed ? '' : 'mr-3'} relative z-10`} />
-                </motion.div>
-                <AnimatePresence>
-                  {!collapsed && (
-                    <motion.span
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: "auto" }}
-                      exit={{ opacity: 0, width: 0 }}
-                      transition={{ duration: 0.3, delay: 0.1 }}
-                      className={`tracking-wide whitespace-nowrap relative z-10 ${active ? 'text-primary font-semibold' : 'text-text opacity-80'}`}
+                  <Link
+                    to={item.href}
+                    onClick={onClick}
+                    title={item.name}
+                    className={`flex items-center py-3 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden ${collapsed ? 'justify-center px-0' : 'px-3'
+                      } ${active ? 'bg-primary/10 text-primary' : 'text-text hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                  >
+                    {active && (
+                      <motion.div
+                        layoutId="activeTab"
+                        className="absolute inset-0 bg-primary/10"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
+                    <motion.div
+                      animate={{ rotate: active ? [0, -10, 10, -10, 0] : 0 }}
+                      transition={{ duration: 0.5 }}
                     >
-                      {item.name}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </Link>
-            </motion.li>
-          )
-        })}
+                      <Icon className={`w-5 h-5 ${active ? 'text-primary' : 'text-text opacity-70'} ${collapsed ? '' : 'mr-3'} relative z-10`} />
+                    </motion.div>
+                    <AnimatePresence>
+                      {!collapsed && (
+                        <motion.span
+                          initial={{ opacity: 0, width: 0 }}
+                          animate={{ opacity: 1, width: "auto" }}
+                          exit={{ opacity: 0, width: 0 }}
+                          transition={{ duration: 0.3, delay: 0.1 }}
+                          className={`tracking-wide whitespace-nowrap relative z-10 ${active ? 'text-primary font-semibold' : 'text-text opacity-80'}`}
+                        >
+                          {item.name}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </Link>
+                </motion.li>
+              )
+            })}
+          </>
+        )}
 
         {!collapsed && (
           <motion.li
@@ -407,7 +416,7 @@ export const Sidebar = () => {
               variant="ghost"
               size="sm"
               onClick={() => setIsCollapsed(v => !v)}
-              className="p-2 text-text hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="p-2 text-text hover:bg-slate-100 dark:hover:bg-slate-800 focus:ring-0 focus:ring-offset-0"
               aria-label={isCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
             >
               <ChevronLeft className={`w-4 h-4 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} />

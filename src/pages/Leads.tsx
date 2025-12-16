@@ -16,13 +16,22 @@ import {
   Trash,
   ChevronUp,
   ChevronDown,
+  Download,
+  Upload,
+  CheckSquare,
+  Square,
+  Trash2,
 } from 'lucide-react'
+import { ExportLeadsModal } from '../components/modals/ExportLeadsModal'
+import { ImportLeadsModal } from '../components/modals/ImportLeadsModal'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../stores/authStore'
 import { useThemeStore } from '../stores/themeStore'
 import { supabase } from '../lib/supabase'
 import { loadPipelineStages, createPipelineStage, updatePipelineStage, deletePipelineStage } from '../services/pipelineService'
+import { getTeamOverview } from '../services/equipeService'
+import { checkAndUnlockAchievements } from '../services/achievementService'
 
 // =======================
 // Tipos fortemente tipados (sem any)
@@ -39,8 +48,15 @@ export interface ClienteRow {
   notas: string | null
   valor_potencial: number | null
   campanha_id: string | null
+  proprietario_id?: string | null
   created_at?: string
   updated_at?: string
+}
+
+interface TeamMember {
+  id: string
+  name: string
+  email: string
 }
 
 export interface Produto {
@@ -117,6 +133,14 @@ export default function Leads() {
   const [filters, setFilters] = useState<ClienteFilters>({ status: 'todos' })
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+
+  // Selection mode states
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set())
+  const [deletingSelected, setDeletingSelected] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -401,6 +425,38 @@ export default function Leads() {
     }
   }, [tenant?.id])
 
+  const loadTeamMembers = useCallback(async () => {
+    console.log('[DEBUG] loadTeamMembers called', { tenantId: tenant?.id })
+    if (!tenant?.id) {
+      console.log('[DEBUG] loadTeamMembers aborted - no tenant')
+      return
+    }
+    try {
+      const overview = await getTeamOverview()
+      console.log('[DEBUG] getTeamOverview result:', overview)
+
+      if (overview?.members && overview.members.length > 0) {
+        const team = overview.members.map((m: any) => ({
+          id: m.user_id || m.id,
+          name: m.nome || m.email || 'Usuário',
+          email: m.email || ''
+        }))
+        console.log('[DEBUG] setTeamMembers with:', team)
+        setTeamMembers(team)
+      } else if (user?.id) {
+        // Fallback: usar o próprio usuário logado
+        console.log('[DEBUG] No members found, using current user as fallback')
+        setTeamMembers([{ id: user.id, name: user.email || 'Você', email: '' }])
+      }
+    } catch (err) {
+      console.error('[ERROR] loadTeamMembers:', err)
+      // Fallback em caso de erro
+      if (user?.id) {
+        setTeamMembers([{ id: user.id, name: user.email || 'Você', email: '' }])
+      }
+    }
+  }, [tenant?.id, user?.id, user?.email])
+
   useEffect(() => {
     // Carrega campanhas primeiro (nome da campanha no card) e depois os leads.
     // Executamos apenas quando tenant.id muda ou authLoading vira false
@@ -420,6 +476,7 @@ export default function Leads() {
       await loadOrigins()
       await loadLossReasons()
       await loadCustomFields()
+      await loadTeamMembers()
       await loadLeads(1)
 
     }
@@ -442,6 +499,7 @@ export default function Leads() {
     status?: string;
     origem_id?: string;
     motivo_perda_id?: string;
+    proprietario_id?: string;
     compartilhado_equipe?: boolean;
     notas?: string;
     customFields?: Record<string, string>;
@@ -457,13 +515,12 @@ export default function Leads() {
           status: leadData.status || pipelineStages[0]?.key || 'lead',
           telefone: leadData.telefone || null,
           email: leadData.email || null,
-          notas: leadData.notas || null,
           valor_potencial: leadData.valor_potencial || null,
-          campanha_id: null,
           origem_id: leadData.origem_id || null,
           motivo_perda_id: leadData.motivo_perda_id || null,
+          proprietario_id: leadData.proprietario_id || user?.id || null, // Define proprietário (padrão: usuário atual)
           compartilhado_equipe: leadData.compartilhado_equipe || false,
-          proprietario_id: user?.id || null
+          notas: leadData.notas || null
         })
         .select()
         .single()
@@ -538,6 +595,11 @@ export default function Leads() {
 
       if (error) throw error
 
+      // Se lead foi movido para 'fechado', verificar conquistas
+      if (newStageKey === 'fechado' && source.droppableId !== 'fechado' && user?.id) {
+        checkAndUnlockAchievements(user.id, tenant.id)
+      }
+
       // Atualizar estado local
       setLeads(prev => prev.map(l => (l.id === realLeadId ? { ...l, status: newStageKey } : l)))
 
@@ -545,6 +607,70 @@ export default function Leads() {
     } catch (err) {
       console.error(err)
       toast.error(t('leads.leadMoveFailed'))
+    }
+  }
+
+  // =======================
+  // Selection & Bulk Delete
+  // =======================
+  const toggleLeadSelection = (leadId: string) => {
+    setSelectedLeads(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(leadId)) {
+        newSet.delete(leadId)
+      } else {
+        newSet.add(leadId)
+      }
+      return newSet
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedLeads.size === leads.length) {
+      setSelectedLeads(new Set())
+    } else {
+      setSelectedLeads(new Set(leads.map(l => l.id)))
+    }
+  }
+
+  const deleteSelectedLeads = async () => {
+    if (selectedLeads.size === 0) return
+
+    const confirmed = window.confirm(
+      t('leads.confirmBulkDelete', 'Deseja realmente excluir {{count}} leads selecionados?')
+        .replace('{{count}}', String(selectedLeads.size))
+    )
+
+    if (!confirmed) return
+
+    setDeletingSelected(true)
+    try {
+      const idsToDelete = Array.from(selectedLeads)
+
+      // First delete related custom field values
+      await supabase
+        .from('lead_custom_field_values')
+        .delete()
+        .in('lead_id', idsToDelete)
+
+      // Then delete the leads
+      const { error } = await supabase
+        .from('clientes')
+        .delete()
+        .in('id', idsToDelete)
+
+      if (error) throw error
+
+      setLeads(prev => prev.filter(l => !selectedLeads.has(l.id)))
+      setSelectedLeads(new Set())
+      setSelectionMode(false)
+      toast.success(t('leads.bulkDeleteSuccess', '{{count}} leads excluídos com sucesso!')
+        .replace('{{count}}', String(idsToDelete.length)))
+    } catch (err) {
+      console.error(err)
+      toast.error(t('leads.bulkDeleteFailed', 'Falha ao excluir leads selecionados'))
+    } finally {
+      setDeletingSelected(false)
     }
   }
 
@@ -584,10 +710,15 @@ export default function Leads() {
     <div className="sticky top-0 z-20 backdrop-blur-sm border-b border-slate-200 dark:border-white/5">
       <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-white/10">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          {/* Título */}
-          <div className="flex-shrink-0">
-            <div className="text-xs uppercase tracking-widest text-gray-400">{t('leads.pipeline')}</div>
-            <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white">{t('leads.title')}</h1>
+          {/* Título com ícone grande - estilo Tarefas */}
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white flex items-center justify-center shadow-lg shadow-cyan-500/20">
+              <KanbanIcon className="w-7 h-7" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold font-outfit text-slate-900 dark:text-white">{t('leads.title')}</h1>
+              <p className="text-base mt-1 text-slate-600 dark:text-slate-400">{t('leads.subtitle', 'Gerencie seus leads e oportunidades')}</p>
+            </div>
           </div>
 
           {/* Busca */}
@@ -635,15 +766,90 @@ export default function Leads() {
               onClick={() => setShowPipelineSettings(true)}
               className="p-2 rounded-xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition"
               aria-label={t('leads.configurePipeline')}
+              title={t('leads.configurePipeline')}
             >
               <Settings className="w-5 h-5 text-gray-600 dark:text-gray-200" />
             </button>
+
+            {/* Selection Mode Button */}
+            <button
+              onClick={() => {
+                setSelectionMode(!selectionMode)
+                if (selectionMode) {
+                  setSelectedLeads(new Set())
+                }
+              }}
+              className={`p-2 rounded-xl border transition ${selectionMode
+                ? 'ring-2 ring-rose-500/40 bg-rose-50 dark:bg-rose-500/10 border-rose-500/30'
+                : 'border-slate-200 dark:border-white/5 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10'
+                }`}
+              title={selectionMode ? t('leads.exitSelectionMode', 'Sair do modo seleção') : t('leads.enterSelectionMode', 'Modo seleção')}
+            >
+              <CheckSquare className={`w-5 h-5 ${selectionMode ? 'text-rose-500' : 'text-gray-600 dark:text-gray-200'}`} />
+            </button>
+
+            {/* Export Button */}
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="p-2 rounded-xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition"
+              title={t('leads.export', 'Exportar')}
+            >
+              <Download className="w-5 h-5 text-gray-600 dark:text-gray-200" />
+            </button>
+
+            {/* Import Button */}
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="p-2 rounded-xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition"
+              title={t('leads.import', 'Importar')}
+            >
+              <Upload className="w-5 h-5 text-gray-600 dark:text-gray-200" />
+            </button>
+
             <button onClick={addNewLead} className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white border border-slate-200 dark:border-white/10 hover:scale-105 active:scale-95 rounded-xl text-sm shadow-md transition">
               <Plus className="w-4 h-4" /> <span className="hidden sm:inline">{t('leads.newLead')}</span>
             </button>
           </div>
         </div>
       </div>
+    </div>
+  )
+
+  // =======================
+  // Selection Bar
+  // =======================
+  const SelectionBar = () => selectionMode && (
+    <div className="flex items-center justify-between gap-4 px-4 py-3 bg-rose-50 dark:bg-rose-500/10 border-b border-rose-200 dark:border-rose-500/20 rounded-xl mb-4">
+      <div className="flex items-center gap-4">
+        <button
+          onClick={toggleSelectAll}
+          className="flex items-center gap-2 text-sm text-rose-700 dark:text-rose-300 hover:text-rose-900 dark:hover:text-rose-100 transition"
+        >
+          {selectedLeads.size === leads.length && leads.length > 0 ? (
+            <CheckSquare className="w-5 h-5" />
+          ) : (
+            <Square className="w-5 h-5" />
+          )}
+          {t('leads.selectAll', 'Selecionar todos')}
+        </button>
+        <span className="text-sm text-rose-600 dark:text-rose-400">
+          {selectedLeads.size} {t('leads.selected', 'selecionado(s)')}
+        </span>
+      </div>
+
+      {selectedLeads.size > 0 && (
+        <button
+          onClick={deleteSelectedLeads}
+          disabled={deletingSelected}
+          className="flex items-center gap-2 px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-sm font-medium transition disabled:opacity-50"
+        >
+          <Trash2 className="w-4 h-4" />
+          {deletingSelected
+            ? t('common.deleting', 'Excluindo...')
+            : t('leads.deleteSelected', 'Excluir selecionados')
+          }
+        </button>
+      )}
     </div>
   )
 
@@ -728,13 +934,35 @@ export default function Leads() {
   )
 
   const LeadRow = ({ l }: { l: Cliente }) => (
-    <button
-      onClick={() => openLead(l)}
-      className="w-full text-left rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10 transition p-4 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+    <div
+      className={`w-full text-left rounded-2xl bg-white dark:bg-white/5 border hover:bg-slate-50 dark:hover:bg-white/10 transition p-4 shadow-md hover:shadow-lg focus:outline-none ${selectionMode && selectedLeads.has(l.id)
+        ? 'border-rose-400 dark:border-rose-500 ring-2 ring-rose-500/30'
+        : 'border-slate-200 dark:border-white/10'
+        }`}
     >
       <div className="flex items-start justify-between gap-4">
+        {/* Checkbox de seleção */}
+        {selectionMode && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              toggleLeadSelection(l.id)
+            }}
+            className="flex-shrink-0 p-1 -ml-1"
+          >
+            {selectedLeads.has(l.id) ? (
+              <CheckSquare className="w-5 h-5 text-rose-500" />
+            ) : (
+              <Square className="w-5 h-5 text-gray-400 hover:text-rose-500 transition" />
+            )}
+          </button>
+        )}
+
         {/* Info Principal - Layout horizontal otimizado */}
-        <div className="flex items-start gap-6 flex-1 min-w-0">
+        <button
+          onClick={() => openLead(l)}
+          className="flex items-start gap-6 flex-1 min-w-0 text-left focus:outline-none"
+        >
           {/* Nome, Status, Email e Contato */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-4">
@@ -800,7 +1028,7 @@ export default function Leads() {
               {l.tarefasAbertas || 0}
             </div>
           </div>
-        </div>
+        </button>
 
         {/* Ações */}
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -858,7 +1086,7 @@ export default function Leads() {
           </div>
         )}
       </div>
-    </button>
+    </div>
   )
 
   // =======================
@@ -878,6 +1106,9 @@ export default function Leads() {
         <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.08),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(139,92,246,0.06),transparent_40%),radial-gradient(circle_at_50%_100%,rgba(16,185,129,0.06),transparent_45%)]" />
 
         {Header}
+
+        {/* Selection Bar */}
+        <SelectionBar />
 
         {/* Conteúdo */}
         {/* GRID / LIST MODE (mobile-first) */}
@@ -1546,6 +1777,7 @@ export default function Leads() {
                   const status = formData.get('status') as string
                   const origem_id = formData.get('origem_id') as string
                   const motivo_perda_id = formData.get('motivo_perda_id') as string
+                  const proprietario_id = formData.get('proprietario_id') as string
                   const notas = formData.get('notas') as string
 
                   // Coletar valores dos campos personalizados
@@ -1570,6 +1802,7 @@ export default function Leads() {
                     status: status || undefined,
                     origem_id: origem_id || undefined,
                     motivo_perda_id: motivo_perda_id || undefined,
+                    proprietario_id: proprietario_id || undefined,
                     compartilhado_equipe: false,
                     notas: notas.trim() || undefined,
                     customFields: Object.keys(customFieldsData).length > 0 ? customFieldsData : undefined
@@ -1644,6 +1877,23 @@ export default function Leads() {
                         <option value="">{t('common.select')}</option>
                         {pipelineStages.map(stage => (
                           <option key={stage.key} value={stage.key}>{stage.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                        {t('common.owner', 'Responsável')}
+                      </label>
+                      <select
+                        name="proprietario_id"
+                        defaultValue={user?.id}
+                        className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      >
+                        {teamMembers.map(member => (
+                          <option key={member.id} value={member.id}>
+                            {member.name}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -1764,6 +2014,26 @@ export default function Leads() {
         )}
 
       </div>
+
+      {/* Export Modal */}
+      <ExportLeadsModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        leads={leads}
+        customFields={customFields}
+      />
+
+      {/* Import Modal */}
+      <ImportLeadsModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        existingCustomFields={customFields}
+        pipelineStages={pipelineStages}
+        onSuccess={() => {
+          setShowImportModal(false)
+          loadLeads()
+        }}
+      />
     </div>
   )
 }

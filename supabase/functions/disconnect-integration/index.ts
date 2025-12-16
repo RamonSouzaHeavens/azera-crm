@@ -73,12 +73,31 @@ serve(async (req) => {
 
         const tenantId = memberships[0].tenant_id
 
-        // Disconnect integration (delete all whatsapp integrations for the tenant)
-        const { error: deleteError } = await supabaseService
+        // Parse request body to get channel
+        let channel: string | null = null
+        try {
+            const body = await req.json()
+            channel = body.channel || null
+        } catch {
+            // No body or invalid JSON - will disconnect all if no channel specified
+        }
+
+        // Build query
+        let query = supabaseService
             .from('integrations')
             .delete()
             .eq('tenant_id', tenantId)
-            .eq('channel', 'whatsapp')
+            .eq('is_active', true)
+
+        // If channel specified, only disconnect that channel
+        if (channel) {
+            query = query.eq('channel', channel)
+            console.log(`[disconnect] Disconnecting only ${channel} for tenant ${tenantId}`)
+        } else {
+            console.log(`[disconnect] Disconnecting ALL integrations for tenant ${tenantId}`)
+        }
+
+        const { error: deleteError } = await query
 
         if (deleteError) {
             console.error('[disconnect] Error deleting integrations', deleteError)
@@ -88,7 +107,7 @@ serve(async (req) => {
             })
         }
 
-        return new Response(JSON.stringify({ success: true }), {
+        return new Response(JSON.stringify({ success: true, channel: channel || 'all' }), {
             status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
