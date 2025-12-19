@@ -999,7 +999,7 @@ const CommandCenterSection = () => {
       icon: Calculator,
       color: 'emerald',
       tag: 'VENDAS',
-      image: '/src/images/PageCalculadora.png'
+      image: '/images/PageCalculadora.png'
     },
     {
       id: 'proposals',
@@ -1008,7 +1008,7 @@ const CommandCenterSection = () => {
       icon: FileCheck,
       color: 'cyan',
       tag: 'ESSENCIAL',
-      image: '/src/images/PagePropostas.png'
+      image: '/images/PagePropostas.png'
     },
     {
       id: 'battlecards',
@@ -1017,7 +1017,7 @@ const CommandCenterSection = () => {
       icon: Swords,
       color: 'rose',
       tag: 'COMPETIÇÃO',
-      image: '/src/images/PageBattlecards.png'
+      image: '/images/PageBattlecards.png'
     },
     {
       id: 'playbook',
@@ -1026,7 +1026,7 @@ const CommandCenterSection = () => {
       icon: MessageSquare,
       color: 'teal',
       tag: 'ESTRATÉGIA',
-      image: '/src/images/PagePlaybook.png'
+      image: '/images/PagePlaybook.png'
     }
   ];
 
