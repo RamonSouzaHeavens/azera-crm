@@ -21,6 +21,7 @@ import TarefasEquipe from '../components/team/TarefasEquipe'
 import ConquistasEquipe from '../components/team/ConquistasEquipe'
 import GerenciarConquistas from '../components/team/GerenciarConquistas'
 import { useTeamStats } from '../hooks/useTeamStats'
+import { useSubscriptionLimits } from '../hooks/useSubscriptionLimits'
 
 // ============================================================================
 // TIPOS
@@ -50,6 +51,268 @@ type EstatisticasEquipe = {
   leads_hoje: number
   produtos: number
   meta_percentual: number
+}
+
+// ============================================================================
+// FUNÇÕES AUXILIARES
+// ============================================================================
+
+// Gera um caminho SVG para um raio fractal realista
+function generateLightningPath(startX: number, startY: number, endX: number, endY: number, displacement: number): string {
+  interface Point {
+    x: number
+    y: number
+  }
+
+  let segments: Point[] = [
+    { x: startX, y: startY },
+    { x: endX, y: endY }
+  ]
+
+  const iterations = 5 // Nível de detalhe do raio
+
+  for (let i = 0; i < iterations; i++) {
+    const newSegments: Point[] = []
+
+    for (let j = 0; j < segments.length - 1; j++) {
+      const s = segments[j]
+      const e = segments[j + 1]
+
+      // Acha o meio da linha
+      let midX = (s.x + e.x) / 2
+      let midY = (s.y + e.y) / 2
+
+      // Calcula a direção perpendicular (normal)
+      const diffX = e.x - s.x
+      const diffY = e.y - s.y
+      const len = Math.sqrt(diffX * diffX + diffY * diffY)
+
+      const normX = -diffY / len
+      const normY = diffX / len
+
+      // Aplica um deslocamento aleatório (o "tremor")
+      const offset = (Math.random() - 0.5) * displacement
+
+      midX += normX * offset
+      midY += normY * offset
+
+      newSegments.push(s, { x: midX, y: midY })
+    }
+
+    newSegments.push(segments[segments.length - 1])
+    segments = newSegments
+    displacement /= 2 // Reduz o tremor a cada iteração
+  }
+
+  // Converte os pontos para um caminho SVG
+  let path = `M ${segments[0].x} ${segments[0].y}`
+  for (let i = 1; i < segments.length; i++) {
+    path += ` L ${segments[i].x} ${segments[i].y}`
+  }
+
+  return path
+}
+
+// ============================================================================
+// COMPONENTE DE RAIO ANIMADO
+// ============================================================================
+
+function AnimatedLightning() {
+  const [paths, setPaths] = useState({
+    glow: generateLightningPath(50, 0, 50, 100, 20),
+    core: generateLightningPath(50, 0, 50, 100, 20),
+    sparkle: generateLightningPath(50, 0, 50, 100, 20)
+  })
+
+  // Função geradora flexível para criar faíscas
+  const createSparks = (count: number, config: { origin: 'top' | 'bottom', x: number, y: number, type: 'normal' | 'micro' }) => {
+    return Array.from({ length: count }, (_, i) => {
+      const isTop = config.origin === 'top'
+
+      // Ângulo: "Cone" de abertura
+      const angleSpread = isTop ? 0.6 : 0.4
+      const angle = (Math.random() - 0.5) * angleSpread * Math.PI
+
+      // Distância/Velocidade (aumentada para acelerar o raio)
+      const distance = config.type === 'normal' ? (15 + Math.random() * 48) : (24 + Math.random() * 60)
+
+      // Direção Vertical (Y)
+      // Se vem de cima (top), Y é positivo (desce)
+      // Se vem de baixo (bottom), Y é negativo (sobe)
+      const verticalDirection = isTop ? 1 : 1
+
+      return {
+        id: `${config.origin}-${config.type}-${i}`,
+        x: config.x,
+        y: config.y,
+
+        // DX: Movimento horizontal (espalha para os lados)
+        dx: Math.sin(angle) * distance,
+
+        // DY: Movimento vertical corrigido
+        dy: Math.abs(Math.cos(angle)) * distance * verticalDirection,
+
+        size: config.type === 'normal' ? (0.5 + Math.random() * 1) : (0.2 + Math.random() * 0.4),
+        delay: Math.random() * 1.5,
+        duration: config.type === 'normal' ? (0.4 + Math.random() * 0.12) : (0.3 + Math.random() * 0.2),
+        type: config.type
+      }
+    })
+  }
+
+  // Gera partículas para as extremidades (faíscas)
+  const [particles] = useState(() => {
+    // Partículas normais do topo (caem)
+    const topParticles = createSparks(12, { origin: 'top', x: 60, y: 0, type: 'normal' })
+
+    // Partículas normais do fundo (sobem)
+    const bottomParticles = createSparks(24, { origin: 'bottom', x: 50, y: 100, type: 'normal' })
+
+    // Micro-faíscas do topo (caem)
+    const topMicroSparks = createSparks(20, { origin: 'top', x: 60, y: 0, type: 'micro' })
+
+    // Micro-faíscas do fundo (sobem)
+    const bottomMicroSparks = createSparks(30, { origin: 'bottom', x: 50, y: 100, type: 'micro' })
+
+    return [...topParticles, ...bottomParticles, ...topMicroSparks, ...bottomMicroSparks]
+  })
+
+  useEffect(() => {
+    // Regenera o caminho do raio a cada 60ms para criar efeito de crepitação rápida
+    const interval = setInterval(() => {
+      setPaths({
+        glow: generateLightningPath(50, 0, 50, 100, 20),
+        core: generateLightningPath(50, 0, 50, 100, 20),
+        sparkle: generateLightningPath(50, 0, 50, 100, 20)
+      })
+    }, 60)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+      <div
+        className="absolute top-0 bottom-0 w-32 -skew-x-12"
+        style={{ animation: 'lightning-sweep 10s linear infinite' }}
+      >
+        <svg
+          className="w-full h-full"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <linearGradient id="lightning-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="rgba(252, 211, 77, 0)" />
+              <stop offset="50%" stopColor="rgba(252, 211, 77, 1)" />
+              <stop offset="100%" stopColor="rgba(252, 211, 77, 0)" />
+            </linearGradient>
+
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+              <feMerge>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+
+            {/* Filtro para partículas */}
+            <filter id="particle-glow">
+              <feGaussianBlur stdDeviation="1" result="coloredBlur" />
+              <feMerge>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          <g>
+            {/* Glow externo */}
+            <path
+              d={paths.glow}
+              stroke="rgba(251, 191, 36, 0.4)"
+              strokeWidth="8"
+              fill="none"
+              filter="url(#glow)"
+              opacity="0.7"
+            />
+
+            {/* Core do raio */}
+            <path
+              d={paths.core}
+              stroke="url(#lightning-gradient)"
+              strokeWidth="2"
+              fill="none"
+              filter="url(#glow)"
+            />
+
+            {/* Linha branca central (sparkle) */}
+            <path
+              d={paths.sparkle}
+              stroke="rgba(255, 255, 255, 0.9)"
+              strokeWidth="0.5"
+              fill="none"
+            />
+
+            {/* Brilho nas extremidades do raio */}
+            {/* Brilho superior */}
+            <circle
+              cx="50"
+              cy="0"
+              r="4"
+              fill="rgba(252, 211, 77, 0.66)"
+              filter="url(#glow)"
+              style={{ animation: 'glow-pulse 1.5s ease-in-out infinite' }}
+            />
+            <circle
+              cx="50"
+              cy="0"
+              r="2"
+              fill="rgba(255, 255, 255, 0.9)"
+              filter="url(#glow)"
+              style={{ animation: 'glow-pulse 1.5s ease-in-out infinite' }}
+            />
+
+            {/* Brilho inferior */}
+            <circle
+              cx="50"
+              cy="100"
+              r="4"
+              fill="rgba(252, 211, 77, 0.6)"
+              filter="url(#glow)"
+              style={{ animation: 'glow-pulse 1.5s ease-in-out 0.75s infinite' }}
+            />
+            <circle
+              cx="50"
+              cy="100"
+              r="2"
+              fill="rgba(255, 255, 255, 0.9)"
+              filter="url(#glow)"
+              style={{ animation: 'glow-pulse 1.5s ease-in-out 0.75s infinite' }}
+            />
+
+            {/* Faíscas nas extremidades */}
+            {particles.map((particle) => (
+              <circle
+                key={particle.id}
+                cx={particle.x}
+                cy={particle.y}
+                r={particle.size}
+                fill={particle.type === 'micro' ? 'rgba(255, 255, 255, 0.98)' : 'rgba(238, 201, 100, 0.95)'}
+                filter="url(#particle-glow)"
+                opacity={particle.type === 'micro' ? 0.9 : 1}
+                style={{
+                  animation: `spark-disperse ${particle.duration}s ease-out ${particle.delay}s infinite`,
+                  '--dx': `${particle.dx}`,
+                  '--dy': `${particle.dy}`
+                } as React.CSSProperties}
+              />
+            ))}
+          </g>
+        </svg>
+      </div>
+    </div>
+  )
 }
 
 // ============================================================================
@@ -84,7 +347,8 @@ export default function MinhaEquipeBeta() {
   // Hook para estatísticas reais
   const { stats: teamStats, tarefas: minhasTarefas, loading: statsLoading } = useTeamStats()
 
-  // ⚠️ GUARD: Verificar autenticação
+  // Hook para verificar limites de assinatura
+  const { canJoinTeam } = useSubscriptionLimits()
   useEffect(() => {
     if (authLoading) return
     if (!user) {
@@ -169,9 +433,6 @@ export default function MinhaEquipeBeta() {
   useEffect(() => {
     loadEquipeData()
   }, [loadEquipeData])
-
-  // Define canJoinTeam before any conditional returns to avoid hook order issues
-  const canJoinTeam = true
 
   // Estados dos modais (DEVEM estar antes de qualquer return condicional)
   const [showCriarModal, setShowCriarModal] = useState(false)
@@ -467,9 +728,9 @@ export default function MinhaEquipeBeta() {
       <div className="flex flex-col h-full bg-background text-slate-900 dark:text-slate-200 overflow-hidden relative">
         {/* Background Decorativo */}
         <div className="pointer-events-none absolute inset-0 opacity-40">
-          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-600/10 blur-3xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.15),_transparent_55%)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:120px_120px]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-600/10 blur-3xl dark:hidden" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.15),_transparent_55%)] dark:hidden" />
+          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:120px_120px] dark:opacity-20" />
         </div>
 
         <div className="relative z-10 p-8 max-w-6xl mx-auto w-full flex flex-col h-full">
@@ -482,7 +743,7 @@ export default function MinhaEquipeBeta() {
           <div className="flex-1 flex flex-col justify-center gap-12">
             {/* Cards de Ação */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Criar Equipe */}
+              {/* Criar Equipe - SEMPRE DISPONÍVEL */}
               <div
                 className="group relative overflow-hidden rounded-2xl bg-white/5 border border-white/10 p-8 hover:bg-white/10 hover:border-cyan-500/30 transition-all duration-300 backdrop-blur-sm cursor-pointer"
                 onClick={() => setShowCriarModal(true)}
@@ -506,39 +767,68 @@ export default function MinhaEquipeBeta() {
               </div>
 
               {/* Entrar na Equipe */}
-              <div
-                className="group relative overflow-hidden rounded-2xl bg-white/5 border border-white/10 p-8 hover:bg-white/10 hover:border-cyan-500/30 transition-all duration-300 backdrop-blur-sm cursor-pointer"
-                onClick={() => canJoinTeam && setShowEntrarModal(true)}
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="relative z-10">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
-                      <LogIn className="w-6 h-6 text-cyan-400" />
+              <div className="relative">
+                {/* Badge "Apenas para assinantes" - FORA DO CARD (SEM PISCAR) */}
+                {!canJoinTeam && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-50">
+                    <div className="px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold shadow-lg shadow-amber-500/50">
+                      ⚡ Apenas para assinantes
                     </div>
-                    <h3 className="text-xl font-semibold text-white">Entrar na equipe</h3>
                   </div>
+                )}
 
-                  {!canJoinTeam ? (
-                    <div className="mb-8 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-500 text-sm font-medium">
-                      Assinatura necessária
+                {/* Sombra brilhante que acompanha o raio */}
+                {!canJoinTeam && (
+                  <div
+                    className="absolute inset-0 rounded-2xl pointer-events-none"
+                    style={{
+                      animation: 'lightning-sweep 10s linear infinite',
+                      background: 'radial-gradient(ellipse 200px 100% at 50% 50%, rgba(251, 191, 36, 0.15), transparent)',
+                      filter: 'blur(20px)',
+                      zIndex: -1
+                    }}
+                  />
+                )}
+
+                <div
+                  className={`group relative overflow-hidden rounded-2xl p-8 transition-all duration-300 backdrop-blur-sm ${canJoinTeam
+                    ? 'bg-white/5 border border-white/10 hover:bg-white/10 hover:border-cyan-500/30 cursor-pointer'
+                    : 'bg-white/5 border-2 border-amber-500/50 cursor-not-allowed'
+                    }`}
+                  onClick={() => canJoinTeam && setShowEntrarModal(true)}
+                >
+                  {/* Raio Fractal Realista com Animação de Crepitação */}
+                  {!canJoinTeam && <AnimatedLightning />}
+
+                  <div className={`absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity ${!canJoinTeam && 'hidden'}`} />
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${canJoinTeam
+                        ? 'bg-cyan-500/10 border border-cyan-500/20'
+                        : 'bg-amber-500/10 border border-amber-500/20'
+                        }`}>
+                        <LogIn className={`w-6 h-6 ${canJoinTeam ? 'text-cyan-400' : 'text-amber-400'}`} />
+                      </div>
+                      <h3 className="text-xl font-semibold text-white">Entrar na equipe</h3>
                     </div>
-                  ) : (
-                    <p className="text-slate-400 text-sm mb-8 leading-relaxed">
-                      Entre em uma equipe existente usando um código de convite.
-                    </p>
-                  )}
 
-                  <button
-                    disabled={!canJoinTeam}
-                    className={`w-full py-3 rounded-xl border font-medium transition-all flex items-center justify-center gap-2 ${canJoinTeam
-                      ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
-                      : 'bg-white/5 border-white/5 text-slate-500 cursor-not-allowed'
-                      }`}
-                  >
-                    <LogIn className="w-4 h-4" />
-                    Entrar na equipe
-                  </button>
+                    <p className={`text-sm mb-8 leading-relaxed ${canJoinTeam ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {canJoinTeam
+                        ? 'Entre em uma equipe existente usando um código de convite.'
+                        : 'Assine o plano Premium para participar de equipes.'}
+                    </p>
+
+                    <button
+                      disabled={!canJoinTeam}
+                      className={`w-full py-3 rounded-xl border font-medium transition-all flex items-center justify-center gap-2 ${canJoinTeam
+                        ? 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                        : 'bg-amber-500/5 border-amber-500/20 text-amber-400/50 cursor-not-allowed'
+                        }`}
+                    >
+                      <LogIn className="w-4 h-4" />
+                      {canJoinTeam ? 'Entrar na equipe' : 'Requer assinatura'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -672,9 +962,9 @@ export default function MinhaEquipeBeta() {
 
       {/* Background Decorativo (HUD glow grid background + overlay) */}
       <div className="pointer-events-none absolute inset-0 opacity-40">
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-600/10 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.15),_transparent_55%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:120px_120px]" />
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-600/10 blur-3xl dark:hidden" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.15),_transparent_55%)] dark:hidden" />
+        <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:120px_120px] dark:opacity-20" />
       </div>
 
       {/* Conteúdo Principal */}
@@ -801,7 +1091,7 @@ export default function MinhaEquipeBeta() {
                 { id: 'produtos', label: 'Produtos', icon: ShoppingBag },
                 { id: 'leads', label: 'Leads', icon: Target },
                 { id: 'tarefas', label: 'Tarefas', icon: ListChecks },
-                { id: 'distribuicao', label: 'Distribuição de Leads', icon: Shuffle },
+                // { id: 'distribuicao', label: 'Distribuição de Leads', icon: Shuffle },
               ].map((tab, index) => {
                 const Icon = tab.icon
                 const isActive = abaAtiva === tab.id
@@ -1115,9 +1405,9 @@ export default function MinhaEquipeBeta() {
               <TarefasEquipe tenantId={equipe.id} />
             )}
 
-            {abaAtiva === 'distribuicao' && equipe && (
+            {/* {abaAtiva === 'distribuicao' && equipe && (
               <DistribuicaoLeads teamId={equipe.id} membros={equipe.membros} />
-            )}
+            )} */}
 
             {/* ===== ABA: GERENCIAR EQUIPE (CONFIGURAÇÕES) ===== */}
             {abaAtiva === 'configuracoes' && equipe && canManageTeam && (

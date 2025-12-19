@@ -24,14 +24,8 @@ const fetchSubscription = async (userId: string): Promise<Subscription | null> =
     .maybeSingle()
 
   if (error && error.code !== 'PGRST116') {
-    console.error('[useSubscription] Erro ao buscar subscription:', error)
+    console.error('Erro ao buscar subscription:', error)
     throw error
-  }
-
-  if (data) {
-    console.log('[useSubscription] Subscription encontrada:', data.status)
-  } else {
-    console.log('[useSubscription] Nenhuma subscription encontrada para user')
   }
 
   return data ?? null
@@ -45,7 +39,8 @@ export const useSubscription = () => {
     queryKey: ['subscription', userId],
     queryFn: () => fetchSubscription(userId!),
     enabled: Boolean(userId),
-    staleTime: 60_000,
+    staleTime: 5_000, // 5 segundos (era 60 segundos)
+    refetchOnMount: 'always', // Sempre buscar ao montar
     retry: 1
   })
 

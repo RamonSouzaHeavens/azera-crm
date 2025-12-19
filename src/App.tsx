@@ -34,7 +34,7 @@ import Billing from './pages/Billing'
 import Success from './pages/Success'
 import ApiKeys from './pages/ApiKeys'
 import { ProtectedLayout } from './components/layout/ProtectedLayout'
-import LandingPremium from './pages/LandingPremium'
+import LandingPageOficial from './pages/LandingPageOficial'
 import PoliticaPrivacidade from './pages/politica-privacidade'
 import TermosUso from './pages/TermosUso'
 import LGPD from './pages/LGPD'
@@ -106,7 +106,7 @@ function App() {
                 element={!user && !isAdmin ? <Login /> : <Navigate to="/app/dashboard" replace />}
               />
               <Route path="/confirmar-email" element={<ConfirmarEmail />} />
-              <Route path="/" element={<LandingPremium />} />
+              <Route path="/" element={<LandingPageOficial />} />
               <Route path="/clientes" element={<Navigate to="/app/clientes" replace />} />
               <Route path="/sobre-nos" element={<SobreNos />} />
               <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
@@ -149,9 +149,9 @@ function App() {
                 <Route path="tarefa-nova" element={<TarefaNova />} />
                 <Route path="configuracoes" element={<Configuracoes />} />
                 {/* Rotas de equipe - todas direcionam para MinhaEquipeBeta */}
-                <Route path="equipe" element={<Navigate to="/app/equipe-beta" replace />} />
-                <Route path="minha-equipe" element={<Navigate to="/app/equipe-beta" replace />} />
-                <Route path="equipe-beta" element={<MinhaEquipeBeta />} />
+                <Route path="equipe" element={<Navigate to="/app/minha-equipe" replace />} />
+                <Route path="equipe-beta" element={<Navigate to="/app/minha-equipe" replace />} />
+                <Route path="minha-equipe" element={<MinhaEquipeBeta />} />
 
                 <Route path="automacoes" element={<Automacoes />} />
                 <Route path="automacoes/webhooks" element={<WebhooksPage />} />

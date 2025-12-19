@@ -37,23 +37,23 @@ export const PLANS: PricingPlan[] = [
   {
     id: 'semiannual',
     name: 'Semestral',
-    price: 390,
+    price: 420,
     interval: 'month',
     intervalCount: 6,
     priceId: priceSemestral,
     testPriceId: priceSemestralTest,
     testName: 'Semestral (Teste)',
-    description: 'R$ 65/mês + taxas da Stripe ou R$ 390 à vista'
+    description: 'Pago a cada 6 meses o valor de R$ 420 à vista'
   },
   {
     id: 'annual',
     name: 'Anual',
-    price: 720,
+    price: 780,
     interval: 'year',
     priceId: priceAnual,
     testPriceId: priceAnualTest,
     testName: 'Anual (Teste)',
-    description: 'R$ 60/mês + taxas da Stripe ou R$ 720 à vista'
+    description: 'Pago a cada 12 meses o valor de R$ 780 à vista'
   }
 ]
 

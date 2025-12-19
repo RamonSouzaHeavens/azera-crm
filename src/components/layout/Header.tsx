@@ -163,13 +163,9 @@ export const Header = ({ onShowTutorial }: { onShowTutorial?: () => void }) => {
     : (member?.role === 'owner' ? t('header.roles.owner') : t('header.roles.seller'))
 
   return (
-    <header className="backdrop-blur-sm px-4 md:px-8 py-4">
+    <header className="backdrop-blur-sm px-4 md:px-8 py-4 dark:bg-slate-950">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <h1 className="text-2xl md:text-xl font-bold text-slate-900 dark:text-white truncate">
-            {t('header.companyName')}
-          </h1>
-
           {isRealSubscription && (
             <div className="flex items-center gap-2">
               <SubscriptionStatus />

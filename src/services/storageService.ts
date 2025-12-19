@@ -5,44 +5,17 @@ import { supabase } from '../lib/supabase'
  */
 export async function ensureBucketExists(bucketName: string): Promise<boolean> {
   try {
-    // Verificar se o bucket existe
+    // Verificar se o bucket existe - A criação deve ser feita via Migrations/Admin para segurança
     const { error } = await supabase.storage.getBucket(bucketName)
-    
-    if (error) {
-      // Bucket não existe, criar um novo
-      console.log(`Bucket ${bucketName} não existe, criando...`)
-      
-      const { error: createError } = await supabase.storage.createBucket(bucketName, {
-        public: true,
-        fileSizeLimit: 5242880, // 5MB
-        allowedMimeTypes: [
-          'image/*',
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'application/vnd.ms-excel',
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          'application/vnd.ms-powerpoint',
-          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-          'text/plain',
-          'application/zip',
-          'application/x-rar-compressed'
-        ]
-      })
 
-      if (createError) {
-        console.error('Erro ao criar bucket:', createError)
-        return false
-      }
-      
-      console.log(`Bucket ${bucketName} criado com sucesso`)
-      return true
-    } else {
-      console.log(`Bucket ${bucketName} já existe`)
-      return true
+    if (error) {
+      console.error(`Bucket '${bucketName}' não encontrado. Por favor, crie-o no Supabase Dashboard ou via migrações.`)
+      return false
     }
+
+    return true
   } catch (error) {
-    console.error('Erro ao verificar/criar bucket:', error)
+    console.error('Erro ao verificar bucket:', error)
     return false
   }
 }

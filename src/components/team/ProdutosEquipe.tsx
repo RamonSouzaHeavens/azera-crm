@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { Plus, Loader, Image as ImageIcon, Filter, Grid3x3, List, ExternalLink, Tag } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { getProdutosEquipe, deleteProdutosSistema } from '../../services/produtosEquipeService'
 import { isValidUrl } from '../../lib/urlValidation'
@@ -652,17 +653,21 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId, readOnly = fa
 
   if (produtos.length === 0) {
     return (
-      <div className="rounded-lg bg-slate-50 dark:bg-white/3 border border-slate-200 dark:border-white/10 p-12 text-center">
-        <ImageIcon className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-4 opacity-50" />
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Nenhum produto disponível</h3>
-        <p className="text-slate-600 dark:text-slate-400 mb-6">Os produtos do proprietário aparecerão aqui automaticamente</p>
-        <a
-          href="/produtos"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-50 transition-colors font-medium text-sm"
+      <div className="rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-16 text-center">
+        <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+          <ImageIcon className="w-10 h-10 text-slate-400 dark:text-slate-500 opacity-50" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Nenhum produto disponível</h3>
+        <p className="max-w-md mx-auto text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
+          Os produtos do proprietário da equipe aparecerão aqui automaticamente. Adicione produtos no seu perfil para que a equipe possa vê-los.
+        </p>
+        <Link
+          to="/app/produtos"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-xl hover:from-cyan-600 hover:to-cyan-700 transition-all shadow-lg shadow-cyan-500/20 font-medium font-outfit"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-5 h-5" />
           Ir para Produtos
-        </a>
+        </Link>
       </div>
     )
   }

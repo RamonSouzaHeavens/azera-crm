@@ -32,6 +32,7 @@ import { supabase } from '../lib/supabase'
 import { loadPipelineStages, createPipelineStage, updatePipelineStage, deletePipelineStage } from '../services/pipelineService'
 import { getTeamOverview } from '../services/equipeService'
 import { checkAndUnlockAchievements } from '../services/achievementService'
+import { useSubscriptionLimits, LIMITS } from '../hooks/useSubscriptionLimits'
 
 // =======================
 // Tipos fortemente tipados (sem any)
@@ -127,6 +128,7 @@ export default function Leads() {
   const { tenant, loading: authLoading, user } = useAuthStore()
   const { isDark } = useThemeStore()
   const { t } = useTranslation()
+  const { canAddLead, maxLeads, hasActiveSubscription } = useSubscriptionLimits()
 
   const [viewMode, setViewMode] = useState<'grid' | 'kanban' | 'list'>('list')
   const [searchTerm, setSearchTerm] = useState('')
@@ -488,6 +490,11 @@ export default function Leads() {
   // Actions
   // =======================
   const addNewLead = () => {
+    // Check lead limit for free users
+    if (!canAddLead(leads.length)) {
+      toast.error(t('leads.limitReached', `Limite de ${LIMITS.FREE_MAX_LEADS} leads atingido. Assine para adicionar mais!`))
+      return
+    }
     setShowCreateModal(true)
   }
 
@@ -505,6 +512,12 @@ export default function Leads() {
     customFields?: Record<string, string>;
   }) => {
     if (!tenant?.id) return
+
+    // Double-check lead limit before creating
+    if (!canAddLead(leads.length)) {
+      toast.error(t('leads.limitReached', `Limite de ${LIMITS.FREE_MAX_LEADS} leads atingido. Assine para adicionar mais!`))
+      return
+    }
 
     try {
       const { data, error } = await supabase
@@ -809,6 +822,12 @@ export default function Leads() {
             <button onClick={addNewLead} className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white border border-slate-200 dark:border-white/10 hover:scale-105 active:scale-95 rounded-xl text-sm shadow-md transition">
               <Plus className="w-4 h-4" /> <span className="hidden sm:inline">{t('leads.newLead')}</span>
             </button>
+            {/* Lead limit indicator for free users */}
+            {!hasActiveSubscription && (
+              <span className={`text-xs px-2 py-1 rounded-full ${leads.length >= LIMITS.FREE_MAX_LEADS ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
+                {leads.length}/{LIMITS.FREE_MAX_LEADS} leads
+              </span>
+            )}
           </div>
         </div>
       </div>

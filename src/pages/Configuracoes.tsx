@@ -91,19 +91,14 @@ export default function ConfiguracoesNova() {
         try {
           const profile = await getUserProfile()
           const meta = user?.user_metadata || {}
-          const p = profile
-            ? {
-              full_name: profile.full_name || '',
-              display_name: profile.display_name || '',
-              phone: profile.phone || '',
-              avatar: profile.avatar_url || '',
-            }
-            : {
-              full_name: meta.full_name || '',
-              display_name: meta.full_name || '',
-              phone: meta.phone || '',
-              avatar: meta.avatar_url || '',
-            }
+
+          // Prioridade: Profile > Meta > Auth > Vazio
+          const p = {
+            full_name: profile?.full_name || meta.full_name || meta.name || '',
+            display_name: profile?.display_name || profile?.full_name || meta.full_name || meta.name || '',
+            phone: profile?.phone || meta.phone || user?.phone || '',
+            avatar: profile?.avatar_url || meta.avatar_url || '',
+          }
 
           if (cancelled) return
           resetPerfil({
@@ -358,7 +353,10 @@ export default function ConfiguracoesNova() {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          confirmation_email: deleteAccountConfirmText
+        })
       })
 
       if (!response.ok) {
@@ -519,31 +517,20 @@ export default function ConfiguracoesNova() {
       </div> */}
 
       <div className="flex-1 space-y-6 max-h-[calc(100vh-80px)] overflow-y-auto pb-6 px-6 relative z-10">
-        <header className="rounded-lg p-6 bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10">
+        <header className="p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white tracking-wide">{t('settings.title')}</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">{t('settings.subtitle')}</p>
+              <h1 className="text-3xl lg:text-4xl font-bold font-outfit text-slate-900 dark:text-white">{t('settings.title')}</h1>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{t('settings.subtitle')}</p>
             </div>
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-sm text-slate-600 dark:text-slate-300">{t('settings.active')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-slate-900 dark:text-white">{t('settings.planPro')}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-slate-600 dark:text-slate-300">{t('settings.renewsIn')}</span>
-              </div>
-            </div>
+
           </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
           {/* Sidebar */}
           <aside className="hidden lg:block lg:col-span-1">
-            <div className="rounded-lg p-3 bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 sticky top-6">
+            <div className="rounded-2xl p-3 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 sticky top-6">
               <nav className="space-y-2">
                 {tabs.map((t) => {
                   const Icon = t.icon
@@ -568,7 +555,7 @@ export default function ConfiguracoesNova() {
 
           {/* Tabs (mobile) */}
           <div className="lg:hidden">
-            <div className="rounded-lg p-2 bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 mb-2 overflow-x-auto">
+            <div className="rounded-2xl p-2 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 mb-2 overflow-x-auto">
               <div className="flex space-x-2">
                 {tabs.map((t) => {
                   const Icon = t.icon
@@ -593,7 +580,7 @@ export default function ConfiguracoesNova() {
 
           {/* Content */}
           <main className="lg:col-span-3">
-            <div className="rounded-lg p-4 sm:p-6 lg:p-8 bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 shadow-sm">
+            <div className="rounded-2xl p-4 sm:p-6 lg:p-8 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 shadow-sm">
               {tab === 'perfil' && (
                 <section className="space-y-8">
                   <Header title={t('settings.profile.title')} subtitle={t('settings.profile.subtitle')} icon={<User className="w-5 h-5 text-slate-900 dark:text-white" />} />

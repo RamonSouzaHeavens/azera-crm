@@ -206,3 +206,158 @@ select.dark-select option:hover {
   background-size: 300% 300%;
   animation: gradient-shift 4s ease infinite;
 }
+
+/* Lightning animation for locked team cards */
+@keyframes lightning {
+  0% {
+    opacity: 0;
+    left: -100%;
+  }
+
+  10% {
+    opacity: 0.9;
+  }
+
+  50% {
+    opacity: 1;
+    left: 50%;
+  }
+
+  90% {
+    opacity: 0.9;
+  }
+
+  100% {
+    opacity: 0;
+    left: 200%;
+  }
+}
+
+/* Lightning slow - Raio realista com movimento lento */
+@keyframes lightning-slow {
+  0% {
+    opacity: 0;
+    left: -100%;
+  }
+
+  15% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+    left: 50%;
+  }
+
+  85% {
+    opacity: 0.6;
+  }
+
+  100% {
+    opacity: 0;
+    left: 200%;
+  }
+}
+
+/* Lightning sweep - Raio fractal varrendo o card */
+@keyframes lightning-sweep {
+  0% {
+    left: -40%;
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    left: 140%;
+    opacity: 0;
+  }
+}
+
+/* Spark disperse animation - Faíscas se dispersando das extremidades do raio */
+@keyframes spark-disperse {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.3);
+  }
+
+  20% {
+    opacity: 1;
+    transform: translate(calc(var(--dx) * 0.3px), calc(var(--dy) * 0.3px)) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--dx) * 1px), calc(var(--dy) * 1px)) scale(0.1);
+  }
+}
+
+/* Landing Page Animations */
+@keyframes float {
+
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-20px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float 7s ease-in-out infinite 1s;
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll {
+  animation: scroll 30s linear infinite;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.text-outline {
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3);
+  color: transparent;
+  transition: all 0.3s ease;
+}
+
+.text-outline:hover {
+  -webkit-text-stroke: 1px #a855f7;
+  color: rgba(168, 85, 247, 0.1);
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}

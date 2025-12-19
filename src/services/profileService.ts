@@ -50,13 +50,14 @@ export async function getUserProfile(): Promise<UserProfile | null> {
       return existingProfile;
     }
 
-    // Se não existe, criar um novo
+    // Se não existe, criar um novo com dados do cadastro
     const { data: newProfile, error: insertError } = await supabase
       .from('profiles')
       .insert({
         id: user.id,
-        full_name: user.user_metadata?.full_name || '',
-        display_name: user.user_metadata?.full_name || '',
+        full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+        display_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+        phone: user.user_metadata?.phone || user.phone || '',
         profile_completed: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -91,93 +92,25 @@ export async function getUserProfile(): Promise<UserProfile | null> {
 // Atualizar perfil do usuário
 export async function updateUserProfile(profile: Partial<UserProfile>): Promise<boolean> {
   try {
-    console.log('🔵 [updateUserProfile] Iniciando atualização...')
-    console.log('📋 [updateUserProfile] Dados recebidos:', profile)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return false
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    console.log('👤 [updateUserProfile] User obtido:', user?.id, 'Erro:', authError)
-
-    if (!user) throw new Error('Usuário não autenticado')
-
-    // Verificar se o perfil já existe
-    console.log('🔍 [updateUserProfile] Verificando se perfil existe...')
-    const { data: existingProfile, error: checkError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    console.log('📊 [updateUserProfile] Resultado da busca:', { existingProfile, checkError })
-
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error('❌ [updateUserProfile] Erro ao verificar perfil:', checkError)
-      throw checkError;
+    const updates = {
+      id: user.id,
+      ...profile,
+      updated_at: new Date().toISOString(),
     }
 
-    // Preparar dados para atualização
-    const updateData = {
-      ...(profile.full_name !== undefined && { full_name: profile.full_name }),
-      ...(profile.display_name !== undefined && { display_name: profile.display_name }),
-      ...(profile.avatar_url !== undefined && { avatar_url: profile.avatar_url }),
-      ...(profile.phone !== undefined && { phone: profile.phone }),
-      ...(profile.bio !== undefined && { bio: profile.bio }),
-      ...(profile.profile_completed !== undefined && { profile_completed: profile.profile_completed }),
-      updated_at: new Date().toISOString()
-    }
-    console.log('📤 [updateUserProfile] Dados preparados:', updateData)
+    const { error } = await supabase.from('profiles').upsert(updates)
 
-    // Se existe, fazer UPDATE; se não, fazer INSERT
-    if (existingProfile) {
-      console.log('🔄 [updateUserProfile] Perfil existe, fazendo UPDATE...')
-
-      const { error: updateError, data: updateResult } = await supabase
-        .from('profiles')
-        .update(updateData)
-        .eq('id', user.id)
-        .select()
-
-      console.log('📝 [updateUserProfile] UPDATE resultado:', { updateError, data: updateResult })
-      if (updateError) {
-        console.error('❌ [updateUserProfile] Erro no UPDATE:', updateError)
-        throw updateError;
-      }
-    } else {
-      console.log('➕ [updateUserProfile] Perfil não existe, fazendo INSERT...')
-      const insertData = {
-        id: user.id,
-        full_name: profile.full_name ?? null,
-        display_name: profile.display_name ?? null,
-        avatar_url: profile.avatar_url ?? null,
-        phone: profile.phone ?? null,
-        bio: profile.bio ?? null,
-        profile_completed: profile.profile_completed ?? false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-      console.log('📤 [updateUserProfile] Dados do INSERT:', insertData)
-
-      const { error: insertError, data: insertResult } = await supabase
-        .from('profiles')
-        .insert(insertData)
-        .select()
-
-      console.log('📝 [updateUserProfile] INSERT resultado:', { insertError, data: insertResult })
-      if (insertError) {
-        console.error('❌ [updateUserProfile] Erro no INSERT:', insertError)
-        throw insertError;
-      }
+    if (error) {
+      console.error('Erro ao atualizar perfil:', error)
+      return false
     }
 
-    console.log('✅ [updateUserProfile] Perfil atualizado com sucesso!')
     return true
   } catch (error) {
-    console.error('❌ [updateUserProfile] Erro geral:', error)
-    console.error('📌 Detalhes do erro:', {
-      message: error instanceof Error ? error.message : 'Desconhecido',
-      code: (error as any)?.code,
-      details: (error as any)?.details,
-      hint: (error as any)?.hint
-    })
+    console.error('Erro geral ao atualizar perfil:', error)
     return false
   }
 }

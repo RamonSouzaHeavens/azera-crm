@@ -49,7 +49,7 @@ serve(async (req) => {
 
     // Verificar usuário autenticado
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
-    
+
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -58,6 +58,15 @@ serve(async (req) => {
     }
 
     const userId = user.id
+
+    // Validar intenção com confirmação de email
+    const { confirmation_email } = await req.json()
+    if (!confirmation_email || confirmation_email.trim().toLowerCase() !== user.email?.trim().toLowerCase()) {
+      return new Response(
+        JSON.stringify({ error: 'Email confirmation failed. Please provide your email to confirm deletion.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // 1. Deletar membros da equipe (members)
     const { error: membersError } = await supabaseAdmin
@@ -101,9 +110,9 @@ serve(async (req) => {
 
     const { error: userProfileError } = await supabaseAdmin
       .from('profiles')
-      .upsert({ 
-        user_id: userId, 
-        disabled: true 
+      .upsert({
+        user_id: userId,
+        disabled: true
       })
 
     if (userProfileError) {
@@ -116,18 +125,18 @@ serve(async (req) => {
     if (deleteError) {
       console.error('Erro ao deletar usuário do auth:', deleteError)
       return new Response(
-        JSON.stringify({ 
-          error: 'Erro ao deletar usuário', 
-          details: deleteError.message 
+        JSON.stringify({
+          error: 'Erro ao deletar usuário',
+          details: deleteError.message
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Conta deletada com sucesso' 
+      JSON.stringify({
+        success: true,
+        message: 'Conta deletada com sucesso'
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
@@ -135,9 +144,9 @@ serve(async (req) => {
   } catch (error) {
     console.error('Erro geral:', error)
     return new Response(
-      JSON.stringify({ 
-        error: 'Internal server error', 
-        details: error.message 
+      JSON.stringify({
+        error: 'Internal server error',
+        details: error.message
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

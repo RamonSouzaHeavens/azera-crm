@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-﻿import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import {
   Search,
   Brain,
@@ -11,6 +11,7 @@ import {
   Mail,
   ArrowRight
 } from 'lucide-react'
+import PremiumGate from '../components/premium/PremiumGate'
 
 const tools = [
   {
@@ -108,62 +109,64 @@ export default function FerramentasPro() {
   }, [])
 
   return (
-    <div className="w-full max-w-[1440px] mx-auto p-6 md:p-10 min-h-screen flex flex-col">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">
-          Aceleradores de Vendas
-        </h1>
-        <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
-          Todas as ferramentas Pro em um só lugar. Escolha um acelerador para aprofundar a estratégia e apresentar valor em minutos.
-        </p>
-      </div>
+    <PremiumGate featureName="Ferramentas Pro">
+      <div className="w-full max-w-[1440px] mx-auto p-6 md:p-10 min-h-screen flex flex-col">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">
+            Aceleradores de Vendas
+          </h1>
+          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            Todas as ferramentas Pro em um só lugar. Escolha um acelerador para aprofundar a estratégia e apresentar valor em minutos.
+          </p>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {sortedTools.map((tool, idx) => {
-          const isLocked = tool.locked
-          const disabled = isLocked || tool.available === false
-          return (
-            <button
-              key={tool.id}
-              type="button"
-              onClick={() => {
-                if (disabled) return
-                navigate(tool.path)
-              }}
-              style={{ animationDelay: `${idx * 60}ms` }}
-              className={`group relative bg-white dark:bg-slate-900 border rounded-2xl p-6 transition-all duration-300 flex flex-col cursor-pointer ${tool.color} ${disabled ? 'pointer-events-none opacity-60 blur-[0.5px]' : 'hover:-translate-y-1 hover:shadow-xl hover:bg-opacity-50 dark:hover:bg-opacity-30'}`}
-            >
-              {disabled && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/25 text-white text-sm font-bold uppercase tracking-wider">
-                  Em breve..
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {sortedTools.map((tool, idx) => {
+            const isLocked = tool.locked
+            const disabled = isLocked || tool.available === false
+            return (
+              <button
+                key={tool.id}
+                type="button"
+                onClick={() => {
+                  if (disabled) return
+                  navigate(tool.path)
+                }}
+                style={{ animationDelay: `${idx * 60}ms` }}
+                className={`group relative bg-white dark:bg-slate-900 border rounded-2xl p-6 transition-all duration-300 flex flex-col cursor-pointer ${tool.color} ${disabled ? 'pointer-events-none opacity-60 blur-[0.5px]' : 'hover:-translate-y-1 hover:shadow-xl hover:bg-opacity-50 dark:hover:bg-opacity-30'}`}
+              >
+                {disabled && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/25 text-white text-sm font-bold uppercase tracking-wider">
+                    Em breve..
+                  </div>
+                )}
+                <div className="flex justify-between items-start mb-4">
+                  <div className="p-3 bg-white dark:bg-slate-950/60 rounded-xl w-fit border border-slate-100 dark:border-white/5 group-hover:scale-110 transition-transform duration-300 shadow-sm dark:shadow-lg">
+                    {tool.icon}
                 </div>
-              )}
-              <div className="flex justify-between items-start mb-4">
-                <div className="p-3 bg-white dark:bg-slate-950/60 rounded-xl w-fit border border-slate-100 dark:border-white/5 group-hover:scale-110 transition-transform duration-300 shadow-sm dark:shadow-lg">
-                  {tool.icon}
+                {tool.status && (
+                  <span className="bg-white dark:bg-slate-950/60 backdrop-blur text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-full text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 shadow-sm">
+                    {tool.status}
+                  </span>
+                )}
               </div>
-              {tool.status && (
-                <span className="bg-white dark:bg-slate-950/60 backdrop-blur text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-full text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 shadow-sm">
-                  {tool.status}
-                </span>
-              )}
-            </div>
 
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors text-left">
-              {tool.title}
-            </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-6 flex-1 text-left">
-              {tool.description}
-            </p>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors text-left">
+                {tool.title}
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-6 flex-1 text-left">
+                {tool.description}
+              </p>
 
-            <div className={`w-full flex items-center justify-between py-2 px-1 rounded-lg font-medium text-sm transition-all mt-auto ${tool.btnColor} group-hover:translate-x-1`}>
-              <span>Abrir ferramenta</span>
-              <ArrowRight className="w-4 h-4" />
-            </div>
-          </button>
-          )
-        })}
+              <div className={`w-full flex items-center justify-between py-2 px-1 rounded-lg font-medium text-sm transition-all mt-auto ${tool.btnColor} group-hover:translate-x-1`}>
+                <span>Abrir ferramenta</span>
+                <ArrowRight className="w-4 h-4" />
+              </div>
+            </button>
+            )
+          })}
+        </div>
       </div>
-    </div>
+    </PremiumGate>
   )
 }

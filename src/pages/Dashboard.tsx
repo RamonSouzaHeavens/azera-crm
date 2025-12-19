@@ -104,6 +104,7 @@ const slowPulse = {
 // --- Data Fetching ---
 async function fetchDashboardData(
   tenantId: string,
+  userId: string | undefined, // Added userId
   now: Date
 ): Promise<{
   stats: Stats
@@ -132,6 +133,7 @@ async function fetchDashboardData(
     conversasNaoLidasRes,
     tarefasHojeRes,
     tarefasAtrasadasRes,
+    receitaFechadaRes, // New query for revenue from closed leads
   ] = await Promise.all([
     supabase.from('clientes').select('id, status').eq('tenant_id', tenantId),
     supabase.from('vendas').select('valor, data_venda').eq('tenant_id', tenantId).gte('data_venda', sixStart.toISOString()).lt('data_venda', nextStart.toISOString()),
@@ -146,10 +148,16 @@ async function fetchDashboardData(
     supabase.from('clientes').select('valor_potencial').eq('tenant_id', tenantId).in('status', ['lead', 'negociacao']),
     // Conversas não lidas
     supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).gt('unread_count', 0),
-    // Tarefas de hoje
-    supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('data_vencimento', now.toISOString().split('T')[0]).neq('status', 'concluida'),
-    // Tarefas atrasadas
-    supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).lt('data_vencimento', now.toISOString().split('T')[0]).neq('status', 'concluida'),
+    // Tarefas de hoje (Filtered by User)
+    userId
+      ? supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('responsavel_id', userId).eq('data_vencimento', now.toISOString().split('T')[0]).neq('status', 'concluida')
+      : supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('data_vencimento', now.toISOString().split('T')[0]).neq('status', 'concluida'),
+    // Tarefas atrasadas (Filtered by User)
+    userId
+      ? supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('responsavel_id', userId).lt('data_vencimento', now.toISOString().split('T')[0]).neq('status', 'concluida')
+      : supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).lt('data_vencimento', now.toISOString().split('T')[0]).neq('status', 'concluida'),
+    // Receita de Leads Fechados (Updated this month)
+    supabase.from('clientes').select('valor_potencial').eq('tenant_id', tenantId).eq('status', 'fechado').gte('updated_at', currentStart.toISOString()).lt('updated_at', nextStart.toISOString())
   ])
 
   const clientes = clientesRes.data || []
@@ -169,10 +177,23 @@ async function fetchDashboardData(
   ]
 
   const vendas = vendasRes.data || []
-  const totalVendasCur = vendas.filter(v => {
+  // Calculate revenue from Vendas table
+  let totalVendasCur = vendas.filter(v => {
     const d = new Date(v.data_venda)
     return d >= currentStart && d < nextStart
   }).reduce((sum, v) => sum + Number(v.valor), 0)
+
+  // Calculate revenue from Closed Leads table (fallback or accumulation)
+  // If Vendas table is empty or we want to capture leads moved to 'Closed'
+  const receitaFechadaLeads = (receitaFechadaRes.data || []).reduce((acc, item) => acc + (Number(item.valor_potencial) || 0), 0)
+
+  // Use the larger of the two, or sum them?
+  // Usually systems act either on explicit Sales records OR on Deal status.
+  // Given the user feedback, we'll prioritize the one that has data.
+  // If totalVendasCur is 0, we use revenue from closed leads.
+  if (totalVendasCur === 0) {
+    totalVendasCur = receitaFechadaLeads
+  }
 
   const totalVendasPrev = vendas.filter(v => {
     const d = new Date(v.data_venda)
@@ -563,7 +584,7 @@ export default function Dashboard() {
       return
     }
     setLoading(true)
-    fetchDashboardData(tenantId, new Date())
+    fetchDashboardData(tenantId, user?.id, new Date())
       .then(data => {
         setStats(data.stats)
         setDeltas(data.deltas)
@@ -572,7 +593,7 @@ export default function Dashboard() {
       })
       .catch(err => console.error('Erro ao carregar dashboard:', err))
       .finally(() => setLoading(false))
-  }, [tenantId])
+  }, [tenantId, user?.id])
 
   if (loading) {
     return (
@@ -638,7 +659,7 @@ export default function Dashboard() {
                   <QuickStatCard
                     title="Receita do Mês"
                     value={brl(stats.receitaMes || 0)}
-                    subtitle={`${metaPercentage.toFixed(0)}% da meta`}
+                    subtitle="Este mês"
                     icon={DollarSign}
                     color="bg-green-500"
                     trend={{ value: deltas.vendasPct, isPositive: deltas.vendasPct >= 0 }}
@@ -788,7 +809,7 @@ export default function Dashboard() {
                   </motion.div>
 
                   <motion.div
-                    className="bg-surface border border-slate-200 dark:border-slate-800 rounded-xl p-6 cursor-pointer hover:border-pink-500/50 transition-colors"
+                    className="bg-surface border border-slate-200 dark:border-slate-800 rounded-xl p-6 cursor-pointer hover:border-pink-500/50 transition-colors group"
                     variants={item}
                     whileHover={hoverLift(reduceMotion ?? false)}
                     style={{ transformStyle: 'preserve-3d' }}
@@ -802,6 +823,10 @@ export default function Dashboard() {
                         <div className="text-2xl font-bold font-heading text-text">{brl(stats.despesasFixas || 0)}</div>
                         <div className="text-xs text-text opacity-60">Custo operacional mensal</div>
                       </div>
+                    </div>
+                    <div className="flex items-center justify-end text-xs text-pink-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span>Ver despesas</span>
+                      <ArrowUp className="w-3 h-3 ml-1 rotate-45" />
                     </div>
                   </motion.div>
                 </div>

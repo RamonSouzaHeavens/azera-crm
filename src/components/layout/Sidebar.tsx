@@ -24,6 +24,7 @@ import {
 import { useAuthStore } from '../../stores/authStore'
 import { Button } from '../ui/Button'
 import { supabase } from '../../lib/supabase'
+import { useSubscription } from '../../hooks/useSubscription'
 import simboloAzera from '../../images/identidade visual/Símbolo Azera.png'
 
 // groups com chaves de tradução
@@ -62,6 +63,7 @@ export const Sidebar = () => {
 
   const location = useLocation()
   const { signOut, tenant, member, isAdmin } = useAuthStore()
+  const { isActive } = useSubscription()
   const tenantId = useMemo(() => tenant?.id ?? member?.tenant_id ?? '', [tenant?.id, member?.tenant_id])
 
   // ====== company name
@@ -156,54 +158,62 @@ export const Sidebar = () => {
             {t('sidebar.sections.progress')}
           </motion.li>
         )}
-        {groupProgresso.map((item) => {
-          const Icon = item.icon
-          const active = location.pathname === item.href
-          return (
-            <motion.li
-              key={item.name}
-              variants={itemVariants}
-              whileHover={{ scale: 1.02, x: collapsed ? 0 : 4 }}
-              whileTap={{ scale: 0.98 }}
-              className="mb-1"
-            >
-              <Link
-                to={item.href}
-                onClick={onClick}
-                title={item.name}
-                className={`flex items-center py-1.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden ${collapsed ? 'justify-center px-0' : 'px-2'
-                  } ${active ? 'bg-primary/10 text-primary' : 'text-text hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+        {groupProgresso
+          .filter(item => {
+            // Mostrar "Ferramentas Pro" para usuários com equipe OU assinatura ativa
+            if (item.href === '/app/ferramentas-pro') {
+              return isInTeam || isActive
+            }
+            return true
+          })
+          .map((item) => {
+            const Icon = item.icon
+            const active = location.pathname === item.href
+            return (
+              <motion.li
+                key={item.name}
+                variants={itemVariants}
+                whileHover={{ scale: 1.02, x: collapsed ? 0 : 4 }}
+                whileTap={{ scale: 0.98 }}
+                className="mb-1"
               >
-                {active && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute inset-0 bg-primary/10"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                <motion.div
-                  animate={{ rotate: active ? [0, -10, 10, -10, 0] : 0 }}
-                  transition={{ duration: 0.5 }}
+                <Link
+                  to={item.href}
+                  onClick={onClick}
+                  title={item.name}
+                  className={`flex items-center py-1.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden ${collapsed ? 'justify-center px-0' : 'px-2'
+                    } ${active ? 'bg-primary/10 text-primary' : 'text-text hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                 >
-                  <Icon className={`w-5 h-5 ${active ? 'text-primary' : 'text-text opacity-70'} ${collapsed ? '' : 'mr-2'} relative z-10`} />
-                </motion.div>
-                <AnimatePresence>
-                  {!collapsed && (
-                    <motion.span
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: "auto" }}
-                      exit={{ opacity: 0, width: 0 }}
-                      transition={{ duration: 0.3, delay: 0.1 }}
-                      className={`tracking-wide whitespace-nowrap relative z-10 ${active ? 'text-primary font-semibold' : 'text-text opacity-80'}`}
-                    >
-                      {item.name}
-                    </motion.span>
+                  {active && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute inset-0 bg-primary/10"
+                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                    />
                   )}
-                </AnimatePresence>
-              </Link>
-            </motion.li>
-          )
-        })}
+                  <motion.div
+                    animate={{ rotate: active ? [0, -10, 10, -10, 0] : 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <Icon className={`w-5 h-5 ${active ? 'text-primary' : 'text-text opacity-70'} ${collapsed ? '' : 'mr-2'} relative z-10`} />
+                  </motion.div>
+                  <AnimatePresence>
+                    {!collapsed && (
+                      <motion.span
+                        initial={{ opacity: 0, width: 0 }}
+                        animate={{ opacity: 1, width: "auto" }}
+                        exit={{ opacity: 0, width: 0 }}
+                        transition={{ duration: 0.3, delay: 0.1 }}
+                        className={`tracking-wide whitespace-nowrap relative z-10 ${active ? 'text-primary font-semibold' : 'text-text opacity-80'}`}
+                      >
+                        {item.name}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </Link>
+              </motion.li>
+            )
+          })}
 
         {isInTeam && (
           <>
@@ -416,7 +426,7 @@ export const Sidebar = () => {
               variant="ghost"
               size="sm"
               onClick={() => setIsCollapsed(v => !v)}
-              className="p-2 text-text hover:bg-slate-100 dark:hover:bg-slate-800 focus:ring-0 focus:ring-offset-0"
+              className="p-2 text-text hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors rounded-lg outline-none focus:outline-none !ring-0 !ring-offset-0 !focus:ring-0 !focus:ring-offset-0 shadow-none focus:shadow-none"
               aria-label={isCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
             >
               <ChevronLeft className={`w-4 h-4 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} />

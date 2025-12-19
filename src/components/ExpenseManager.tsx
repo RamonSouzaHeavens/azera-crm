@@ -203,23 +203,23 @@ export function ExpenseManager({ className, tenantId, canManage }: ExpenseManage
     <div className={className}>
       {/* Header com resumo */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="rounded-xl p-4 bg-white/5 border border-white/10">
-          <div className="text-xs uppercase text-slate-400 mb-1">{t('expenseManager.summary.total')}</div>
-          <div className="text-xl font-bold text-white">R$ {totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+        <div className="rounded-xl p-4 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+          <div className="text-xs uppercase text-slate-500 dark:text-slate-400 mb-1">{t('expenseManager.summary.total')}</div>
+          <div className="text-xl font-bold text-slate-900 dark:text-white">R$ {totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
         </div>
-        <div className="rounded-xl p-4 bg-white/5 border border-white/10">
-          <div className="text-xs uppercase text-slate-400 mb-1">{t('expenseManager.summary.fixed')}</div>
-          <div className="text-xl font-bold text-rose-400">R$ {totalFixas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+        <div className="rounded-xl p-4 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+          <div className="text-xs uppercase text-slate-500 dark:text-slate-400 mb-1">{t('expenseManager.summary.fixed')}</div>
+          <div className="text-xl font-bold text-rose-600 dark:text-rose-400">R$ {totalFixas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
         </div>
-        <div className="rounded-xl p-4 bg-white/5 border border-white/10">
-          <div className="text-xs uppercase text-slate-400 mb-1">{t('expenseManager.summary.variable')}</div>
-          <div className="text-xl font-bold text-purple-400">R$ {totalVariaveis.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+        <div className="rounded-xl p-4 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+          <div className="text-xs uppercase text-slate-500 dark:text-slate-400 mb-1">{t('expenseManager.summary.variable')}</div>
+          <div className="text-xl font-bold text-purple-600 dark:text-purple-400">R$ {totalVariaveis.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
         </div>
       </div>
 
       {/* Botão adicionar */}
       <div className="flex justify-between items-center mb-6">
-        <h4 className="text-lg font-semibold text-white">{t('expenseManager.header.title')}</h4>
+        <h4 className="text-lg font-semibold text-slate-900 dark:text-white">{t('expenseManager.header.title')}</h4>
         <button
           onClick={() => setShowForm(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 text-white hover:from-cyan-600 hover:to-cyan-700 transition-colors"
@@ -231,15 +231,15 @@ export function ExpenseManager({ className, tenantId, canManage }: ExpenseManage
 
       {/* Formulário */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="rounded-2xl p-6 bg-white/5 border border-white/10 mb-6 space-y-4">
+        <form onSubmit={handleSubmit} className="rounded-2xl p-6 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 mb-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h5 className="text-lg font-medium text-white">
+            <h5 className="text-lg font-medium text-slate-900 dark:text-white">
               {editingDespesa ? t('expenseManager.form.titleEdit') : t('expenseManager.form.titleNew')}
             </h5>
             <button
               type="button"
               onClick={resetForm}
-              className="text-slate-400 hover:text-white"
+              className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
             >
               ✕
             </button>
@@ -247,26 +247,26 @@ export function ExpenseManager({ className, tenantId, canManage }: ExpenseManage
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs uppercase text-slate-400 mb-2">{t('expenseManager.form.labels.description')}</label>
+              <label className="block text-xs uppercase text-slate-600 dark:text-slate-400 mb-2">{t('expenseManager.form.labels.description')}</label>
               <input
                 type="text"
                 value={formData.descricao}
                 onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-white placeholder-slate-500"
+                className="w-full px-4 py-3 bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                 placeholder={t('expenseManager.form.placeholders.description')}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-400 mb-2">{t('expenseManager.form.labels.category')}</label>
+              <label className="block text-xs uppercase text-slate-600 dark:text-slate-400 mb-2">{t('expenseManager.form.labels.category')}</label>
               <select
                 value={formData.categoria}
                 onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-white"
+                className="w-full px-4 py-3 bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-slate-900 dark:text-white"
               >
                 {categorias.map(cat => (
-                  <option key={cat} value={cat} className="bg-slate-800">
+                  <option key={cat} value={cat} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
                     {t(`expenseManager.categories.${cat}`)}
                   </option>
                 ))}
@@ -274,52 +274,52 @@ export function ExpenseManager({ className, tenantId, canManage }: ExpenseManage
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-400 mb-2">{t('expenseManager.form.labels.value')}</label>
+              <label className="block text-xs uppercase text-slate-600 dark:text-slate-400 mb-2">{t('expenseManager.form.labels.value')}</label>
               <input
                 type="number"
                 step="0.01"
                 min="0"
                 value={formData.valor}
                 onChange={(e) => setFormData({ ...formData, valor: parseFloat(e.target.value) || 0 })}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-white placeholder-slate-500"
+                className="w-full px-4 py-3 bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
                 placeholder={t('expenseManager.form.placeholders.value')}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-400 mb-2">{t('expenseManager.form.labels.type')}</label>
+              <label className="block text-xs uppercase text-slate-600 dark:text-slate-400 mb-2">{t('expenseManager.form.labels.type')}</label>
               <select
                 value={formData.tipo}
                 onChange={(e) => setFormData({ ...formData, tipo: e.target.value as 'fixa' | 'variavel' | 'pontual' | 'mensal' | 'pessoal' })}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-white"
+                className="w-full px-4 py-3 bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-slate-900 dark:text-white"
               >
-                <option value="fixa" className="bg-slate-800">{t('expenseManager.form.types.fixed')}</option>
-                <option value="variavel" className="bg-slate-800">{t('expenseManager.form.types.variable')}</option>
-                <option value="pontual" className="bg-slate-800">{t('expenseManager.form.types.oneTime')}</option>
-                <option value="mensal" className="bg-slate-800">{t('expenseManager.form.types.monthly')}</option>
-                <option value="pessoal" className="bg-slate-800">{t('expenseManager.form.types.personal')}</option>
+                <option value="fixa" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{t('expenseManager.form.types.fixed')}</option>
+                <option value="variavel" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{t('expenseManager.form.types.variable')}</option>
+                <option value="pontual" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{t('expenseManager.form.types.oneTime')}</option>
+                <option value="mensal" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{t('expenseManager.form.types.monthly')}</option>
+                <option value="pessoal" className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white">{t('expenseManager.form.types.personal')}</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs uppercase text-slate-400 mb-2">{t('expenseManager.form.labels.dueDate')}</label>
+              <label className="block text-xs uppercase text-slate-600 dark:text-slate-400 mb-2">{t('expenseManager.form.labels.dueDate')}</label>
               <input
                 type="date"
                 value={formData.data_vencimento || ''}
                 onChange={(e) => setFormData({ ...formData, data_vencimento: e.target.value })}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-white"
+                className="w-full px-4 py-3 bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-slate-900 dark:text-white"
               />
             </div>
 
             <div></div> {/* Espaço vazio para manter o grid alinhado */}
 
             <div className="md:col-span-2">
-              <label className="block text-xs uppercase text-slate-400 mb-2">{t('expenseManager.form.labels.additionalDetails')}</label>
+              <label className="block text-xs uppercase text-slate-600 dark:text-slate-400 mb-2">{t('expenseManager.form.labels.additionalDetails')}</label>
               <textarea
                 value={formData.descricao}
                 onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-white placeholder-slate-500 resize-none"
+                className="w-full px-4 py-3 bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 resize-none"
                 rows={2}
                 placeholder={t('expenseManager.form.placeholders.details')}
               />
@@ -330,7 +330,7 @@ export function ExpenseManager({ className, tenantId, canManage }: ExpenseManage
             <button
               type="button"
               onClick={resetForm}
-              className="px-4 py-2 rounded-xl border border-white/10 text-slate-300 hover:text-white hover:border-white/20 transition-colors"
+              className="px-4 py-2 rounded-xl border border-slate-300 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-400 dark:hover:border-white/20 transition-colors"
             >
               {t('expenseManager.form.buttons.cancel')}
             </button>
@@ -358,14 +358,14 @@ export function ExpenseManager({ className, tenantId, canManage }: ExpenseManage
             <div
               key={despesa.id}
               className={`rounded-xl p-4 border transition-all ${despesa.ativa
-                ? 'bg-white/5 border-white/10 hover:border-white/20'
-                : 'bg-slate-800/30 border-slate-700/50 opacity-60'
+                ? 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20'
+                : 'bg-slate-100 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700/50 opacity-60'
                 }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h6 className="font-medium text-white">{despesa.descricao}</h6>
+                    <h6 className="font-medium text-slate-900 dark:text-white">{despesa.descricao}</h6>
                     <span className={`text-xs px-2 py-1 rounded-full ${despesa.tipo === 'fixa'
                       ? 'bg-rose-500/20 text-rose-300'
                       : 'bg-purple-500/20 text-purple-300'
@@ -377,7 +377,7 @@ export function ExpenseManager({ className, tenantId, canManage }: ExpenseManage
                     </span>
                   </div>
                   <div className="flex items-center gap-4 text-sm text-slate-400">
-                    <span className="font-bold text-lg text-white">
+                    <span className="font-bold text-lg text-slate-900 dark:text-white">
                       R$ {despesa.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                     {despesa.descricao && (
@@ -397,7 +397,7 @@ export function ExpenseManager({ className, tenantId, canManage }: ExpenseManage
                   </button>
                   <button
                     onClick={() => handleEdit(despesa)}
-                    className="p-1 text-slate-400 hover:text-white transition-colors"
+                    className="p-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
                     title={t('expenseManager.actions.edit')}
                   >
                     <Edit2 className="w-4 h-4" />

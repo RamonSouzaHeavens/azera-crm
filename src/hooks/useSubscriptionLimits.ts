@@ -4,25 +4,34 @@ import { useSubscription } from './useSubscription'
  * MODELO DE NEGÓCIO:
  *
  * GRATUITO (com limitações):
- * - Ter uma equipe básica (pode criar e participar)
+ * - Criar equipe (como owner) - GRATUITO
  * - Até 5 produtos
- * - Leads ilimitados
- * - Visualização de membros da equipe
+ * - Até 100 leads
+ * - Tarefas ilimitadas
+ * - Uso individual (1 membro na equipe)
  *
  * PREMIUM (requer assinatura individual):
- * - Convidar membros para equipe (compartilhar código)
+ * - Entrar em equipe (como membro) - REQUER ASSINATURA
+ * - Convidar membros para equipe - REQUER ASSINATURA
+ * - Equipe ilimitada
+ * - Leads ilimitados
  * - Distribuição automática de leads
  * - Conectar canais (WhatsApp, Instagram, etc.)
  * - Ferramentas PRO (Battlecards, ROI Calculator, etc.)
  * - Automações
  * - Chaves API
  * - Produtos ilimitados
+ *
+ * IMPORTANTE:
+ * - Qualquer um pode CRIAR uma equipe gratuitamente
+ * - Para CONVIDAR membros, o owner precisa de assinatura
+ * - Para ENTRAR em uma equipe, o membro precisa de assinatura
  */
 
 export const LIMITS = {
   FREE_MAX_PRODUCTS: 5,
-  FREE_MAX_TEAM_MEMBERS: 1, // Só o próprio usuário
-  // Leads são ilimitados sempre
+  FREE_MAX_LEADS: 100,
+  FREE_MAX_TEAM_MEMBERS: 1, // Apenas o owner no plano gratuito
 }
 
 export const useSubscriptionLimits = () => {
@@ -32,14 +41,14 @@ export const useSubscriptionLimits = () => {
     // ========================================
     // EQUIPE
     // ========================================
-    // GRATUITO: Pode ter equipe, mas não pode convidar
-    canHaveTeam: true, // Todos podem criar/ter equipe
+    canHaveTeam: true, // Todos podem ter equipe
+    canCreateTeam: true, // GRATUITO: Qualquer um pode criar equipe
+    canJoinTeam: isActive, // PREMIUM: Precisa de assinatura para entrar em equipe
     canViewTeamMembers: true, // Todos podem ver membros
-
-    // PREMIUM: Convidar e gerenciar membros
-    canShareTeamCode: isActive, // Compartilhar código de convite
-    canInviteMembers: isActive, // Convidar membros
-    canDistributeLeads: isActive, // Distribuição automática de leads
+    canShareTeamCode: isActive, // PREMIUM: Compartilhar código de convite
+    canInviteMembers: isActive, // PREMIUM: Convidar membros
+    canDistributeLeads: isActive, // PREMIUM: Distribuição automática de leads
+    maxTeamMembers: isActive ? Infinity : LIMITS.FREE_MAX_TEAM_MEMBERS,
 
     // ========================================
     // PRODUTOS
@@ -51,10 +60,13 @@ export const useSubscriptionLimits = () => {
     },
 
     // ========================================
-    // LEADS (ilimitados para todos)
+    // LEADS
     // ========================================
-    canAddLead: true,
-    maxLeads: Infinity,
+    maxLeads: isActive ? Infinity : LIMITS.FREE_MAX_LEADS,
+    canAddLead: (currentCount: number) => {
+      if (isActive) return true
+      return currentCount < LIMITS.FREE_MAX_LEADS
+    },
 
     // ========================================
     // FUNCIONALIDADES PREMIUM

@@ -16,6 +16,11 @@ export interface Conversation {
   avatar_url?: string
   status?: string
   categoria?: string
+  archived?: boolean
+  deleted_at?: string
+  etapa_funil_id?: string
+  etapa_funil_label?: string
+  etapa_funil_color?: string
 }
 
 export function useConversations() {
@@ -32,29 +37,47 @@ export function useConversations() {
       .from('conversations')
       .select(`
         *,
-        clientes!inner(nome, telefone, status, categoria)
+        clientes!inner(
+          nome,
+          telefone,
+          status,
+          categoria,
+          etapa_funil_id,
+          pipeline_stages:etapa_funil_id(label, color)
+        )
       `)
       .eq('tenant_id', tenant.id)
+      .is('deleted_at', null)
       .order('last_message_at', { ascending: false })
 
     if (error) {
       console.error('[CONVERSATIONS] Erro ao carregar:', error)
       toast.error('Erro ao carregar conversas')
     } else {
-      const mappedConversations = (data || []).map(conv => ({
-        id: conv.id,
-        contact_id: conv.contact_id,
-        contact_name: conv.clientes?.nome || 'Contato Desconhecido',
-        contact_number: conv.clientes?.telefone || '',
-        channel: conv.channel,
-        last_message_content: conv.last_message_content || '',
-        last_message_at: conv.last_message_at,
-        unread_count: conv.unread_count || 0,
-        avatar: conv.avatar_url || undefined,
-        avatar_url: conv.avatar_url || undefined,
-        status: conv.clientes?.status,
-        categoria: conv.clientes?.categoria || 'trabalho'
-      }))
+      const mappedConversations = (data || []).map(conv => {
+        // Acessar pipeline_stages corretamente
+        const pipelineStage = conv.clientes?.pipeline_stages as any;
+
+        return {
+          id: conv.id,
+          contact_id: conv.contact_id,
+          contact_name: conv.clientes?.nome || 'Contato Desconhecido',
+          contact_number: conv.clientes?.telefone || '',
+          channel: conv.channel,
+          last_message_content: conv.last_message_content || '',
+          last_message_at: conv.last_message_at,
+          unread_count: conv.unread_count || 0,
+          avatar: conv.avatar_url || undefined,
+          avatar_url: conv.avatar_url || undefined,
+          status: conv.clientes?.status,
+          categoria: conv.clientes?.categoria || 'trabalho',
+          archived: conv.archived || false,
+          deleted_at: conv.deleted_at,
+          etapa_funil_id: conv.clientes?.etapa_funil_id,
+          etapa_funil_label: pipelineStage?.label,
+          etapa_funil_color: pipelineStage?.color
+        }
+      })
 
       // Garantir unicidade por número de contato (manter a conversa mais recente)
       const uniqueConversations = mappedConversations.reduce((acc, conv) => {
@@ -91,6 +114,74 @@ export function useConversations() {
         .eq('id', conversationId)
     } catch (error) {
       console.error('[CONVERSATIONS] Falha ao marcar como lida:', error)
+    }
+  }
+
+  const archiveConversation = async (conversationId: string) => {
+    // Optimistic UI: arquivar imediatamente
+    setConversations((prev) =>
+      prev.map((c) => (c.id === conversationId ? { ...c, archived: true } : c))
+    )
+
+    try {
+      const { error } = await supabase
+        .from('conversations')
+        .update({ archived: true })
+        .eq('id', conversationId)
+
+      if (error) throw error
+      toast.success('Conversa arquivada com sucesso')
+    } catch (error) {
+      console.error('[CONVERSATIONS] Falha ao arquivar:', error)
+      toast.error('Erro ao arquivar conversa')
+      // Reverter optimistic update
+      setConversations((prev) =>
+        prev.map((c) => (c.id === conversationId ? { ...c, archived: false } : c))
+      )
+    }
+  }
+
+  const unarchiveConversation = async (conversationId: string) => {
+    // Optimistic UI: desarquivar imediatamente
+    setConversations((prev) =>
+      prev.map((c) => (c.id === conversationId ? { ...c, archived: false } : c))
+    )
+
+    try {
+      const { error } = await supabase
+        .from('conversations')
+        .update({ archived: false })
+        .eq('id', conversationId)
+
+      if (error) throw error
+      toast.success('Conversa desarquivada com sucesso')
+    } catch (error) {
+      console.error('[CONVERSATIONS] Falha ao desarquivar:', error)
+      toast.error('Erro ao desarquivar conversa')
+      // Reverter optimistic update
+      setConversations((prev) =>
+        prev.map((c) => (c.id === conversationId ? { ...c, archived: true } : c))
+      )
+    }
+  }
+
+  const deleteConversation = async (conversationId: string) => {
+    // Optimistic UI: remover imediatamente
+    setConversations((prev) => prev.filter((c) => c.id !== conversationId))
+
+    try {
+      const { error } = await supabase
+        .from('conversations')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', conversationId)
+
+      if (error) throw error
+      toast.success('Conversa excluída com sucesso')
+    } catch (error) {
+      console.error('[CONVERSATIONS] Falha ao excluir:', error)
+      toast.error('Erro ao excluir conversa')
+      // Recarregar para reverter
+      fetchConversations()
     }
   }
 
@@ -158,5 +249,13 @@ export function useConversations() {
     }
   }, [tenant?.id, fetchConversations])
 
-  return { conversations, loading, markConversationRead, refetch: fetchConversations }
+  return {
+    conversations,
+    loading,
+    markConversationRead,
+    archiveConversation,
+    unarchiveConversation,
+    deleteConversation,
+    refetch: fetchConversations
+  }
 }

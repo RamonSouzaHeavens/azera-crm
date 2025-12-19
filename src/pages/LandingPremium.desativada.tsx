@@ -1,5 +1,5 @@
 import HeroPremium from '../components/hero/HeroPremium'
-import { CheckCircle2, Zap, TrendingUp, Users, BarChart3, Clock, Shield, Smartphone, Globe, Target, Mail, User, ChevronDown } from 'lucide-react'
+import { CheckCircle2, Zap, TrendingUp, Users, BarChart3, Clock, Shield, Smartphone, Globe, Target, Mail, User, ChevronDown, Check } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
@@ -957,72 +957,246 @@ export default function LandingPremium() {
             </div>
           </motion.div>
 
-          <div className="grid md:grid-cols-4 gap-8 max-w-7xl mx-auto">
-            {/* Starter */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-8 hover:border-white/30 transition-all">
+          {/* Desktop Layout: All plans side by side */}
+          <div className="hidden lg:grid lg:grid-cols-5 gap-6 max-w-7xl mx-auto">
+            {/* Starter - Free */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/30 transition-all">
               <div className="text-sm font-semibold text-slate-400 mb-2">{t('landing.pricing.starter.badge')}</div>
-              <div className="text-4xl font-bold text-white mb-2">{t('landing.pricing.starter.price')}</div>
-              <p className="text-slate-400 mb-6">{t('landing.pricing.starter.description')}</p>
-
+              <div className="text-3xl font-bold text-white mb-2">{t('landing.pricing.starter.price')}</div>
+              <p className="text-slate-400 text-sm mb-4">{t('landing.pricing.starter.description')}</p>
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Até 50 leads</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Pipeline básico</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Catálogo limitado</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> 1 usuário</li>
+              </ul>
               <Link to="/login" className="block w-full py-3 px-4 border border-white/30 text-white text-center rounded-lg font-semibold transition-all hover:bg-white/10">
                 {t('landing.pricing.starter.button')}
               </Link>
             </div>
 
             {/* Mensal */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-8 hover:border-white/30 transition-all">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:border-white/30 transition-all">
               <div className="text-sm font-semibold text-slate-400 mb-2">{t('landing.pricing.monthly.badge')}</div>
-              <div className="flex items-baseline gap-2 mb-2">
-                <span className="text-4xl font-bold text-white">{formatPrice(prices.monthly)}</span>
-                <span className="text-slate-400">{t('landing.pricing.monthly.period')}</span>
+              <div className="flex items-baseline gap-1 mb-2">
+                <span className="text-3xl font-bold text-white">{formatPrice(prices.monthly)}</span>
+                <span className="text-slate-400 text-sm">{t('landing.pricing.monthly.period')}</span>
               </div>
-              <div className="text-sm text-slate-500 mb-6">{t('landing.pricing.monthly.description')}</div>
-
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Leads ilimitados</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> WhatsApp integrado</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Automações e IA</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Catálogo completo</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Relatórios avançados</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Usuários ilimitados</li>
+              </ul>
               <Link to="/login" className="block w-full py-3 px-4 bg-white text-black text-center rounded-lg font-semibold transition-all hover:bg-slate-200">
                 {t('landing.pricing.monthly.button')}
               </Link>
             </div>
 
-            {/* Semestral - Destaque */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-8 relative hover:border-white/30 transition-all">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg shadow-emerald-500/20">
+            {/* Semestral */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 relative hover:border-emerald-500/50 transition-all">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-3 py-0.5 rounded-full text-xs font-bold shadow-lg">
                 {t('landing.pricing.semiannual.discountBadge', { percent: semiannualDiscount })}
               </div>
               <div className="text-sm font-semibold text-slate-400 mb-2">{t('landing.pricing.semiannual.badge')}</div>
-              <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-4xl font-bold text-white">{formatPrice(semiannualMonthlyPrice)}</span>
-                <span className="text-slate-400">{t('landing.pricing.semiannual.period')}</span>
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-3xl font-bold text-white">{formatPrice(semiannualMonthlyPrice)}</span>
+                <span className="text-slate-400 text-sm">{t('landing.pricing.semiannual.period')}</span>
               </div>
-              <div className="text-sm text-slate-400 mb-1">
-                {t('landing.pricing.semiannual.from')} <span className="line-through">{formatPrice(prices.monthly * 6)}</span> {t('landing.pricing.semiannual.to')} {formatPrice(prices.semiannual)}
+              <div className="text-xs text-slate-500 mb-4">
+                <span className="line-through">{formatPrice(prices.monthly * 6)}</span> → {formatPrice(prices.semiannual)}
               </div>
-              <div className="text-sm text-slate-500 mb-6">{t('landing.pricing.semiannual.description')}</div>
-
-              <Link to="/login" className="block w-full py-3 px-4 bg-white text-black text-center rounded-lg font-semibold transition-all hover:bg-slate-200">
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Leads ilimitados</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> WhatsApp integrado</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Automações e IA</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Catálogo completo</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Relatórios avançados</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Usuários ilimitados</li>
+              </ul>
+              <Link to="/login" className="block w-full py-3 px-4 bg-emerald-500 text-white text-center rounded-lg font-semibold transition-all hover:bg-emerald-600">
                 {t('landing.pricing.semiannual.button')}
               </Link>
             </div>
 
-            {/* Anual */}
-            <div className="relative p-[2px] rounded-lg">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg shadow-blue-500/20 whitespace-nowrap z-10">
-                {t('landing.pricing.annual.discountBadge')}
+            {/* Anual - DESTAQUE */}
+            <div className="relative p-[2px] rounded-2xl scale-[1.02] z-10">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg whitespace-nowrap z-10">
+                ⭐ Melhor custo-benefício
               </div>
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse rounded-lg"></div>
-              <div className="relative bg-slate-900 rounded-lg p-8">
-                <div className="text-sm font-semibold text-slate-400 mb-2">{t('landing.pricing.annual.badge')}</div>
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="text-4xl font-bold text-white">{formatPrice(annualMonthlyPrice)}</span>
-                  <span className="text-slate-400">{t('landing.pricing.annual.period')}</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 animate-pulse rounded-2xl"></div>
+              <div className="relative bg-slate-900 rounded-2xl p-6">
+                <div className="text-sm font-semibold text-blue-400 mb-2">{t('landing.pricing.annual.badge')}</div>
+                <div className="flex items-baseline gap-1 mb-1">
+                  <span className="text-3xl font-bold text-white">{formatPrice(annualMonthlyPrice)}</span>
+                  <span className="text-slate-400 text-sm">{t('landing.pricing.annual.period')}</span>
                 </div>
-                <div className="text-sm text-slate-400 mb-1">
-                  {t('landing.pricing.annual.from')} <span className="line-through">{formatPrice(prices.monthly * 12)}</span> {t('landing.pricing.annual.to')} {formatPrice(prices.annual)}
+                <div className="text-xs text-slate-500 mb-4">
+                  <span className="line-through">{formatPrice(prices.monthly * 12)}</span> → {formatPrice(prices.annual)}
                 </div>
-                <div className="text-sm text-slate-500 mb-6">{t('landing.pricing.annual.description')}</div>
-
-                <Link to="/login" className="block w-full py-3 px-4 bg-white text-black text-center rounded-lg font-semibold transition-all hover:bg-slate-200">
+                <ul className="space-y-2 mb-6 text-sm">
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-blue-400" /> Leads ilimitados</li>
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-blue-400" /> WhatsApp integrado</li>
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-blue-400" /> Automações e IA</li>
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-blue-400" /> Catálogo completo</li>
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-blue-400" /> Relatórios avançados</li>
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-blue-400" /> Usuários ilimitados</li>
+                </ul>
+                <Link to="/login" className="block w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-center rounded-lg font-semibold transition-all hover:opacity-90 shadow-lg shadow-blue-500/25">
                   {t('landing.pricing.annual.button')}
                 </Link>
+              </div>
+            </div>
+
+            {/* Enterprise - DESTAQUE */}
+            <div className="relative p-[2px] rounded-2xl">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-3 py-0.5 rounded-full text-xs font-bold shadow-lg whitespace-nowrap z-10">
+                White Label
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl opacity-50"></div>
+              <div className="relative bg-slate-900 rounded-2xl p-6">
+                <div className="text-sm font-semibold text-amber-400 mb-2">Enterprise</div>
+                <div className="text-2xl font-bold text-white mb-4">Sob Consulta</div>
+                <p className="text-slate-400 text-xs mb-4">CRM White Label personalizado para sua empresa.</p>
+                <ul className="space-y-2 mb-6 text-sm">
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-amber-400" /> CRM White Label</li>
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-amber-400" /> Estrutura personalizada</li>
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-amber-400" /> Implementação sob medida</li>
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-amber-400" /> Suporte dedicado</li>
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-amber-400" /> Integrações customizadas</li>
+                </ul>
+                <a href="https://wa.me/5531991318312?text=Olá, tenho interesse no plano Enterprise" target="_blank" rel="noopener noreferrer" className="block w-full py-3 px-4 border border-amber-500/50 text-amber-400 text-center rounded-lg font-semibold transition-all hover:bg-amber-500/10">
+                  Entrar em Contato
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Layout */}
+          <div className="lg:hidden space-y-6">
+            {/* Starter - Free - Full width */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+              <div className="text-sm font-semibold text-slate-400 mb-2">{t('landing.pricing.starter.badge')}</div>
+              <div className="text-3xl font-bold text-white mb-2">{t('landing.pricing.starter.price')}</div>
+              <p className="text-slate-400 text-sm mb-4">{t('landing.pricing.starter.description')}</p>
+              <ul className="space-y-2 mb-6 text-sm">
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Até 50 leads</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Pipeline básico</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Catálogo limitado</li>
+                <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> 1 usuário</li>
+              </ul>
+              <Link to="/login" className="block w-full py-3 px-4 border border-white/30 text-white text-center rounded-lg font-semibold transition-all hover:bg-white/10">
+                {t('landing.pricing.starter.button')}
+              </Link>
+            </div>
+
+            {/* Carousel for paid plans */}
+            <div className="overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide -mx-6 px-6">
+              <div className="flex gap-4" style={{ width: 'max-content' }}>
+                {/* Mensal */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-6 min-w-[280px] snap-center">
+                  <div className="text-sm font-semibold text-slate-400 mb-2">{t('landing.pricing.monthly.badge')}</div>
+                  <div className="flex items-baseline gap-1 mb-2">
+                    <span className="text-3xl font-bold text-white">{formatPrice(prices.monthly)}</span>
+                    <span className="text-slate-400 text-sm">{t('landing.pricing.monthly.period')}</span>
+                  </div>
+                  <ul className="space-y-2 mb-6 text-sm">
+                    <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Leads ilimitados</li>
+                    <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> WhatsApp integrado</li>
+                    <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Automações e IA</li>
+                    <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Catálogo completo</li>
+                    <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Relatórios avançados</li>
+                    <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Usuários ilimitados</li>
+                  </ul>
+                  <Link to="/login" className="block w-full py-3 px-4 bg-white text-black text-center rounded-lg font-semibold transition-all hover:bg-slate-200">
+                    {t('landing.pricing.monthly.button')}
+                  </Link>
+                </div>
+
+                {/* Semestral */}
+                <div className="bg-white/5 border border-emerald-500/30 rounded-2xl p-6 min-w-[280px] snap-center relative">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-emerald-500 text-white px-3 py-0.5 rounded-full text-xs font-bold">
+                    {t('landing.pricing.semiannual.discountBadge', { percent: semiannualDiscount })}
+                  </div>
+                  <div className="text-sm font-semibold text-slate-400 mb-2">{t('landing.pricing.semiannual.badge')}</div>
+                  <div className="flex items-baseline gap-1 mb-1">
+                    <span className="text-3xl font-bold text-white">{formatPrice(semiannualMonthlyPrice)}</span>
+                    <span className="text-slate-400 text-sm">{t('landing.pricing.semiannual.period')}</span>
+                  </div>
+                  <div className="text-xs text-slate-500 mb-4">
+                    <span className="line-through">{formatPrice(prices.monthly * 6)}</span> → {formatPrice(prices.semiannual)}
+                  </div>
+                  <ul className="space-y-2 mb-6 text-sm">
+                    <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Leads ilimitados</li>
+                    <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> WhatsApp integrado</li>
+                    <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Automações e IA</li>
+                    <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Catálogo completo</li>
+                    <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Relatórios avançados</li>
+                    <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-emerald-400" /> Usuários ilimitados</li>
+                  </ul>
+                  <Link to="/login" className="block w-full py-3 px-4 bg-emerald-500 text-white text-center rounded-lg font-semibold transition-all hover:bg-emerald-600">
+                    {t('landing.pricing.semiannual.button')}
+                  </Link>
+                </div>
+
+                {/* Anual - DESTAQUE */}
+                <div className="relative p-[2px] rounded-2xl min-w-[280px] snap-center">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-0.5 rounded-full text-xs font-bold z-10">
+                    ⭐ Melhor custo-benefício
+                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-2xl"></div>
+                  <div className="relative bg-slate-900 rounded-2xl p-6">
+                    <div className="text-sm font-semibold text-blue-400 mb-2">{t('landing.pricing.annual.badge')}</div>
+                    <div className="flex items-baseline gap-1 mb-1">
+                      <span className="text-3xl font-bold text-white">{formatPrice(annualMonthlyPrice)}</span>
+                      <span className="text-slate-400 text-sm">{t('landing.pricing.annual.period')}</span>
+                    </div>
+                    <div className="text-xs text-slate-500 mb-4">
+                      <span className="line-through">{formatPrice(prices.monthly * 12)}</span> → {formatPrice(prices.annual)}
+                    </div>
+                    <ul className="space-y-2 mb-6 text-sm">
+                      <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-blue-400" /> Leads ilimitados</li>
+                      <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-blue-400" /> WhatsApp integrado</li>
+                      <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-blue-400" /> Automações e IA</li>
+                      <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-blue-400" /> Catálogo completo</li>
+                      <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-blue-400" /> Relatórios avançados</li>
+                      <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-blue-400" /> Usuários ilimitados</li>
+                    </ul>
+                    <Link to="/login" className="block w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-center rounded-lg font-semibold transition-all hover:opacity-90">
+                      {t('landing.pricing.annual.button')}
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Scroll indicator */}
+            <div className="flex justify-center gap-2">
+              <div className="text-xs text-slate-500">← Deslize para ver mais planos →</div>
+            </div>
+
+            {/* Enterprise - Full width */}
+            <div className="relative p-[2px] rounded-2xl">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-3 py-0.5 rounded-full text-xs font-bold z-10">
+                White Label
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl opacity-50"></div>
+              <div className="relative bg-slate-900 rounded-2xl p-6">
+                <div className="text-sm font-semibold text-amber-400 mb-2">Enterprise</div>
+                <div className="text-2xl font-bold text-white mb-4">Sob Consulta</div>
+                <p className="text-slate-400 text-xs mb-4">CRM White Label personalizado para sua empresa.</p>
+                <ul className="space-y-2 mb-6 text-sm">
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-amber-400" /> CRM White Label</li>
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-amber-400" /> Estrutura personalizada</li>
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-amber-400" /> Implementação sob medida</li>
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-amber-400" /> Suporte dedicado</li>
+                  <li className="flex items-center gap-2 text-slate-300"><Check className="w-4 h-4 text-amber-400" /> Integrações customizadas</li>
+                </ul>
+                <a href="https://wa.me/5531991318312?text=Olá, tenho interesse no plano Enterprise" target="_blank" rel="noopener noreferrer" className="block w-full py-3 px-4 border border-amber-500/50 text-amber-400 text-center rounded-lg font-semibold transition-all hover:bg-amber-500/10">
+                  Entrar em Contato
+                </a>
               </div>
             </div>
           </div>
