@@ -707,18 +707,7 @@ export default function Leads() {
         console.warn('[Leads] Erro ao deletar anexos (continuando):', attachmentError)
       }
 
-      // 5. Delete related conversations
-      const { error: conversationError } = await supabase
-        .from('conversations')
-        .delete()
-        .in('contact_id', idsToDelete)
-        .eq('tenant_id', tenant.id)
-
-      if (conversationError) {
-        console.warn('[Leads] Erro ao deletar conversas (continuando):', conversationError)
-      }
-
-      // 6. Finally delete the leads
+      // 5. Finally delete the leads (conversations are preserved)
       const { data, error } = await supabase
         .from('clientes')
         .delete()
