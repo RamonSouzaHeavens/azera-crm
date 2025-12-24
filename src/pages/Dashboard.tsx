@@ -8,6 +8,7 @@ import { expenseService } from '../services/expenseService'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { checkAndUnlockAchievements } from '../services/achievementService'
+import VendedorDashboard from '../components/dashboard/VendedorDashboard'
 
 // Carousel Images
 import CardsImage1 from '../images/Cards dashboard 1.jpg'
@@ -286,7 +287,191 @@ async function fetchDashboardData(
   }
 }
 
+// --- Data Fetching for Vendedor (Salesperson) ---
+// Filters all data by the vendedor's user_id (responsavel_id / atribuido_para)
+async function fetchVendedorDashboardData(
+  tenantId: string,
+  userId: string,
+  now: Date
+): Promise<{
+  stats: Stats
+  deltas: Deltas
+  vendasMensais: SalesMonthly[]
+  pipeline: PipelineSlice[]
+  atividadesRecentes: ActivityItem[]
+}> {
+  const currentStart = startOfMonth(now)
+  const nextStart = addMonths(currentStart, 1)
+  const prevStart = addMonths(currentStart, -1)
+  const sixStart = addMonths(currentStart, -5)
+
+  const [
+    // Leads atribuídos ao vendedor
+    clientesRes,
+    // Vendas do vendedor
+    vendasRes,
+    // Tarefas do vendedor
+    tarefasRecentesRes,
+    tarefasConcluidasRes,
+    // Leads novos do vendedor
+    clientesNovosCurRes,
+    clientesNovosPrevRes,
+    leadsNovosCurRes,
+    leadsNovosPrevRes,
+    fechadosCurRes,
+    fechadosPrevRes,
+    receitaPrevistaRes,
+    // Conversas do vendedor
+    conversasNaoLidasRes,
+    tarefasHojeRes,
+    tarefasAtrasadasRes,
+    receitaFechadaRes,
+  ] = await Promise.all([
+    // Clientes atribuídos ao vendedor
+    supabase.from('clientes').select('id, status').eq('tenant_id', tenantId).eq('atribuido_para', userId),
+    // Vendas do vendedor (lead_sales dos leads do vendedor)
+    supabase.from('lead_sales').select('value, due_date, lead_id').eq('tenant_id', tenantId).eq('status', 'paid').gte('due_date', sixStart.toISOString()).lt('due_date', nextStart.toISOString()),
+    // Tarefas recentes do vendedor
+    supabase.from('tarefas').select('id, titulo, status, created_at, clientes(nome)').eq('tenant_id', tenantId).eq('responsavel_id', userId).order('created_at', { ascending: false }).limit(3),
+    // Tarefas concluídas do vendedor
+    supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('responsavel_id', userId).eq('status', 'concluida'),
+    // Clientes novos atribuídos ao vendedor
+    supabase.from('clientes').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('atribuido_para', userId).gte('created_at', currentStart.toISOString()).lt('created_at', nextStart.toISOString()),
+    supabase.from('clientes').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('atribuido_para', userId).gte('created_at', prevStart.toISOString()).lt('created_at', currentStart.toISOString()),
+    // Leads novos do vendedor
+    supabase.from('clientes').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('atribuido_para', userId).eq('status', 'lead').gte('created_at', currentStart.toISOString()).lt('created_at', nextStart.toISOString()),
+    supabase.from('clientes').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('atribuido_para', userId).eq('status', 'lead').gte('created_at', prevStart.toISOString()).lt('created_at', currentStart.toISOString()),
+    // Fechados pelo vendedor
+    supabase.from('clientes').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('atribuido_para', userId).eq('status', 'fechado').gte('created_at', currentStart.toISOString()).lt('created_at', nextStart.toISOString()),
+    supabase.from('clientes').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('atribuido_para', userId).eq('status', 'fechado').gte('created_at', prevStart.toISOString()).lt('created_at', currentStart.toISOString()),
+    // Receita prevista dos leads do vendedor
+    supabase.from('clientes').select('valor_potencial').eq('tenant_id', tenantId).eq('atribuido_para', userId).in('status', ['lead', 'negociacao']),
+    // Conversas não lidas atribuídas ao vendedor
+    supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('assigned_to', userId).gt('unread_count', 0),
+    // Tarefas de hoje do vendedor
+    supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('responsavel_id', userId).eq('data_vencimento', now.toISOString().split('T')[0]).neq('status', 'concluida'),
+    // Tarefas atrasadas do vendedor
+    supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('responsavel_id', userId).lt('data_vencimento', now.toISOString().split('T')[0]).neq('status', 'concluida'),
+    // Receita de leads fechados pelo vendedor
+    supabase.from('clientes').select('valor_potencial').eq('tenant_id', tenantId).eq('atribuido_para', userId).eq('status', 'fechado').gte('updated_at', currentStart.toISOString()).lt('updated_at', nextStart.toISOString())
+  ])
+
+  const clientes = clientesRes.data || []
+  const totalClientes = clientes.length
+  const counts = clientes.reduce((acc, c) => {
+    const s = c.status as LeadStatus
+    acc[s] = (acc[s] || 0) + 1
+    return acc
+  }, {} as Record<LeadStatus, number>)
+
+  const leadsAtivos = counts.lead || 0
+  const pipeline: PipelineSlice[] = [
+    { name: 'Lead', value: counts.lead || 0, count: counts.lead || 0, color: PIPELINE_COLORS.Lead },
+    { name: 'Negociação', value: counts.negociacao || 0, count: counts.negociacao || 0, color: PIPELINE_COLORS.Negociação },
+    { name: 'Fechado', value: counts.fechado || 0, count: counts.fechado || 0, color: PIPELINE_COLORS.Fechado },
+    { name: 'Perdido', value: counts.perdido || 0, count: counts.perdido || 0, color: PIPELINE_COLORS.Perdido },
+  ]
+
+  // Para vendas, precisamos filtrar apenas as vendas dos leads do vendedor
+  const vendedorLeadIds = new Set(clientes.map(c => c.id))
+  const vendasRaw = (vendasRes.data || []).filter((v: any) => vendedorLeadIds.has(v.lead_id))
+  const vendas = vendasRaw.map((v: any) => ({
+    valor: Number(v.value),
+    data_venda: v.due_date
+  }))
+
+  let totalVendasCur = vendas.filter(v => {
+    const d = new Date(v.data_venda)
+    return d >= currentStart && d < nextStart
+  }).reduce((sum, v) => sum + Number(v.valor), 0)
+
+  const receitaFechadaLeads = (receitaFechadaRes.data || []).reduce((acc, item) => acc + (Number(item.valor_potencial) || 0), 0)
+
+  if (totalVendasCur === 0) {
+    totalVendasCur = receitaFechadaLeads
+  }
+
+  const totalVendasPrev = vendas.filter(v => {
+    const d = new Date(v.data_venda)
+    return d >= prevStart && d < currentStart
+  }).reduce((sum, v) => sum + Number(v.valor), 0)
+
+  const bucket = new Map<string, number>()
+  vendas.forEach(v => {
+    const d = new Date(v.data_venda)
+    const key = `${d.getFullYear()}-${d.getMonth()}`
+    bucket.set(key, (bucket.get(key) ?? 0) + Number(v.valor))
+  })
+
+  const vendasMensais: SalesMonthly[] = []
+  for (let i = 5; i >= 0; i--) {
+    const d = addMonths(currentStart, -i)
+    const key = `${d.getFullYear()}-${d.getMonth()}`
+    vendasMensais.push({ month: monthLabel(d), vendas: bucket.get(key) ?? 0 })
+  }
+
+  const atividadesRecentes: ActivityItem[] = (tarefasRecentesRes.data || []).map((t: any) => ({
+    id: String(t.id),
+    action: t.titulo,
+    status: t.status,
+    cliente: t.clientes?.nome ?? 'Sem cliente',
+    time: new Date(String(t.created_at)).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+  }))
+
+  const curCreated = clientesNovosCurRes.count ?? 0
+  const prevCreated = clientesNovosPrevRes.count ?? 0
+  const curCreatedLeads = leadsNovosCurRes.count ?? 0
+  const prevCreatedLeads = leadsNovosPrevRes.count ?? 0
+  const curCreatedFechados = fechadosCurRes.count ?? 0
+  const prevCreatedFechados = fechadosPrevRes.count ?? 0
+
+  const vendasAbs = totalVendasCur - totalVendasPrev
+  const vendasPct = totalVendasPrev > 0 ? (vendasAbs / totalVendasPrev) * 100 : (totalVendasCur > 0 ? 100 : 0)
+  const clientesAbs = curCreated - prevCreated
+  const clientesPct = prevCreated > 0 ? (clientesAbs / prevCreated) * 100 : (curCreated > 0 ? 100 : 0)
+  const leadsAbs = curCreatedLeads - prevCreatedLeads
+  const leadsPct = prevCreatedLeads > 0 ? (leadsAbs / prevCreatedLeads) * 100 : (curCreatedLeads > 0 ? 100 : 0)
+  const convCur = curCreated > 0 ? (curCreatedFechados / curCreated) * 100 : 0
+  const convPrev = prevCreated > 0 ? (prevCreatedFechados / prevCreated) * 100 : 0
+  const convPct = convCur - convPrev
+
+  const receitaPrevista = (receitaPrevistaRes.data || []).reduce((acc, c) => acc + (Number(c.valor_potencial) || 0), 0)
+  const taxaConversao = Number(convCur.toFixed(1))
+
+  return {
+    stats: {
+      totalVendas: totalVendasCur,
+      totalClientes,
+      leadsAtivos,
+      conversionRate: Number(((totalClientes > 0 ? (counts.fechado / totalClientes) * 100 : 0)).toFixed(1)),
+      leadsNovos: curCreatedLeads,
+      receitaPrevista,
+      taxaConversao,
+      atividadesConcluidas: tarefasConcluidasRes.count ?? 0,
+      despesasFixas: 0, // Vendedores não veem despesas fixas
+      conversasNaoLidas: conversasNaoLidasRes.count ?? 0,
+      tarefasHoje: tarefasHojeRes.count ?? 0,
+      tarefasAtrasadas: tarefasAtrasadasRes.count ?? 0,
+      receitaMes: totalVendasCur,
+      metaMes: 50000,
+    },
+    deltas: {
+      vendasAbs,
+      vendasPct,
+      clientesAbs,
+      clientesPct,
+      leadsAbs,
+      leadsPct,
+      convPct,
+    },
+    vendasMensais,
+    pipeline,
+    atividadesRecentes,
+  }
+}
+
 // --- Components ---
+
 
 const WelcomeBanner = ({ userName, stats }: { userName: string, stats: Stats }) => {
   const shouldReduceMotion = useReducedMotion()
@@ -551,6 +736,11 @@ export default function Dashboard() {
   const tenantId = useMemo(() => tenant?.id ?? member?.tenant_id ?? '', [tenant?.id, member?.tenant_id])
   const userName = useMemo(() => profile?.display_name || user?.user_metadata?.name || 'Usuário', [user, profile])
 
+  // Se for vendedor, renderiza o dashboard específico para vendedores
+  if (member?.role === 'vendedor') {
+    return <VendedorDashboard />
+  }
+
   const [stats, setStats] = useState<Stats>({
     totalVendas: 0,
     totalClientes: 0,
@@ -581,6 +771,11 @@ export default function Dashboard() {
     return member?.role === 'owner'
   }, [member])
 
+  // Verificar se é vendedor - vendedores veem apenas seus próprios dados
+  const isVendedor = useMemo(() => {
+    return member?.role === 'vendedor'
+  }, [member])
+
   useEffect(() => {
     // Se não tem tenant, mostrar estado vazio (não ficar travado no loading)
     if (!tenantId) {
@@ -588,7 +783,13 @@ export default function Dashboard() {
       return
     }
     setLoading(true)
-    fetchDashboardData(tenantId, user?.id, new Date())
+
+    // Vendedores usam a função específica que filtra pelos seus dados
+    const fetchData = isVendedor && user?.id
+      ? fetchVendedorDashboardData(tenantId, user.id, new Date())
+      : fetchDashboardData(tenantId, user?.id, new Date())
+
+    fetchData
       .then(data => {
         setStats(data.stats)
         setDeltas(data.deltas)
@@ -597,7 +798,7 @@ export default function Dashboard() {
       })
       .catch(err => console.error('Erro ao carregar dashboard:', err))
       .finally(() => setLoading(false))
-  }, [tenantId, user?.id])
+  }, [tenantId, user?.id, isVendedor])
 
   if (loading) {
     return (
