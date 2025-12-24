@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/authStore';
-import { Plus, Settings, Type, Hash, Calendar, List, CheckSquare, X, Trash2, Tags, ListChecks } from 'lucide-react';
+import { Plus, Settings, Type, Hash, Calendar, List, CheckSquare, X, Trash2, Tags, ListChecks, AlertTriangle } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 
 interface LeadCustomFieldsProps {
@@ -48,6 +48,12 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
     field_value: ''
   });
 
+  // Estado para o modal de confirmação de exclusão
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ isOpen: boolean; fieldId: string | null }>({
+    isOpen: false,
+    fieldId: null
+  });
+
   const loadFields = async () => {
     if (!tenant?.id) return;
     const { data } = await supabase
@@ -72,8 +78,13 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
     setFieldValues(values);
   };
 
-  const deleteField = async (fieldId: string) => {
-    if (!confirm('Tem certeza que deseja excluir este campo personalizado? Todos os valores associados serão perdidos.')) return;
+  const handleDeleteClick = (fieldId: string) => {
+    setDeleteConfirmation({ isOpen: true, fieldId });
+  };
+
+  const confirmDelete = async () => {
+    const fieldId = deleteConfirmation.fieldId;
+    if (!fieldId) return;
 
     try {
       // Primeiro, excluir valores associados
@@ -93,6 +104,7 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
       // Recarregar campos
       await loadFields();
       await loadFieldValues();
+      setDeleteConfirmation({ isOpen: false, fieldId: null });
     } catch (error) {
       console.error('Erro ao excluir campo:', error);
     }
@@ -184,8 +196,10 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
 
   const renderFieldInput = (field: CustomField) => {
     const value = fieldValues[field.id] || '';
+    // Normalizar tipo para lowercase para evitar problemas de case
+    const fieldType = (field.field_type || 'text').toLowerCase();
 
-    switch (field.field_type) {
+    switch (fieldType) {
       case 'text':
         return (
           <input
@@ -226,7 +240,7 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
             className="w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500"
           >
             <option value="">Selecione...</option>
-            {field.options.map(option => (
+            {Array.isArray(field.options) && field.options.map(option => (
               <option key={option} value={option}>{option}</option>
             ))}
           </select>
@@ -263,7 +277,7 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
               className="w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
             >
               <option value="">Adicionar opção...</option>
-              {field.options.filter(opt => !selectedValues.includes(opt)).map(option => (
+              {Array.isArray(field.options) && field.options.filter(opt => !selectedValues.includes(opt)).map(option => (
                 <option key={option} value={option}>{option}</option>
               ))}
             </select>
@@ -342,7 +356,16 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
         );
 
       default:
-        return null;
+        // Fallback: renderiza como texto para qualquer tipo não reconhecido
+        return (
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => updateFieldValue(field.id, e.target.value)}
+            className="w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+            placeholder="Digite o texto..."
+          />
+        );
     }
   };
 
@@ -576,7 +599,7 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
                         </div>
                       </div>
                       <button
-                        onClick={() => deleteField(field.id)}
+                        onClick={() => handleDeleteClick(field.id)}
                         className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                         title="Excluir campo"
                       >
@@ -586,7 +609,7 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
 
                     <div className="text-xs text-slate-500 dark:text-slate-400 mb-2">
                       Tipo: {field.field_type}
-                      {field.options.length > 0 && ` • ${field.options.length} opções`}
+                      {Array.isArray(field.options) && field.options.length > 0 && ` • ${field.options.length} opções`}
                     </div>
 
                     <div className="text-xs text-slate-500 dark:text-slate-400">
@@ -596,6 +619,46 @@ export const LeadCustomFields: React.FC<LeadCustomFieldsProps> = ({ leadId }) =>
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      </Modal>
+
+
+      {/* Modal de Confirmação de Exclusão */}
+      <Modal
+        isOpen={deleteConfirmation.isOpen}
+        onClose={() => setDeleteConfirmation({ isOpen: false, fieldId: null })}
+        title="Confirmar Exclusão"
+        maxWidthClass="max-w-md"
+      >
+        <div className="p-6 text-center">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
+          </div>
+
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+            Excluir Campo?
+          </h3>
+
+          <p className="text-slate-500 dark:text-slate-400 mb-6">
+            Você tem certeza que deseja excluir este campo personalizado?
+            <br />
+            <span className="font-semibold text-red-500">Todos os dados preenchidos neste campo serão perdidos permanentemente.</span>
+          </p>
+
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => setDeleteConfirmation({ isOpen: false, fieldId: null })}
+              className="px-4 py-2 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-700 dark:text-slate-300 rounded-lg font-medium transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors shadow-lg shadow-red-500/30"
+            >
+              Sim, excluir campo
+            </button>
           </div>
         </div>
       </Modal>

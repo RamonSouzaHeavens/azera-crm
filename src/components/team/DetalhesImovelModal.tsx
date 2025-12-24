@@ -1,10 +1,9 @@
 import React from 'react'
-import { X, DollarSign, MapPin, Ruler, Bed, Bath, Car, FileText, Download, Image as ImageIcon } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { X, MapPin, Ruler, BedDouble, Bath, Car, Building2, Calendar, DollarSign, ImageIcon } from 'lucide-react'
+import { isValidUrl } from '../../lib/urlValidation'
 
 interface Produto {
   id: string
-  tenant_id: string
   nome: string
   descricao: string | null
   tipo: string | null
@@ -14,8 +13,6 @@ interface Produto {
   capa_url: string | null
   status: string
   destaque: boolean
-  created_at: string
-  ativo?: boolean
   area_total?: number | null
   area_construida?: number | null
   quartos?: number | null
@@ -39,10 +36,8 @@ interface Produto {
     modalidade?: string[]
     financiamento_incorporadora?: boolean
     decorado?: boolean
+    data_entrega?: string
   } | null
-  tags?: string[] | null
-  galeria_urls?: string[]
-  arquivo_urls?: string[]
 }
 
 interface DetalhesImovelModalProps {
@@ -51,306 +46,231 @@ interface DetalhesImovelModalProps {
   onClose: () => void
 }
 
-const currencyBRL = (value: number | null | undefined): string => {
-  if (!value) return '—'
+const currencyBRL = (value: number): string => {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-const fileEmoji = (url: string) => {
-  const ext = url.split('.').pop()?.toLowerCase()
-  switch (ext) {
-    case 'pdf': return '📄'
-    case 'doc':
-    case 'docx': return '📝'
-    case 'xls':
-    case 'xlsx': return '📊'
-    case 'ppt':
-    case 'pptx': return '📑'
-    case 'png':
-    case 'jpg':
-    case 'jpeg':
-    case 'webp': return '🖼️'
-    default: return '📁'
-  }
-}
+export function DetalhesImovelModal({ produto, isOpen, onClose }: DetalhesImovelModalProps) {
+  if (!isOpen || !produto) return null
 
-export const DetalhesImovelModal: React.FC<DetalhesImovelModalProps> = ({ produto, isOpen, onClose }) => {
-  if (!produto) return null
+  const valor = produto.valor || produto.preco || produto.price || produto.filtros?.preco_min || 0
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Overlay */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-white/10">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white">{produto.nome}</h2>
+            {produto.filtros?.empreendimento && (
+              <p className="text-sm text-cyan-600 dark:text-cyan-400">{produto.filtros.empreendimento}</p>
+            )}
+          </div>
+          <button
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
-          />
-
-          {/* Modal */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: 'spring', duration: 0.3 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 flex items-center justify-center text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-white transition-colors"
           >
-            <div className="bg-slate-950 border border-white/10 rounded-3xl shadow-2xl w-full max-w-[1240px] h-[700px] overflow-hidden flex flex-col">
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-slate-950/95 backdrop-blur flex-shrink-0">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-2xl font-bold text-white">{produto.nome}</h2>
-                  {produto.destaque && (
-                    <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-yellow-500/30 text-yellow-100 border border-yellow-300/50">
-                      ⭐ DESTAQUE
-                    </span>
-                  )}
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Imagem */}
+            <div className="aspect-video w-full bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden">
+              {isValidUrl(produto.capa_url ?? '') ? (
+                <img
+                  src={produto.capa_url as string}
+                  alt={produto.nome}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-400">
+                  <div className="text-center">
+                    <ImageIcon className="w-16 h-16 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Sem imagem</p>
+                  </div>
                 </div>
-                <button
-                  onClick={onClose}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <X className="w-6 h-6 text-white" />
-                </button>
+              )}
+            </div>
+
+            {/* Informações Principais */}
+            <div className="space-y-6">
+              {/* Preço */}
+              <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30">
+                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 mb-1">
+                  <DollarSign className="w-5 h-5" />
+                  <span className="text-sm font-medium">Valor</span>
+                </div>
+                <p className="text-2xl font-bold text-emerald-800 dark:text-emerald-200">
+                  {currencyBRL(Number(valor))}
+                </p>
               </div>
 
-              {/* Conteúdo - Layout Horizontal */}
-              <div className="flex-1 flex overflow-hidden">
-                {/* Coluna Esquerda: Imagem Principal */}
-                <div className="w-[45%] flex-shrink-0 bg-slate-900/50 flex items-center justify-center p-6">
-                  {produto.capa_url ? (
-                    <img
-                      src={produto.capa_url}
-                      alt={produto.nome}
-                      className="w-full h-full object-cover rounded-2xl"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                      }}
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-slate-400">
-                      <ImageIcon className="w-20 h-20 mb-4 opacity-50" />
-                      <p className="text-sm">Sem imagem disponível</p>
+              {/* Status e Badges */}
+              <div className="flex flex-wrap gap-2">
+                <span className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                  produto.status === 'disponivel'
+                    ? 'bg-emerald-100 dark:bg-emerald-500/20 border-emerald-300 dark:border-emerald-500/40 text-emerald-700 dark:text-emerald-300'
+                    : produto.status === 'reservado'
+                    ? 'bg-amber-100 dark:bg-amber-500/20 border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-300'
+                    : 'bg-red-100 dark:bg-red-500/20 border-red-300 dark:border-red-500/40 text-red-700 dark:text-red-300'
+                }`}>
+                  {produto.status?.replace('_', ' ').toUpperCase() || 'INDISPONÍVEL'}
+                </span>
+
+                {produto.destaque && (
+                  <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-purple-100 dark:bg-purple-500/20 border border-purple-300 dark:border-purple-500/40 text-purple-700 dark:text-purple-300">
+                    ⭐ DESTAQUE
+                  </span>
+                )}
+
+                {produto.filtros?.fase && (
+                  <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-100 dark:bg-blue-500/20 border border-blue-300 dark:border-blue-500/40 text-blue-700 dark:text-blue-300">
+                    {produto.filtros.fase}
+                  </span>
+                )}
+              </div>
+
+              {/* Características */}
+              <div className="grid grid-cols-2 gap-3">
+                {produto.tipo && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                    <Building2 className="w-4 h-4 text-slate-500 dark:text-gray-400" />
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-gray-500">Tipo</p>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white capitalize">{produto.tipo}</p>
                     </div>
-                  )}
-                </div>
-
-                {/* Coluna Direita: Informações (com scroll) */}
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-
-                  {/* Preço */}
-                  {(produto.valor || produto.preco || produto.price) && (
-                    <div className="rounded-xl bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 border border-emerald-400/30 p-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <DollarSign className="w-4 h-4 text-emerald-400" />
-                        <span className="text-slate-300 text-xs">Preço</span>
-                      </div>
-                      <p className="text-2xl font-bold text-emerald-300">
-                        {currencyBRL(produto.valor || produto.preco || produto.price)}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Características Principais */}
-                  <div className="grid grid-cols-4 gap-3">
-                    {produto.area_total && (
-                      <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-center">
-                        <Ruler className="w-4 h-4 text-cyan-400 mx-auto mb-1" />
-                        <p className="text-xl font-bold text-white">{produto.area_total}m²</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Área Total</p>
-                      </div>
-                    )}
-                    {produto.quartos !== null && produto.quartos !== undefined && (
-                      <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-center">
-                        <Bed className="w-4 h-4 text-blue-400 mx-auto mb-1" />
-                        <p className="text-xl font-bold text-white">{produto.quartos}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Quartos</p>
-                      </div>
-                    )}
-                    {produto.banheiros !== null && produto.banheiros !== undefined && (
-                      <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-center">
-                        <Bath className="w-4 h-4 text-blue-400 mx-auto mb-1" />
-                        <p className="text-xl font-bold text-white">{produto.banheiros}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Banheiros</p>
-                      </div>
-                    )}
-                    {produto.vagas_garagem !== null && produto.vagas_garagem !== undefined && (
-                      <div className="rounded-lg bg-white/5 border border-white/10 p-3 text-center">
-                        <Car className="w-4 h-4 text-orange-400 mx-auto mb-1" />
-                        <p className="text-xl font-bold text-white">{produto.vagas_garagem}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">Vagas</p>
-                      </div>
-                    )}
                   </div>
+                )}
 
-                  {/* Localização */}
-                  {(produto.endereco || produto.bairro || produto.cidade || produto.cep) && (
-                    <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <MapPin className="w-4 h-4 text-red-400" />
-                        <h3 className="text-sm font-semibold text-white">Localização</h3>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        {produto.endereco && (
-                          <div><span className="text-slate-400 text-xs">Endereço:</span> <span className="text-slate-200">{produto.endereco}</span></div>
-                        )}
-                        {produto.bairro && (
-                          <div><span className="text-slate-400 text-xs">Bairro:</span> <span className="text-slate-200">{produto.bairro}</span></div>
-                        )}
-                        {produto.cidade && (
-                          <div><span className="text-slate-400 text-xs">Cidade:</span> <span className="text-slate-200">{produto.cidade}</span></div>
-                        )}
-                        {produto.cep && (
-                          <div><span className="text-slate-400 text-xs">CEP:</span> <span className="text-slate-200">{produto.cep}</span></div>
-                        )}
-                      </div>
+                {produto.area_total && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                    <Ruler className="w-4 h-4 text-slate-500 dark:text-gray-400" />
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-gray-500">Área</p>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">{produto.area_total}m²</p>
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {/* Descrição */}
-                  {produto.descricao && (
-                    <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FileText className="w-4 h-4 text-slate-400" />
-                        <h3 className="text-sm font-semibold text-white">Descrição</h3>
-                      </div>
-                      <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap line-clamp-4">{produto.descricao}</p>
+                {produto.quartos && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                    <BedDouble className="w-4 h-4 text-slate-500 dark:text-gray-400" />
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-gray-500">Quartos</p>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">{produto.quartos}</p>
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {/* Tags */}
-                  {produto.tags && produto.tags.length > 0 && (
-                    <div className="rounded-xl bg-white/5 border border-white/10 p-3">
-                      <h3 className="text-sm font-semibold text-white mb-2">Tags</h3>
-                      <div className="flex flex-wrap gap-1.5">
-                        {produto.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="px-2 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/30 text-cyan-300 text-xs"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
+                {produto.banheiros && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                    <Bath className="w-4 h-4 text-slate-500 dark:text-gray-400" />
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-gray-500">Banheiros</p>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">{produto.banheiros}</p>
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {/* Galeria */}
-                  {produto.galeria_urls && produto.galeria_urls.length > 0 && (
-                    <div className="rounded-xl bg-white/5 border border-white/10 p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <ImageIcon className="w-4 h-4 text-slate-400" />
-                        <h3 className="text-sm font-semibold text-white">Galeria</h3>
-                      </div>
-                      <div className="grid grid-cols-4 gap-2">
-                        {produto.galeria_urls.slice(0, 4).map((url, idx) => (
-                          <a
-                            key={idx}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="rounded-lg overflow-hidden bg-white/5 border border-white/10 hover:border-white/30 transition-colors group"
-                          >
-                            <img
-                              src={url}
-                              alt={`Galeria ${idx + 1}`}
-                              className="w-full h-20 object-cover group-hover:scale-110 transition-transform duration-300"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none'
-                              }}
-                            />
-                          </a>
-                        ))}
-                      </div>
-                      {produto.galeria_urls.length > 4 && (
-                        <p className="text-xs text-slate-400 mt-2 text-center">+{produto.galeria_urls.length - 4} fotos</p>
-                      )}
+                {produto.vagas_garagem && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                    <Car className="w-4 h-4 text-slate-500 dark:text-gray-400" />
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-gray-500">Vagas</p>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">{produto.vagas_garagem}</p>
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {/* Arquivos */}
-                  {produto.arquivo_urls && produto.arquivo_urls.length > 0 && (
-                    <div className="rounded-xl bg-white/5 border border-white/10 p-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Download className="w-4 h-4 text-slate-400" />
-                        <h3 className="text-sm font-semibold text-white">Arquivos</h3>
-                      </div>
-                      <div className="space-y-1.5">
-                        {produto.arquivo_urls.slice(0, 3).map((url, idx) => {
-                          const fileName = url.split('/').pop() || `Arquivo ${idx + 1}`
-                          return (
-                            <a
-                              key={idx}
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group text-sm"
-                            >
-                              <span className="text-base">{fileEmoji(url)}</span>
-                              <span className="text-slate-300 group-hover:text-white transition-colors truncate text-xs">{fileName}</span>
-                            </a>
-                          )
-                        })}
-                      </div>
-                      {produto.arquivo_urls.length > 3 && (
-                        <p className="text-xs text-slate-400 mt-2 text-center">+{produto.arquivo_urls.length - 3} arquivos</p>
-                      )}
+                {produto.filtros?.data_entrega && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                    <Calendar className="w-4 h-4 text-slate-500 dark:text-gray-400" />
+                    <div>
+                      <p className="text-xs text-slate-500 dark:text-gray-500">Entrega</p>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">{produto.filtros.data_entrega}</p>
                     </div>
-                  )}
+                  </div>
+                )}
+              </div>
 
-                  {/* Informações Adicionais */}
-                  {produto.filtros && (
-                    <div className="rounded-xl bg-white/5 border border-white/10 p-3">
-                      <h3 className="text-sm font-semibold text-white mb-2">Informações Adicionais</h3>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        {produto.filtros.empreendimento && (
-                          <div>
-                            <p className="text-slate-400">Empreendimento</p>
-                            <p className="text-white font-medium">{produto.filtros.empreendimento}</p>
-                          </div>
-                        )}
-                        {produto.filtros.incorporadora && (
-                          <div>
-                            <p className="text-slate-400">Incorporadora</p>
-                            <p className="text-white font-medium">{produto.filtros.incorporadora}</p>
-                          </div>
-                        )}
-                        {produto.filtros.fase && (
-                          <div>
-                            <p className="text-slate-400">Fase</p>
-                            <p className="text-white font-medium">{produto.filtros.fase}</p>
-                          </div>
-                        )}
-                        {produto.filtros.regiao && (
-                          <div>
-                            <p className="text-slate-400">Região</p>
-                            <p className="text-white font-medium">{produto.filtros.regiao}</p>
-                          </div>
-                        )}
-                        {produto.filtros.financiamento_incorporadora && (
-                          <div>
-                            <p className="text-slate-400">Financiamento</p>
-                            <p className="text-emerald-400 font-medium text-xs">✓ Disponível</p>
-                          </div>
-                        )}
-                        {produto.filtros.decorado && (
-                          <div>
-                            <p className="text-slate-400">Decorado</p>
-                            <p className="text-rose-400 font-medium text-xs">✓ Sim</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+              {/* Localização */}
+              {(produto.endereco || produto.bairro || produto.cidade || produto.filtros?.regiao) && (
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                  <div className="flex items-center gap-2 text-slate-600 dark:text-gray-400 mb-2">
+                    <MapPin className="w-4 h-4" />
+                    <span className="text-sm font-medium">Localização</span>
+                  </div>
+                  <div className="text-sm text-slate-900 dark:text-white space-y-1">
+                    {produto.endereco && <p>{produto.endereco}</p>}
+                    <p>
+                      {[produto.bairro || produto.filtros?.bairro, produto.cidade, produto.filtros?.regiao]
+                        .filter(Boolean)
+                        .join(' - ')}
+                    </p>
+                    {produto.cep && <p className="text-slate-500 dark:text-gray-500">CEP: {produto.cep}</p>}
+                  </div>
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* Descrição */}
+          {produto.descricao && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Descrição</h3>
+              <p className="text-slate-600 dark:text-gray-400 whitespace-pre-line">{produto.descricao}</p>
+            </div>
+          )}
+
+          {/* Tipologia e Modalidade */}
+          {produto.filtros && (produto.filtros.tipologia?.length || produto.filtros.modalidade?.length) && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-3">Características Adicionais</h3>
+              <div className="flex flex-wrap gap-2">
+                {produto.filtros.tipologia?.map((tip) => (
+                  <span
+                    key={`tip-${tip}`}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-cyan-100 dark:bg-cyan-500/15 border border-cyan-300 dark:border-cyan-500/30 text-cyan-700 dark:text-cyan-300"
+                  >
+                    {tip}
+                  </span>
+                ))}
+                {produto.filtros.modalidade?.map((mod) => (
+                  <span
+                    key={`mod-${mod}`}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-fuchsia-100 dark:bg-fuchsia-500/15 border border-fuchsia-300 dark:border-fuchsia-500/30 text-fuchsia-700 dark:text-fuchsia-300"
+                  >
+                    {mod}
+                  </span>
+                ))}
               </div>
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+          )}
+
+          {/* Incorporadora */}
+          {produto.filtros?.incorporadora && (
+            <div className="mt-6 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/30">
+              <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-1">Incorporadora</p>
+              <p className="text-lg font-semibold text-indigo-800 dark:text-indigo-200">{produto.filtros.incorporadora}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5">
+          <button
+            onClick={onClose}
+            className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-semibold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
+
+export default DetalhesImovelModal

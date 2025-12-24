@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { Plus, Loader, Image as ImageIcon, Filter, Grid3x3, List, ExternalLink, Tag } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Plus, Loader, Image as ImageIcon, Filter, Grid3x3, List, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getProdutosEquipe, deleteProdutosSistema } from '../../services/produtosEquipeService'
 import { isValidUrl } from '../../lib/urlValidation'
-import { getCustomFields } from '../../services/customFieldsService'
-import type { CustomFieldDefinition } from '../../types/customFields'
-import ProdutoDetalhesEquipe from './ProdutoDetalhesEquipe'
+import { DetalhesImovelModal } from './DetalhesImovelModal'
 
 interface Produto {
   id: string
@@ -32,9 +29,6 @@ interface Produto {
   cidade?: string | null
   cep?: string | null
   finalidade?: string | null
-  categoria?: string | null
-  tags?: string[] | null
-  custom_fields?: Record<string, string | number | boolean | null>
   filtros?: {
     empreendimento?: string
     incorporadora?: string
@@ -48,15 +42,12 @@ interface Produto {
     modalidade?: string[]
     financiamento_incorporadora?: boolean
     decorado?: boolean
-  } & Record<string, any> | null
-  entrega?: string | null
-  galeria?: string[]
-  anexos?: string[]
+  } | null
+  tags?: string[] | null
 }
 
 interface ProdutosEquipeProps {
   tenantId: string
-  readOnly?: boolean
 }
 
 interface Filtros {
@@ -79,28 +70,6 @@ interface Filtros {
   decorado?: 'any' | 'true' | 'false'
 }
 
-// Tipos da página Produtos
-export type ImovelStatus = 'disponivel' | 'reservado' | 'vendido' | 'alugado' | 'indisponivel'
-export type ImovelTipo =
-  | 'apartamento'
-  | 'casa'
-  | 'sobrado'
-  | 'cobertura'
-  | 'terreno'
-  | 'comercial'
-  | 'industrial'
-  | 'rural'
-  | 'outro'
-
-export type ImovelFinalidade = 'venda' | 'aluguel' | 'venda_aluguel'
-
-export interface ImovelFilters {
-  categoria?: string
-  precoMin?: number
-  precoMax?: number
-  customFields?: Record<string, string | number | boolean | undefined>
-}
-
 // ============================
 // Helpers
 // ============================
@@ -108,327 +77,21 @@ const currencyBRL = (value: number): string => {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-const statusStyle: Record<string, string> = {
-  disponivel: 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-400/50 dark:border-emerald-400/20',
-  reservado: 'bg-cyan-100 dark:bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border-cyan-400/50 dark:border-cyan-400/20',
-  vendido: 'bg-slate-200 dark:bg-slate-500/15 text-slate-800 dark:text-slate-300 border-slate-400/50 dark:border-slate-400/20',
-  alugado: 'bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-400/50 dark:border-amber-400/20',
-  indisponivel: 'bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-300 border-rose-400/50 dark:border-rose-400/20',
-}
-
-const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId, readOnly = false }) => {
+const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId }) => {
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [loading, setLoading] = useState(true)
-  const [filtros] = useState<Filtros>({
+  const [filtros, setFiltros] = useState<Filtros>({
     tipo: 'todos',
     finalidade: 'todos',
     texto: '',
     financiamento_incorporadora: 'any',
     decorado: 'any'
   })
-  const [showFilterPopup, setShowFilterPopup] = useState(false)
-  const [filters, setFilters] = useState<ImovelFilters>({})
-  const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([])
+  const [filtrosOpen, setFiltrosOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [deletingSystem, setDeletingSystem] = useState(false)
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null)
   const [modalAberto, setModalAberto] = useState(false)
-
-  // Carregar campos personalizados quando o popup de filtros abrir
-  useEffect(() => {
-    if (showFilterPopup && tenantId) {
-      getCustomFields(tenantId).then(fields => {
-        setCustomFields(fields)
-      }).catch(error => {
-        console.error('Erro ao carregar campos personalizados:', error)
-      })
-    }
-  }, [showFilterPopup, tenantId])
-
-  // Card view for a single product
-  function Card({ item }: { item: Produto }) {
-    return (
-      <div className={`group rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border transition-all duration-300 shadow-2xl hover:shadow-2xl hover:shadow-cyan-500/20 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-cyan-500/40 overflow-hidden backdrop-blur-sm flex h-auto border-white/10 hover:border-cyan-400/40 hover:from-white/15 hover:to-white/10`}>
-        {/* Imagem - 4:3 */}
-        <div className="relative w-1/2 bg-gradient-to-br from-slate-900 to-slate-800 overflow-hidden flex-shrink-0 aspect-video">
-          <div className="w-full h-full">
-            {isValidUrl(item.capa_url) ? (
-              <img
-                src={item.capa_url as string}
-                alt={item.nome}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.08]"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-slate-400 bg-gradient-to-br from-slate-800 to-slate-900">
-                <div className="text-center">
-                  <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <div className="text-xs text-gray-500">Sem imagem</div>
-                </div>
-              </div>
-            )}
-
-            {/* Status Badge */}
-            <div className="absolute top-3 left-3">
-              <span className={`text-[10px] sm:text-xs font-semibold px-3 py-1.5 rounded-full border backdrop-blur-md ${statusStyle[item.status || 'indisponivel']}`}>
-                {item.status?.replace('_', ' ').toUpperCase() || 'INDISPONIVEL'}
-              </span>
-            </div>
-
-            {/* Destaque Badge */}
-            {item.destaque && (
-              <div className="absolute top-3 right-3">
-                <span className="text-[10px] sm:text-xs font-bold px-3 py-1.5 rounded-full border border-purple-300/50 bg-gradient-to-r from-purple-500/30 to-pink-500/20 text-purple-100 backdrop-blur-md shadow-lg shadow-purple-500/20">
-                  ⭐ DESTAQUE
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Informações - 4:3 */}
-        <div className="p-3 sm:p-5 w-1/2 flex flex-col justify-between">
-          <div className="flex items-start justify-between gap-3 mb-2 sm:mb-4">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="min-w-0">
-                <h3 className="font-bold text-slate-900 dark:text-white truncate text-lg leading-tight">{item.nome}</h3>
-                {(item.valor || item.preco || item.price || item.filtros?.preco_min) && (
-                  <div className="text-emerald-600 dark:text-emerald-300 font-semibold text-sm mt-1">
-                    A partir de {currencyBRL(Number(item.valor || item.preco || item.price || item.filtros?.preco_min || 0))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <p className="text-xs text-slate-600 dark:text-gray-400 line-clamp-2 mb-2 leading-relaxed">{item.descricao ?? 'Sem descrição disponível'}</p>
-
-          {/* Categoria e Tipo */}
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            {item.categoria && (
-              <span className="px-2 py-1 rounded-lg bg-blue-100 dark:bg-blue-500/20 border border-blue-200 dark:border-blue-500/30 text-blue-900 dark:text-blue-300 text-xs font-semibold">
-                {item.categoria}
-              </span>
-            )}
-            {item.tipo && (
-              <span className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/20 text-slate-700 dark:text-gray-300 text-xs font-medium">
-                {item.tipo}
-              </span>
-            )}
-          </div>
-
-          {/* Campos Personalizados - Resumo */}
-          {item.custom_fields && Object.keys(item.custom_fields).length > 0 && (
-            <div className="space-y-1 mb-2">
-              {Object.entries(item.custom_fields).slice(0, 2).map(([key, value]) => (
-                <div key={key} className="text-xs text-slate-600 dark:text-gray-400">
-                  <span className="font-semibold">{key}:</span> {String(value)}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Tags */}
-          {item.tags && item.tags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1 text-xs mb-2">
-              {item.tags.slice(0, 2).map((t, i) => (
-                <span key={i} className="px-2 py-1 rounded-full bg-slate-100 dark:bg-white/10 border border-slate-200 dark:border-white/20 text-slate-700 dark:text-gray-300 text-[10px] font-medium">
-                  #{t}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <button
-            onClick={() => {
-              setProdutoSelecionado(item)
-              setModalAberto(true)
-            }}
-            className="flex items-center justify-center gap-2 w-full py-3 text-sm font-bold text-white rounded-xl bg-gradient-to-r from-cyan-500 via-cyan-500 to-cyan-600 hover:from-cyan-600 hover:via-cyan-600 hover:to-cyan-700 transition-all shadow-lg hover:shadow-cyan-500/40 hover:shadow-2xl group-hover:scale-[1.02] active:scale-95 mt-auto"
-          >
-            Ver detalhes <ExternalLink className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  function Row({ item }: { item: Produto }) {
-    return (
-      <>
-        {/* Mobile: Layout de Lista Vertical */}
-        <div
-          className="md:hidden rounded-xl border bg-gradient-to-r transition-all shadow-lg hover:shadow-cyan-500/20 backdrop-blur-sm overflow-hidden border-slate-200 dark:border-white/10 from-white/95 dark:from-white/8 to-white/90 dark:to-white/5 hover:from-white/98 dark:hover:from-white/12 hover:to-white/95 dark:hover:to-white/10 hover:border-cyan-400/40 cursor-pointer"
-          onClick={() => {
-            setProdutoSelecionado(item)
-            setModalAberto(true)
-          }}
-        >
-          <div className="p-4">
-            {/* Layout em quatro colunas */}
-            <div className="grid grid-cols-4 gap-3">
-              {/* Coluna 1: Foto */}
-              <div className="flex justify-center">
-                <div className="w-20 h-20 rounded-lg overflow-hidden bg-gradient-to-br from-slate-100 dark:from-slate-900 to-slate-200 dark:to-slate-800 flex-shrink-0 flex items-center justify-center shadow-md">
-                  {isValidUrl(item.capa_url) ? (
-                    <img
-                      src={item.capa_url as string}
-                      alt={item.nome}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="text-center text-slate-400 dark:text-slate-400">
-                      <ImageIcon className="w-5 h-5 mx-auto mb-0.5 opacity-50" />
-                      <div className="text-[9px] text-slate-500 dark:text-gray-500">Sem</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Coluna 2: Nome, preço e disponibilidade */}
-              <div className="space-y-1">
-                <h3 className="font-bold text-slate-900 dark:text-white text-sm leading-tight truncate">{item.nome}</h3>
-                <div className="flex items-center gap-1">
-                  <span className={`text-[8px] font-semibold px-1 py-0.5 rounded-full border backdrop-blur-md ${statusStyle[item.status || 'indisponivel']}`}>
-                    {item.status?.replace('_', ' ').toUpperCase() || 'INDISPONIVEL'}
-                  </span>
-                  {item.destaque && (
-                    <span className="text-[8px] font-bold px-1 py-0.5 rounded-full border border-purple-300/50 bg-gradient-to-r from-purple-500/30 to-pink-500/20 text-purple-700 dark:text-purple-100 backdrop-blur-md">
-                      ⭐
-                    </span>
-                  )}
-                </div>
-                {(item.valor || item.preco || item.price) && (
-                  <div className="text-emerald-600 dark:text-emerald-300 font-bold text-xs">
-                    {currencyBRL(item.valor || item.preco || item.price || 0)}
-                  </div>
-                )}
-              </div>
-
-              {/* Coluna 3: Tipo e Status */}
-              <div className="space-y-1">
-                {item.tipo && (
-                  <div className="flex items-center gap-1 text-xs text-slate-600 dark:text-gray-300">
-                    <Tag className="w-3 h-3 text-cyan-600 dark:text-cyan-400 flex-shrink-0" />
-                    <span className="truncate text-[10px]">{item.tipo}</span>
-                  </div>
-                )}
-                {item.status && (
-                  <div className="text-[10px] text-slate-500 dark:text-gray-400">
-                    {item.status.replace('_', ' ')}
-                  </div>
-                )}
-              </div>
-
-              {/* Coluna 4: Tags */}
-              <div className="space-y-1">
-                {item.tags && item.tags.length > 0 && (
-                  <>
-                    {item.tags.slice(0, 2).map((t, i) => (
-                      <div key={i} className="inline-flex items-center gap-1 bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded border border-slate-300 dark:border-white/10 mr-1">
-                        <span className="text-slate-900 dark:text-white text-[9px]">#{t}</span>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Desktop: Layout Original em Grid */}
-        <div
-          className="hidden md:block rounded-xl border bg-gradient-to-r transition-all shadow-lg hover:shadow-cyan-500/20 backdrop-blur-sm overflow-hidden border-slate-200 dark:border-white/10 from-white/95 dark:from-white/8 to-white/90 dark:to-white/5 hover:from-white/98 dark:hover:from-white/12 hover:to-white/95 dark:hover:to-white/10 hover:border-cyan-400/40 cursor-pointer"
-          onClick={() => {
-            setProdutoSelecionado(item)
-            setModalAberto(true)
-          }}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-5">
-            {/* Coluna 1: Imagem */}
-            <div className="flex items-center justify-center">
-              <div className="w-24 h-24 rounded-xl overflow-hidden bg-gradient-to-br from-slate-100 dark:from-slate-900 to-slate-200 dark:to-slate-800 flex-shrink-0 flex items-center justify-center shadow-lg">
-                {isValidUrl(item.capa_url) ? (
-                  <img
-                    src={item.capa_url as string}
-                    alt={item.nome}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
-                ) : (
-                  <div className="text-center text-slate-400 dark:text-slate-400">
-                    <ImageIcon className="w-6 h-6 mx-auto mb-1 opacity-50" />
-                    <div className="text-xs text-slate-500 dark:text-gray-500">Sem imagem</div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Coluna 2: Informações Básicas */}
-            <div className="flex flex-col justify-center space-y-2">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate">{item.nome}</h3>
-              <div className="flex gap-2 flex-wrap">
-                <span className={`text-xs font-semibold px-2 py-1 rounded-full border backdrop-blur-md ${statusStyle[item.status || 'indisponivel']}`}>
-                  {item.status?.replace('_', ' ').toUpperCase() || 'INDISPONIVEL'}
-                </span>
-                {item.destaque && (
-                  <span className="text-xs font-bold px-2 py-1 rounded-full border border-purple-300/50 bg-gradient-to-r from-purple-500/30 to-pink-500/20 text-purple-700 dark:text-purple-100 backdrop-blur-md">
-                    ⭐ DESTAQUE
-                  </span>
-                )}
-              </div>
-              {(item.valor || item.preco || item.price) && (
-                <div className="text-emerald-600 dark:text-emerald-300 font-bold text-lg">
-                  {currencyBRL(item.valor || item.preco || item.price || 0)}
-                </div>
-              )}
-            </div>
-
-            {/* Coluna 3: Tipo e Status */}
-            <div className="flex flex-col justify-center space-y-2">
-              {item.tipo && (
-                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-gray-300">
-                  <Tag className="w-4 h-4 text-cyan-600 dark:text-cyan-400 flex-shrink-0" />
-                  <span className="font-medium truncate">{item.tipo}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Coluna 4: Tags */}
-            <div className="flex flex-col justify-center">
-              {item.tags && item.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 text-xs">
-                  {item.tags.slice(0, 3).map((t, i) => (
-                    <div key={i} className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded border border-slate-300 dark:border-white/10">
-                      <span className="font-medium text-slate-900 dark:text-white">#{t}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Coluna 5: Ações */}
-            {!readOnly && (
-              <div className="flex flex-col justify-center space-y-2">
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => toast.error('Edição não implementada')}
-                    className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-white/10 border border-slate-300 dark:border-white/30 text-xs text-slate-700 dark:text-gray-400 hover:bg-slate-200 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white transition-all font-medium"
-                  >
-                    ✏️ Editar
-                  </button>
-                  <button
-                    onClick={() => handleDeleteSystemProducts()}
-                    className="px-3 py-1.5 rounded-lg bg-rose-100 dark:bg-rose-500/15 border border-rose-300 dark:border-rose-400/30 text-xs text-rose-700 dark:text-rose-500 hover:bg-rose-200 dark:hover:bg-rose-500/30 hover:text-rose-900 dark:hover:text-rose-100 transition-all font-medium"
-                  >
-                    🗑️ Excluir
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </>
-    )
-  }
 
   // Carregar produtos da equipe (refletindo produtos do proprietário)
   const carregarProdutos = useCallback(async () => {
@@ -573,75 +236,12 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId, readOnly = fa
       )
     }
 
-    // ✅ Filtro por campos personalizados
-    if (filters.customFields) {
-      Object.keys(filters.customFields).forEach(fieldId => {
-        const filterValue = filters.customFields[fieldId]
-        if (filterValue !== undefined && filterValue !== null && filterValue !== '') {
-          // Encontrar a definição do campo para saber o tipo
-          const fieldDef = customFields.find(f => f.id === fieldId)
-
-          console.log('🎯 [Filtro Custom Field]', {
-            fieldId,
-            fieldName: fieldDef?.field_label,
-            fieldType: fieldDef?.field_type,
-            filterValue,
-            filterValueType: typeof filterValue
-          })
-
-          filtered = filtered.filter(item => {
-            const itemValue = item.filtros?.[fieldId]
-
-            console.log('🔍 [Item Check]', {
-              productId: item.id,
-              productName: item.nome,
-              fieldId,
-              itemValue,
-              itemValueType: typeof itemValue
-            })
-
-            if (!itemValue) {
-              console.log('❌ [No Value] Item não tem valor para este campo')
-              return false
-            }
-
-            let match = false
-
-            // Para campos number: comparação numérica exata
-            if (fieldDef?.field_type === 'number') {
-              const filterNum = Number(filterValue)
-              const itemNum = Number(itemValue)
-              match = !isNaN(filterNum) && !isNaN(itemNum) && itemNum === filterNum
-              console.log('🔢 [Number Match]', { filterNum, itemNum, match })
-            }
-            // Para campos select: comparação exata
-            else if (fieldDef?.field_type === 'select') {
-              match = String(itemValue).toLowerCase() === String(filterValue).toLowerCase()
-              console.log('📋 [Select Match]', {
-                itemValue: String(itemValue).toLowerCase(),
-                filterValue: String(filterValue).toLowerCase(),
-                match
-              })
-            }
-            // Para campos text/date: busca parcial
-            else {
-              match = String(itemValue).toLowerCase().includes(String(filterValue).toLowerCase())
-              console.log('📝 [Text Match]', {
-                itemValue: String(itemValue).toLowerCase(),
-                filterValue: String(filterValue).toLowerCase(),
-                match
-              })
-            }
-
-            console.log(match ? '✅ [MATCH]' : '❌ [NO MATCH]')
-            return match
-          })
-        }
-      })
-    }
-
     return filtered
-  }, [produtos, filtros, filters, customFields])
+  }, [produtos, filtros])
+
+  // Opções de filtro únicas
+  const tipos = useMemo(() => [...new Set(produtos.map(p => p.tipo).filter(Boolean))], [produtos])
+  const finalidades = useMemo(() => [...new Set(produtos.map(p => p.finalidade).filter(Boolean))], [produtos])
 
   if (loading) {
     return (
@@ -653,27 +253,23 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId, readOnly = fa
 
   if (produtos.length === 0) {
     return (
-      <div className="rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 p-16 text-center">
-        <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-          <ImageIcon className="w-10 h-10 text-slate-400 dark:text-slate-500 opacity-50" />
-        </div>
-        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Nenhum produto disponível</h3>
-        <p className="max-w-md mx-auto text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
-          Os produtos do proprietário da equipe aparecerão aqui automaticamente. Adicione produtos no seu perfil para que a equipe possa vê-los.
-        </p>
-        <Link
-          to="/app/produtos"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-xl hover:from-cyan-600 hover:to-cyan-700 transition-all shadow-lg shadow-cyan-500/20 font-medium font-outfit"
+      <div className="rounded-lg bg-slate-50 dark:bg-white/3 border border-slate-200 dark:border-white/10 p-12 text-center">
+        <ImageIcon className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-4 opacity-50" />
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Nenhum produto disponível</h3>
+        <p className="text-slate-600 dark:text-slate-400 mb-6">Os produtos do proprietário aparecerão aqui automaticamente</p>
+        <a
+          href="/produtos"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-50 transition-colors font-medium text-sm"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4" />
           Ir para Produtos
-        </Link>
+        </a>
       </div>
     )
   }
 
   return (
-    <div className="space-y-3.5 sm:space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="space-y-4">
         {/* Linha 1: Título + Contador */}
@@ -685,226 +281,451 @@ const ProdutosEquipe: React.FC<ProdutosEquipeProps> = ({ tenantId, readOnly = fa
         {/* Linha 2: Botões - Responsivo */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Toggle View Mode */}
-          <div className="flex items-center gap-3 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-1">
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-300' : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200'}`}
-                title="Visualização em Grade"
-              >
-                <Grid3x3 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-300' : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200'}`}
-                title="Visualização em Lista"
-              >
-                <List className="w-4 h-4" />
-              </button>
-            </div>
-            {viewMode === 'list' && (
-              <span className="text-xs text-slate-500 dark:text-gray-400 px-2 border-l border-slate-300 dark:border-white/20">
-                Toque no card para visualizar
-              </span>
-            )}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-1">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-300' : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200'}`}
+              title="Visualização em Grade"
+            >
+              <Grid3x3 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-cyan-500/20 text-cyan-600 dark:text-cyan-300' : 'text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200'}`}
+              title="Visualização em Lista"
+            >
+              <List className="w-4 h-4" />
+            </button>
           </div>
 
           {/* Botões de Ação - Encolhem no mobile */}
           <button
-            onClick={() => setShowFilterPopup(!showFilterPopup)}
-            className={`flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border transition-all shadow-lg text-sm sm:text-sm font-medium ${showFilterPopup ? 'bg-cyan-50 dark:bg-gradient-to-r dark:from-cyan-500/20 dark:to-cyan-600/20 border-cyan-300 dark:border-cyan-400/30 text-cyan-700 dark:text-cyan-300 shadow-cyan-500/20' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200 hover:bg-slate-50 dark:hover:bg-white/10 hover:border-slate-300 dark:hover:border-white/20'}`}
+            onClick={() => setFiltrosOpen(!filtrosOpen)}
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border transition-all shadow-lg text-sm sm:text-sm font-medium ${filtrosOpen ? 'bg-cyan-50 dark:bg-gradient-to-r dark:from-cyan-500/20 dark:to-cyan-600/20 border-cyan-300 dark:border-cyan-400/30 text-cyan-700 dark:text-cyan-300 shadow-cyan-500/20' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200 hover:bg-slate-50 dark:hover:bg-white/10 hover:border-slate-300 dark:hover:border-white/20'}`}
           >
             <Filter className="w-4 h-4 flex-shrink-0" />
             <span className="hidden sm:inline">Filtros</span>
           </button>
 
-          {!readOnly && (
-            <button
-              onClick={handleDeleteSystemProducts}
-              disabled={deletingSystem}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-400/30 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-sm font-medium"
-              title="Deletar produtos do sistema"
-            >
-              <span className="hidden sm:inline">{deletingSystem ? 'Deletando...' : 'Limpar'}</span>
-            </button>
-          )}
+          <button
+            onClick={handleDeleteSystemProducts}
+            disabled={deletingSystem}
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-300 dark:hover:border-red-400/30 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-sm font-medium"
+            title="Deletar produtos do sistema"
+          >
+            <Trash2 className="w-4 h-4 flex-shrink-0" />
+            <span className="hidden sm:inline">{deletingSystem ? 'Deletando...' : 'Limpar'}</span>
+          </button>
         </div>
       </div>
 
       {/* Filtros Modal */}
-      {showFilterPopup && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowFilterPopup(false)} />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 dark:bg-slate-900/98 bg-white border dark:border-cyan-500/30 border-gray-300/30 rounded-3xl p-8 max-w-2xl w-full mx-4 shadow-2xl">
-
+      {filtrosOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-slate-900/95 border border-slate-700/50 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6 pb-4 border-b dark:border-white/10 border-gray-300/10">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl dark:bg-cyan-500/20 bg-blue-500/20 dark:border-cyan-400/40 border-blue-400/40 border flex items-center justify-center">
-                  <Filter className="w-6 h-6 dark:text-cyan-400 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold dark:text-white text-gray-900">Filtros</h3>
-                  <p className="text-sm dark:text-gray-400 text-gray-600">Busque informações importantes</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Content Area */}
-            <div className="mb-6 min-h-[200px] p-6 rounded-xl dark:bg-white/5 bg-gray-100/5 dark:border-white/10 border-gray-300/10 border">
-              {/* Filtros Padrão */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium dark:text-gray-300 text-gray-700 mb-1">Categoria</label>
-                  <input
-                    type="text"
-                    value={filters.categoria || ''}
-                    onChange={(e) => setFilters(prev => ({ ...prev, categoria: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-lg dark:bg-white/5 bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white text-gray-900"
-                    placeholder="Digite a categoria"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium dark:text-gray-300 text-gray-700 mb-1">Preço Mínimo</label>
-                  <input
-                    type="number"
-                    value={filters.precoMin || ''}
-                    onChange={(e) => setFilters(prev => ({ ...prev, precoMin: e.target.value ? Number(e.target.value) : undefined }))}
-                    className="w-full px-3 py-2 rounded-lg dark:bg-white/5 bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white text-gray-900"
-                    placeholder="R$ 0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium dark:text-gray-300 text-gray-700 mb-1">Preço Máximo</label>
-                  <input
-                    type="number"
-                    value={filters.precoMax || ''}
-                    onChange={(e) => setFilters(prev => ({ ...prev, precoMax: e.target.value ? Number(e.target.value) : undefined }))}
-                    className="w-full px-3 py-2 rounded-lg dark:bg-white/5 bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white text-gray-900"
-                    placeholder="R$ 0"
-                  />
-                </div>
-              </div>
-              {/* Campos Personalizados */}
-              <div className="border-t dark:border-white/10 border-gray-300/10 pt-4">
-                <h4 className="text-sm font-medium dark:text-gray-300 text-gray-700 mb-2">Campos Personalizados</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {customFields.filter(f => f.show_in_filters).length > 0 ? (
-                    customFields.filter(f => f.show_in_filters).map(field => (
-                      <div key={field.id}>
-                        <label className="block text-sm font-medium dark:text-gray-300 text-gray-700 mb-1">{field.field_label}</label>
-                        {field.field_type === 'text' && (
-                          <input
-                            type="text"
-                            value={String(filters.customFields?.[field.id] || '')}
-                            onChange={(e) => setFilters(prev => ({ ...prev, customFields: { ...prev.customFields || {}, [field.id]: e.target.value } }))}
-                            className="w-full px-3 py-2 rounded-lg dark:bg-white/5 bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white text-gray-900"
-                            placeholder={`Buscar por ${field.field_label}`}
-                          />
-                        )}
-                        {field.field_type === 'number' && (
-                          <input
-                            type="number"
-                            value={String(filters.customFields?.[field.id] || '')}
-                            onChange={(e) => setFilters(prev => ({ ...prev, customFields: { ...prev.customFields || {}, [field.id]: e.target.value ? Number(e.target.value) : '' } }))}
-                            className="w-full px-3 py-2 rounded-lg dark:bg-white/5 bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white text-gray-900"
-                            placeholder={`Buscar por ${field.field_label}`}
-                          />
-                        )}
-                        {field.field_type === 'select' && field.field_options && (
-                          <select
-                            value={String(filters.customFields?.[field.id] || '')}
-                            onChange={(e) => setFilters(prev => ({ ...prev, customFields: { ...prev.customFields || {}, [field.id]: e.target.value } }))}
-                            className="w-full px-3 py-2 rounded-lg dark:bg-white/5 bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white text-gray-900"
-                          >
-                            <option value="">Todos</option>
-                            {field.field_options.map(option => (
-                              <option key={option} value={option}>{option}</option>
-                            ))}
-                          </select>
-                        )}
-                        {(field.field_type === 'boolean' || field.field_type === 'date' || field.field_type === 'datetime') && (
-                          <select
-                            value={String(filters.customFields?.[field.id] || '')}
-                            onChange={(e) => setFilters(prev => ({ ...prev, customFields: { ...prev.customFields || {}, [field.id]: e.target.value } }))}
-                            className="w-full px-3 py-2 rounded-lg dark:bg-white/5 bg-gray-100 dark:border-white/10 border-gray-300 dark:text-white text-gray-900"
-                          >
-                            <option value="">Todos</option>
-                            {field.field_type === 'boolean' && (
-                              <>
-                                <option value="true">Sim</option>
-                                <option value="false">Não</option>
-                              </>
-                            )}
-                          </select>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-xs dark:text-gray-500 text-gray-500 col-span-full">Nenhum campo personalizado configurado para filtros.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Footer com Botões */}
-            <div className="flex gap-3">
+            <div className="bg-slate-900/95 border-b border-slate-700/50 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between flex-shrink-0">
+              <h3 className="text-lg font-semibold text-slate-200">Filtros</h3>
               <button
-                onClick={() => setShowFilterPopup(false)}
-                className="flex-1 px-5 py-3 rounded-xl dark:bg-white/5 bg-gray-100 dark:border-white/10 border-gray-300 dark:text-gray-300 text-gray-700 dark:hover:bg-white/10 hover:bg-gray-200 dark:hover:text-white hover:text-gray-900 transition-all font-medium"
+                onClick={() => setFiltrosOpen(false)}
+                className="text-slate-400 hover:text-slate-200 transition-colors text-2xl leading-none w-8 h-8 flex items-center justify-center"
               >
-                Cancelar
+                ✕
               </button>
+            </div>
+
+            {/* Content - Responsivo */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Coluna 1 */}
+                <div className="space-y-4">
+                  {/* Campo Buscar */}
+                  <div>
+                    <label className="text-xs text-slate-400 mb-2 block font-medium">Buscar</label>
+                    <input
+                      type="text"
+                      value={filtros.texto || ''}
+                      onChange={(e) => setFiltros({ ...filtros, texto: e.target.value })}
+                      placeholder="Nome, localização..."
+                      className="w-full px-3 py-2.5 rounded-lg bg-slate-800/50 border border-slate-700 text-slate-200 placeholder-slate-500 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 transition-colors"
+                    />
+                  </div>
+
+                  {/* Tipo e Finalidade */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-slate-400 mb-2 block font-medium">Tipo</label>
+                      <select
+                        value={filtros.tipo || 'todos'}
+                        onChange={(e) => setFiltros({ ...filtros, tipo: e.target.value })}
+                        className="w-full px-3 py-2.5 rounded-lg bg-slate-800/50 border border-slate-700 text-slate-200 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 transition-colors"
+                      >
+                        <option value="todos">Todos</option>
+                        {tipos.map(tipo => (
+                          <option key={tipo} value={tipo || ''}>{tipo && (tipo.charAt(0).toUpperCase() + tipo.slice(1))}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs text-slate-400 mb-2 block font-medium">Finalidade</label>
+                      <select
+                        value={filtros.finalidade || 'todos'}
+                        onChange={(e) => setFiltros({ ...filtros, finalidade: e.target.value })}
+                        className="w-full px-3 py-2.5 rounded-lg bg-slate-800/50 border border-slate-700 text-slate-200 text-sm focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 transition-colors"
+                      >
+                        <option value="todos">Todas</option>
+                        {finalidades.map(finalidade => (
+                          <option key={finalidade} value={finalidade || ''}>{finalidade && finalidade.replace('_', ' ').toUpperCase()}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Valor Mínimo e Máximo */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 mb-2 block">Valor Min.</label>
+                      <input
+                        type="number"
+                        value={filtros.valorMin || ''}
+                        onChange={(e) => setFiltros({ ...filtros, valorMin: e.target.value ? Number(e.target.value) : undefined })}
+                        placeholder="R$ 0"
+                        className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/30 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 mb-2 block">Valor Max.</label>
+                      <input
+                        type="number"
+                        value={filtros.valorMax || ''}
+                        onChange={(e) => setFiltros({ ...filtros, valorMax: e.target.value ? Number(e.target.value) : undefined })}
+                        placeholder="R$ 999.999"
+                        className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/30 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Quartos, Banheiros e Vagas */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 mb-2 block">Quartos</label>
+                      <input
+                        type="number"
+                        value={filtros.quartos || ''}
+                        onChange={(e) => setFiltros({ ...filtros, quartos: e.target.value ? Number(e.target.value) : undefined })}
+                        placeholder="Min"
+                        className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/30 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 mb-2 block">Banheiros</label>
+                      <input
+                        type="number"
+                        value={filtros.banheiros || ''}
+                        onChange={(e) => setFiltros({ ...filtros, banheiros: e.target.value ? Number(e.target.value) : undefined })}
+                        placeholder="Min"
+                        className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/30 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 mb-2 block">Vagas</label>
+                      <input
+                        type="number"
+                        value={filtros.vagas || ''}
+                        onChange={(e) => setFiltros({ ...filtros, vagas: e.target.value ? Number(e.target.value) : undefined })}
+                        placeholder="Min"
+                        className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/30 transition-colors"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Coluna 2 */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-2 block">Incorporadora</label>
+                    <input
+                      type="text"
+                      value={filtros.incorporadora || ''}
+                      onChange={(e) => setFiltros({ ...filtros, incorporadora: e.target.value })}
+                      placeholder="Ex: FG"
+                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:border-cyan-400 focus:outline-none transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-2 block">Empreendimento</label>
+                    <input
+                      type="text"
+                      value={filtros.empreendimento || ''}
+                      onChange={(e) => setFiltros({ ...filtros, empreendimento: e.target.value })}
+                      placeholder="Nome do empreendimento"
+                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:border-cyan-400 focus:outline-none transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-2 block">Fase</label>
+                    <input
+                      type="text"
+                      value={filtros.fase || ''}
+                      onChange={(e) => setFiltros({ ...filtros, fase: e.target.value })}
+                      placeholder="Ex: LANÇAMENTO"
+                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:border-cyan-400 focus:outline-none transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-2 block">Modalidade</label>
+                    <input
+                      type="text"
+                      value={filtros.modalidade || ''}
+                      onChange={(e) => setFiltros({ ...filtros, modalidade: e.target.value })}
+                      placeholder="Ex: R2V, HMP, HIS2"
+                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:border-cyan-400 focus:outline-none transition-colors"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 mb-2 block">Região</label>
+                      <input
+                        type="text"
+                        value={filtros.regiao || ''}
+                        onChange={(e) => setFiltros({ ...filtros, regiao: e.target.value })}
+                        placeholder="Ex: São Paulo"
+                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:border-cyan-400 focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-300 mb-2 block">Bairro</label>
+                      <input
+                        type="text"
+                        value={filtros.bairro || ''}
+                        onChange={(e) => setFiltros({ ...filtros, bairro: e.target.value })}
+                        placeholder="Ex: Jardins"
+                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder-slate-500 text-sm focus:border-cyan-400 focus:outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-2 block">Financiamento Incorporadora</label>
+                    <select
+                      value={filtros.financiamento_incorporadora || 'any'}
+                      onChange={(e) => setFiltros({ ...filtros, financiamento_incorporadora: e.target.value as 'any' | 'true' | 'false' })}
+                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-cyan-400 focus:outline-none transition-colors"
+                    >
+                      <option value="any">Todos</option>
+                      <option value="true">Sim</option>
+                      <option value="false">Não</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-2 block">Decorado</label>
+                    <select
+                      value={filtros.decorado || 'any'}
+                      onChange={(e) => setFiltros({ ...filtros, decorado: e.target.value as 'any' | 'true' | 'false' })}
+                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-cyan-400 focus:outline-none transition-colors"
+                    >
+                      <option value="any">Todos</option>
+                      <option value="true">Sim</option>
+                      <option value="false">Não</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-slate-900/95 border-t border-slate-700/50 px-6 py-4 flex items-center justify-between">
               <button
                 onClick={() => {
-                  // Aqui você vai aplicar os filtros
-                  setShowFilterPopup(false)
+                  setFiltros({ tipo: 'todos', finalidade: 'todos', texto: '', financiamento_incorporadora: 'any', decorado: 'any' })
                 }}
-                className="flex-1 px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 text-white font-bold hover:from-cyan-600 hover:to-cyan-700 transition-all shadow-lg hover:shadow-cyan-500/40 hover:scale-105 active:scale-95"
+                className="px-4 py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors"
               >
-                Aplicar
+                Limpar Filtros
+              </button>
+              <button
+                onClick={() => setFiltrosOpen(false)}
+                className="px-6 py-2.5 bg-slate-700 text-slate-100 rounded-lg hover:bg-slate-600 transition-all font-medium text-sm"
+              >
+                Aplicar Filtros
               </button>
             </div>
-
           </div>
         </div>
       )}
 
       {/* Grid ou Lista de Produtos */}
-      {viewMode === 'grid' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {produtosFiltrados.length === 0 ? (
-            <div className="col-span-full rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-8 text-center text-slate-500 dark:text-slate-300">
-              Nenhum produto encontrado com os filtros aplicados.
-            </div>
-          ) : (
-            produtosFiltrados.map((produto) => <Card key={produto.id} item={produto} />)
-          )}
-        </div>
-      )}
+      <div className={viewMode === 'grid' ? 'grid grid-cols-1 xl:grid-cols-2 gap-6' : 'flex flex-col gap-4'}>
+        {produtosFiltrados.map((produto) => (
+          <div
+            key={produto.id}
+            onClick={() => {
+              setProdutoSelecionado(produto)
+              setModalAberto(true)
+            }}
+            className={`
+              group relative flex flex-row
+              w-full h-[300px]
+              rounded-xl bg-white dark:bg-[#151D32]
+              border transition-all duration-200 shadow-sm hover:shadow-lg overflow-hidden cursor-pointer
+              border-slate-200 dark:border-white/10 hover:border-cyan-400/50
+            `}
+          >
+            {/* COLUNA ESQUERDA: FOTO */}
+            <div className="relative w-[210px] h-[300px] flex-shrink-0 bg-slate-100 dark:bg-slate-900 overflow-hidden border-r border-slate-100 dark:border-white/5">
+              {/* Status Badge */}
+              <div className="absolute top-3 left-3 z-20">
+                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md border shadow-sm backdrop-blur-md uppercase tracking-wider ${produto.status === 'disponivel'
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-400/50 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-400/20'
+                  : produto.status === 'reservado'
+                    ? 'bg-cyan-100 text-cyan-800 border-cyan-400/50 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-400/20'
+                    : produto.status === 'vendido'
+                      ? 'bg-slate-200 text-slate-800 border-slate-400/50 dark:bg-slate-500/15 dark:text-slate-300 dark:border-slate-400/20'
+                      : 'bg-rose-100 text-rose-800 border-rose-400/50 dark:bg-rose-500/15 dark:text-rose-300 dark:border-rose-400/20'
+                  }`}>
+                  {produto.status?.replace('_', ' ').toUpperCase() || 'DISPONÍVEL'}
+                </span>
+              </div>
 
-      {viewMode === 'list' && (
-        <div className="space-y-4">
-          {produtosFiltrados.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 p-8 text-center text-slate-500 dark:text-slate-300">
-              Nenhum produto encontrado com os filtros aplicados.
-            </div>
-          ) : (
-            produtosFiltrados.map((produto) => <Row key={produto.id} item={produto} />)
-          )}
-        </div>
-      )}
+              {isValidUrl(produto.capa_url ?? '') ? (
+                <img
+                  src={produto.capa_url as string}
+                  alt={produto.nome}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-600 bg-slate-50 dark:bg-slate-800/50">
+                  <ImageIcon className="w-12 h-12 opacity-20 mb-2" />
+                  <span className="text-xs font-medium opacity-60">Sem imagem</span>
+                </div>
+              )}
 
-      {/* Modal de Detalhes do Produto */}
-      {modalAberto && produtoSelecionado && (
-        <ProdutoDetalhesEquipe
-          produtoId={produtoSelecionado.id}
-          onClose={() => {
-            setModalAberto(false)
-            setProdutoSelecionado(null)
-          }}
-        />
-      )}
+              {/* Overlay de Ações (Desktop Hover) */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2 backdrop-blur-[1px]">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setProdutoSelecionado(produto); setModalAberto(true) }}
+                  className="px-4 py-2 bg-white/90 text-slate-900 rounded-lg hover:bg-white font-semibold text-xs shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all"
+                >
+                  Ver Detalhes
+                </button>
+              </div>
+            </div>
+
+            {/* COLUNA DIREITA: DADOS */}
+            <div className="flex-1 flex flex-col min-w-0 p-4 sm:p-5">
+              {/* Header: Tipo e Destaque */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${produto.tipo
+                    ? 'bg-cyan-50 text-cyan-700 border-cyan-100 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-800'
+                    : 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700'
+                    }`}>
+                    {produto.tipo ? (produto.tipo.charAt(0).toUpperCase() + produto.tipo.slice(1)) : 'SEM TIPO'}
+                  </span>
+                  {produto.destaque && (
+                    <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
+                      ⭐ Destaque
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Título e Descrição */}
+              <div className="mb-4">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-1 truncate" title={produto.nome}>
+                  {produto.nome || <span className="text-slate-400 italic font-normal">Produto sem nome</span>}
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 min-h-[2.5em]">
+                  {produto.descricao || <span className="opacity-50 italic">Sem descrição disponível</span>}
+                </p>
+              </div>
+
+              {/* Grid de Atributos */}
+              <div className="mt-auto bg-slate-50 dark:bg-white/5 rounded-lg p-3 border border-slate-100 dark:border-white/5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {produto.filtros?.incorporadora && (
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase truncate">Incorporadora</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{produto.filtros.incorporadora}</span>
+                    </div>
+                  )}
+                  {produto.filtros?.fase && (
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase truncate">Fase</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{produto.filtros.fase}</span>
+                    </div>
+                  )}
+                  {produto.filtros?.regiao && (
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase truncate">Região</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{produto.filtros.regiao}</span>
+                    </div>
+                  )}
+                  {produto.area_total && (
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase truncate">Área</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{produto.area_total}m²</span>
+                    </div>
+                  )}
+                  {produto.quartos && (
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase truncate">Quartos</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{produto.quartos}</span>
+                    </div>
+                  )}
+                  {produto.banheiros && (
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase truncate">Banheiros</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">{produto.banheiros}</span>
+                    </div>
+                  )}
+                </div>
+                {!produto.filtros?.incorporadora && !produto.filtros?.fase && !produto.area_total && !produto.quartos && (
+                  <div className="flex items-center justify-center py-2 text-xs text-slate-400 dark:text-slate-500 italic gap-2">
+                    <ImageIcon className="w-4 h-4 opacity-50" />
+                    Sem características adicionais
+                  </div>
+                )}
+              </div>
+
+              {/* Rodapé: Preço */}
+              <div className="mt-4 flex items-end justify-between border-t border-slate-100 dark:border-white/5 pt-3">
+                <div>
+                  <div className="text-[10px] font-medium text-slate-400 mb-0.5">Valor</div>
+                  <div className="text-xl font-bold text-cyan-600 dark:text-cyan-400">
+                    {produto.valor || produto.preco || produto.price || produto.filtros?.preco_min
+                      ? currencyBRL(Number(produto.valor || produto.preco || produto.price || produto.filtros?.preco_min || 0))
+                      : <span className="text-sm text-slate-400 font-normal">Sob Consulta</span>}
+                  </div>
+                </div>
+
+                <button
+                  onClick={(e) => { e.stopPropagation(); setProdutoSelecionado(produto); setModalAberto(true) }}
+                  className="text-xs font-medium text-cyan-500 dark:text-cyan-400 hover:text-cyan-600 dark:hover:text-cyan-300 transition-colors"
+                >
+                  Ver detalhes →
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Modal de Detalhes do Imóvel */}
+      <DetalhesImovelModal
+        produto={produtoSelecionado}
+        isOpen={modalAberto}
+        onClose={() => {
+          setModalAberto(false)
+          setProdutoSelecionado(null)
+        }}
+      />
     </div>
   )
 }

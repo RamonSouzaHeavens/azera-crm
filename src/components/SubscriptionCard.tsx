@@ -14,7 +14,7 @@ export const SubscriptionCard = () => {
 
   const handleManageSubscription = () => {
     // Redireciona para o portal do Stripe onde o usuário pode gerenciar sua assinatura
-    navigate('/billing')
+    navigate('/app/billing')
     toast.success(t('subscriptionCard.toasts.openingPortal'))
   }
 

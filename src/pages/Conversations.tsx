@@ -40,6 +40,7 @@ import { loadPipelineStages } from '../services/pipelineService';
 import { useFetchAvatar } from '../hooks/useFetchAvatar';
 import { useObjectionCards } from '../hooks/useObjectionPlaybook';
 import PremiumGate from '../components/premium/PremiumGate';
+import { ConfirmDeleteModal } from '../components/modals/ConfirmDeleteModal';
 
 interface Lead {
   id: string;
@@ -71,6 +72,9 @@ export default function ConversationsPage() {
   // Multi-select states
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedConversationIds, setSelectedConversationIds] = useState<Set<string>>(new Set());
+  const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
+  const [showSingleDeleteConfirm, setShowSingleDeleteConfirm] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const { user, tenant } = useAuthStore();
@@ -155,22 +159,59 @@ export default function ConversationsPage() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [openMenuId]);
 
-  // Atualizar lead state
+  // Atualizar lead state - buscar lead real do banco de dados
   useEffect(() => {
-    if (selectedConversa) {
-      // Buscar lead completo se necessário, aqui usando dados da conversa como base
-      setLead({
-        id: selectedConversa.contact_id || 'temp-id',
-        nome: selectedConversa.contact_name,
-        telefone: selectedConversa.contact_number,
-        email: undefined,
-        status: selectedConversa.status,
-        categoria: selectedConversa.categoria || 'trabalho'
-      } as any);
-    } else {
-      setLead(null);
-    }
-  }, [selectedConversa]);
+    const fetchLead = async () => {
+      if (!selectedConversa?.contact_id || !tenant?.id) {
+        setLead(null);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('clientes')
+          .select('id, nome, telefone, email, status, categoria, tenant_id')
+          .eq('id', selectedConversa.contact_id)
+          .eq('tenant_id', tenant.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('[Conversations] Erro ao buscar lead:', error);
+          // Fallback para dados da conversa
+          setLead({
+            id: selectedConversa.contact_id,
+            nome: selectedConversa.contact_name,
+            telefone: selectedConversa.contact_number,
+            email: undefined,
+            status: selectedConversa.status,
+            categoria: selectedConversa.categoria || 'trabalho',
+            tenant_id: tenant.id
+          } as any);
+          return;
+        }
+
+        if (data) {
+          setLead(data as any);
+        } else {
+          // Lead não encontrado, usar dados da conversa
+          setLead({
+            id: selectedConversa.contact_id,
+            nome: selectedConversa.contact_name,
+            telefone: selectedConversa.contact_number,
+            email: undefined,
+            status: selectedConversa.status,
+            categoria: selectedConversa.categoria || 'trabalho',
+            tenant_id: tenant.id
+          } as any);
+        }
+      } catch (err) {
+        console.error('[Conversations] Erro ao buscar lead:', err);
+        setLead(null);
+      }
+    };
+
+    fetchLead();
+  }, [selectedConversa?.contact_id, tenant?.id]);
 
   // Mensagens visíveis (últimas N mensagens)
   const visibleMessages = messages.slice(-visibleMessagesCount);
@@ -274,12 +315,31 @@ export default function ConversationsPage() {
   };
 
   const batchDelete = async () => {
-    if (!confirm(`Tem certeza que deseja excluir ${selectedConversationIds.size} conversa(s)?`)) return;
+    setShowBatchDeleteConfirm(true);
+  };
+
+  const confirmBatchDelete = async () => {
     const promises = Array.from(selectedConversationIds).map(id => deleteConversation(id));
     await Promise.all(promises);
     toast.success(`${selectedConversationIds.size} conversa(s) excluída(s)`);
     if (selectedId && selectedConversationIds.has(selectedId)) setSelectedId(null);
     clearSelection();
+    setShowBatchDeleteConfirm(false);
+  };
+
+  const handleSingleDelete = (id: string) => {
+    setConversationToDelete(id);
+    setShowSingleDeleteConfirm(true);
+  };
+
+  const confirmSingleDelete = async () => {
+    if (conversationToDelete) {
+      await deleteConversation(conversationToDelete);
+      if (selectedId === conversationToDelete) setSelectedId(null);
+      toast.success('Conversa excluída');
+    }
+    setShowSingleDeleteConfirm(false);
+    setConversationToDelete(null);
   };
 
   const handleMicClick = () => {
@@ -642,10 +702,7 @@ export default function ConversationsPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (confirm('Tem certeza que deseja excluir esta conversa?')) {
-                                  deleteConversation(conversa.id);
-                                  if (selectedId === conversa.id) setSelectedId(null);
-                                }
+                                handleSingleDelete(conversa.id);
                                 setOpenMenuId(null);
                               }}
                               className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 text-red-600 dark:text-red-400 border-t border-gray-100 dark:border-gray-700"
@@ -1389,6 +1446,29 @@ export default function ConversationsPage() {
           </Transition>
 
         </div >
+
+        {/* Confirm Delete Modal - Batch */}
+        <ConfirmDeleteModal
+          isOpen={showBatchDeleteConfirm}
+          onClose={() => setShowBatchDeleteConfirm(false)}
+          onConfirm={confirmBatchDelete}
+          title="Excluir Conversas"
+          message={`Tem certeza que deseja excluir ${selectedConversationIds.size} conversa(s)? Esta ação não pode ser desfeita.`}
+          confirmText="Excluir conversas"
+        />
+
+        {/* Confirm Delete Modal - Single */}
+        <ConfirmDeleteModal
+          isOpen={showSingleDeleteConfirm}
+          onClose={() => {
+            setShowSingleDeleteConfirm(false);
+            setConversationToDelete(null);
+          }}
+          onConfirm={confirmSingleDelete}
+          title="Excluir Conversa"
+          message="Tem certeza que deseja excluir esta conversa? Esta ação não pode ser desfeita."
+          confirmText="Excluir conversa"
+        />
       </PremiumGate>
 
     </RequireRole >

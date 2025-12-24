@@ -7,6 +7,8 @@ import {
   Settings,
   LogOut,
   ChevronLeft,
+  ChevronDown,
+  ChevronRight,
   Building2,
   CheckSquare,
   Target,
@@ -19,7 +21,9 @@ import {
   Zap,
   MessageCircle,
   Plug,
-  Wrench
+  Wrench,
+  Shield,
+  DollarSign
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { Button } from '../ui/Button'
@@ -39,6 +43,7 @@ const getNavGroups = (t: (key: string) => string) => {
     { name: t('sidebar.connectChannels'), href: '/app/connect-channels', icon: Plug },
     { name: t('sidebar.tasks'), href: '/app/tarefas', icon: CheckSquare },
     { name: t('sidebar.products'), href: '/app/produtos', icon: Package },
+    { name: 'Vendas', href: '/app/vendas', icon: DollarSign },
   ]
   // Automações: apenas owner e admin podem ver
   const groupAutomacoes = [
@@ -61,10 +66,35 @@ export const Sidebar = () => {
   const { t } = useTranslation()
   const { groupProgresso, groupAdministracao, groupAutomacoes, groupEmpresa } = getNavGroups(t)
 
+  // Estado das seções colapsáveis
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('sidebar_sections')
+      return saved ? JSON.parse(saved) : { progress: true, administration: true, automations: true, company: true }
+    } catch {
+      return { progress: true, administration: true, automations: true, company: true }
+    }
+  })
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => {
+      const next = { ...prev, [section]: !prev[section] }
+      localStorage.setItem('sidebar_sections', JSON.stringify(next))
+      return next
+    })
+  }
+
   const location = useLocation()
-  const { signOut, tenant, member, isAdmin } = useAuthStore()
+  const { signOut, tenant, member, isAdmin, user } = useAuthStore()
   const { isActive } = useSubscription()
   const tenantId = useMemo(() => tenant?.id ?? member?.tenant_id ?? '', [tenant?.id, member?.tenant_id])
+
+  // Super Admin check - só aparece em localhost E para o email admin
+  const isLocalhost = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  )
+  const isSuperAdmin = isLocalhost && user?.email?.toLowerCase() === 'ramonexecut@gmail.com'
 
   // ====== company name
   useEffect(() => {
@@ -128,272 +158,160 @@ export const Sidebar = () => {
     }
   }
 
-  const titleVariants: Variants = {
-    hidden: { opacity: 0, y: -10 },
-    show: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.3
-      }
-    }
-  }
+
 
   // ====== NAV LIST COMPONENT ======
   const NavList = ({ collapsed }: { collapsed: boolean }) => {
     const onClick = () => setOpenMobile(false)
 
+    // Componente Helper de Item
+    const NavItem = ({ item }: { item: any }) => {
+      const Icon = item.icon
+      const active = location.pathname === item.href
+
+      return (
+        <motion.li
+          layout
+          variants={itemVariants}
+          whileHover={{ scale: 1.02, x: collapsed ? 0 : 4 }}
+          whileTap={{ scale: 0.98 }}
+          className="mb-1"
+        >
+          <Link
+            to={item.href}
+            onClick={onClick}
+            title={item.name}
+            className={`flex items-center py-2 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden ${collapsed ? 'justify-center px-0' : 'px-3'
+              } ${active ? 'bg-primary/10 text-primary' : 'text-text hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+          >
+            {active && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute inset-0 bg-primary/10"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+              />
+            )}
+            <motion.div
+              animate={{ rotate: active ? [0, -10, 10, -10, 0] : 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Icon className={`w-5 h-5 ${active ? 'text-primary' : 'text-text opacity-70'} ${collapsed ? '' : 'mr-3'} relative z-10`} />
+            </motion.div>
+            <AnimatePresence>
+              {!collapsed && (
+                <motion.span
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className={`tracking-wide whitespace-nowrap relative z-10 ${active ? 'text-primary font-semibold' : 'text-text opacity-80'}`}
+                >
+                  {item.name}
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </Link>
+        </motion.li>
+      )
+    }
+
+    // Componente Helper de Seção
+    const NavSection = ({ title, sectionKey, items }: { title: string, sectionKey: string, items: any[] }) => {
+      if (!items || items.length === 0) return null
+
+      const isOpen = expandedSections[sectionKey]
+      const showItems = collapsed || isOpen
+
+      return (
+        <li className="mb-2">
+          {!collapsed && (
+            <button
+              onClick={() => toggleSection(sectionKey)}
+              className="w-full flex items-center justify-between text-[10px] tracking-wider text-text opacity-50 uppercase mb-2 pl-3 mt-4 hover:opacity-100 hover:text-primary transition-all group"
+            >
+              <span>{title}</span>
+              {isOpen ?
+                <ChevronDown className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" /> :
+                <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              }
+            </button>
+          )}
+
+          <AnimatePresence initial={false}>
+            {showItems && (
+              <motion.ul
+                initial={collapsed ? undefined : { height: 0, opacity: 0 }}
+                animate={collapsed ? undefined : { height: "auto", opacity: 1 }}
+                exit={collapsed ? undefined : { height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-0.5 overflow-hidden"
+              >
+                {items.map(item => (
+                  <NavItem key={item.name} item={item} />
+                ))}
+              </motion.ul>
+            )}
+          </AnimatePresence>
+        </li>
+      )
+    }
+
     return (
       <motion.ul
-        className="space-y-2"
+        className="space-y-1"
         variants={containerVariants}
         initial="hidden"
         animate="show"
       >
-        {!collapsed && (
-          <motion.li
-            variants={titleVariants}
-            className="text-[8.5px] tracking-wider text-text opacity-50 uppercase mb-1.5 pl-2"
-          >
-            {t('sidebar.sections.progress')}
-          </motion.li>
-        )}
-        {groupProgresso
-          .filter(item => {
-            // Mostrar "Ferramentas Pro" para usuários com equipe OU assinatura ativa
-            if (item.href === '/app/ferramentas-pro') {
-              return isInTeam || isActive
-            }
-            return true
-          })
-          .map((item) => {
-            const Icon = item.icon
-            const active = location.pathname === item.href
-            return (
-              <motion.li
-                key={item.name}
-                variants={itemVariants}
-                whileHover={{ scale: 1.02, x: collapsed ? 0 : 4 }}
-                whileTap={{ scale: 0.98 }}
-                className="mb-1"
-              >
-                <Link
-                  to={item.href}
-                  onClick={onClick}
-                  title={item.name}
-                  className={`flex items-center py-1.5 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden ${collapsed ? 'justify-center px-0' : 'px-2'
-                    } ${active ? 'bg-primary/10 text-primary' : 'text-text hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-                >
-                  {active && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute inset-0 bg-primary/10"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
-                  <motion.div
-                    animate={{ rotate: active ? [0, -10, 10, -10, 0] : 0 }}
-                    transition={{ duration: 0.5 }}
-                  >
-                    <Icon className={`w-5 h-5 ${active ? 'text-primary' : 'text-text opacity-70'} ${collapsed ? '' : 'mr-2'} relative z-10`} />
-                  </motion.div>
-                  <AnimatePresence>
-                    {!collapsed && (
-                      <motion.span
-                        initial={{ opacity: 0, width: 0 }}
-                        animate={{ opacity: 1, width: "auto" }}
-                        exit={{ opacity: 0, width: 0 }}
-                        transition={{ duration: 0.3, delay: 0.1 }}
-                        className={`tracking-wide whitespace-nowrap relative z-10 ${active ? 'text-primary font-semibold' : 'text-text opacity-80'}`}
-                      >
-                        {item.name}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </Link>
-              </motion.li>
-            )
-          })}
+        {/* GRUPO: PROGRESSO */}
+        <NavSection
+          title={t('sidebar.sections.progress')}
+          sectionKey="progress"
+          items={groupProgresso.filter(item => item.href === '/app/ferramentas-pro' ? (isInTeam || isActive) : true)}
+        />
 
+        {/* GRUPO: ADMINISTRAÇÃO */}
         {isInTeam && (
-          <>
-            {!collapsed && (
-              <motion.li
-                variants={titleVariants}
-                className="pt-2.5 text-[9.5px] tracking-wider text-text opacity-50 uppercase mb-1.5 pl-2"
-              >
-                {t('sidebar.sections.administration')}
-              </motion.li>
-            )}
-            {groupAdministracao.map((item) => {
-              const Icon = item.icon
-              const active = location.pathname === item.href
-              return (
-                <motion.li
-                  key={item.name}
-                  variants={itemVariants}
-                  whileHover={{ scale: 1.02, x: collapsed ? 0 : 4 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="mb-1"
-                >
-                  <Link
-                    to={item.href}
-                    onClick={onClick}
-                    title={item.name}
-                    className={`flex items-center py-3 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden ${collapsed ? 'justify-center px-0' : 'px-3'
-                      } ${active ? 'bg-primary/10 text-primary' : 'text-text hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-                  >
-                    {active && (
-                      <motion.div
-                        layoutId="activeTab"
-                        className="absolute inset-0 bg-primary/10"
-                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                      />
-                    )}
-                    <motion.div
-                      animate={{ rotate: active ? [0, -10, 10, -10, 0] : 0 }}
-                      transition={{ duration: 0.5 }}
-                    >
-                      <Icon className={`w-5 h-5 ${active ? 'text-primary' : 'text-text opacity-70'} ${collapsed ? '' : 'mr-3'} relative z-10`} />
-                    </motion.div>
-                    <AnimatePresence>
-                      {!collapsed && (
-                        <motion.span
-                          initial={{ opacity: 0, width: 0 }}
-                          animate={{ opacity: 1, width: "auto" }}
-                          exit={{ opacity: 0, width: 0 }}
-                          transition={{ duration: 0.3, delay: 0.1 }}
-                          className={`tracking-wide whitespace-nowrap relative z-10 ${active ? 'text-primary font-semibold' : 'text-text opacity-80'}`}
-                        >
-                          {item.name}
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </Link>
-                </motion.li>
-              )
-            })}
-          </>
+          <NavSection
+            title={t('sidebar.sections.administration')}
+            sectionKey="administration"
+            items={groupAdministracao}
+          />
         )}
 
-        {/* Automações: apenas owner e admin podem ver */}
+        {/* GRUPO: AUTOMAÇÕES */}
         {canSeeAutomations && (
-          <>
-            {!collapsed && (
-              <motion.li
-                variants={titleVariants}
-                className="pt-4 text-[9.5px] tracking-wider text-text opacity-50 uppercase mb-3 pl-3"
-              >
-                {t('sidebar.sections.automations')}
-              </motion.li>
-            )}
-            {groupAutomacoes.map((item) => {
-              const Icon = item.icon
-              const active = location.pathname === item.href
-              return (
-                <motion.li
-                  key={item.name}
-                  variants={itemVariants}
-                  whileHover={{ scale: 1.02, x: collapsed ? 0 : 4 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="mb-1"
-                >
-                  <Link
-                    to={item.href}
-                    onClick={onClick}
-                    title={item.name}
-                    className={`flex items-center py-3 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden ${collapsed ? 'justify-center px-0' : 'px-3'
-                      } ${active ? 'bg-primary/10 text-primary' : 'text-text hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-                  >
-                    {active && (
-                      <motion.div
-                        layoutId="activeTab"
-                        className="absolute inset-0 bg-primary/10"
-                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                      />
-                    )}
-                    <motion.div
-                      animate={{ rotate: active ? [0, -10, 10, -10, 0] : 0 }}
-                      transition={{ duration: 0.5 }}
-                    >
-                      <Icon className={`w-5 h-5 ${active ? 'text-primary' : 'text-text opacity-70'} ${collapsed ? '' : 'mr-3'} relative z-10`} />
-                    </motion.div>
-                    <AnimatePresence>
-                      {!collapsed && (
-                        <motion.span
-                          initial={{ opacity: 0, width: 0 }}
-                          animate={{ opacity: 1, width: "auto" }}
-                          exit={{ opacity: 0, width: 0 }}
-                          transition={{ duration: 0.3, delay: 0.1 }}
-                          className={`tracking-wide whitespace-nowrap relative z-10 ${active ? 'text-primary font-semibold' : 'text-text opacity-80'}`}
-                        >
-                          {item.name}
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </Link>
-                </motion.li>
-              )
-            })}
-          </>
+          <NavSection
+            title={t('sidebar.sections.automations')}
+            sectionKey="automations"
+            items={groupAutomacoes}
+          />
         )}
 
-        {!collapsed && (
-          <motion.li
-            variants={titleVariants}
-            className="pt-4 text-[9.5px] tracking-wider text-text opacity-50 uppercase mb-3 pl-3"
-          >
-            {t('sidebar.sections.company')}
-          </motion.li>
+        {/* GRUPO: EMPRESA */}
+        <NavSection
+          title={t('sidebar.sections.company')}
+          sectionKey="company"
+          items={groupEmpresa}
+        />
+
+        {/* GRUPO: SUPER ADMIN */}
+        {isSuperAdmin && (
+          <>
+            {!collapsed && (
+              <li className="pt-4 text-[9.5px] tracking-wider text-purple-400 opacity-70 uppercase mb-3 pl-3">
+                🔐 Master
+              </li>
+            )}
+            <NavItem
+              item={{
+                name: 'Super Admin',
+                href: '/app/super-admin',
+                icon: Shield
+              }}
+            />
+          </>
         )}
-        {groupEmpresa.map((item) => {
-          const Icon = item.icon
-          const active = location.pathname === item.href
-          return (
-            <motion.li
-              key={item.name}
-              variants={itemVariants}
-              whileHover={{ scale: 1.02, x: collapsed ? 0 : 4 }}
-              whileTap={{ scale: 0.98 }}
-              className="mb-1"
-            >
-              <Link
-                to={item.href}
-                onClick={onClick}
-                title={item.name}
-                className={`flex items-center py-3 rounded-xl text-sm font-medium transition-all duration-200 relative overflow-hidden ${collapsed ? 'justify-center px-0' : 'px-3'
-                  } ${active ? 'bg-primary/10 text-primary' : 'text-text hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-              >
-                {active && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute inset-0 bg-primary/10"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                  />
-                )}
-                <motion.div
-                  animate={{ rotate: active ? [0, -10, 10, -10, 0] : 0 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <Icon className={`w-5 h-5 ${active ? 'text-primary' : 'text-text opacity-70'} ${collapsed ? '' : 'mr-3'} relative z-10`} />
-                </motion.div>
-                <AnimatePresence>
-                  {!collapsed && (
-                    <motion.span
-                      initial={{ opacity: 0, width: 0 }}
-                      animate={{ opacity: 1, width: "auto" }}
-                      exit={{ opacity: 0, width: 0 }}
-                      transition={{ duration: 0.3, delay: 0.1 }}
-                      className={`tracking-wide whitespace-nowrap relative z-10 ${active ? 'text-primary font-semibold' : 'text-text opacity-80'}`}
-                    >
-                      {item.name}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </Link>
-            </motion.li>
-          )
-        })}
       </motion.ul>
     )
   }

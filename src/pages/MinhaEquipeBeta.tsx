@@ -1214,7 +1214,6 @@ export default function MinhaEquipeBeta() {
                         </div>
                       ) : (
                         minhasTarefas.slice(0, 3).map(tarefa => {
-                          // Determinar cor baseado na urgência
                           const hoje = new Date()
                           const vencimento = tarefa.vencimento ? new Date(tarefa.vencimento) : null
                           let bgClass = 'bg-slate-500/5 border-slate-500/20 hover:bg-slate-500/10'
@@ -1284,7 +1283,6 @@ export default function MinhaEquipeBeta() {
                     </h3>
 
                     <div className="space-y-4">
-                      {/* Meta Coletiva */}
                       <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5">
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-sm font-medium text-slate-900 dark:text-white">Meta Mensal</p>
@@ -1300,7 +1298,6 @@ export default function MinhaEquipeBeta() {
                         </div>
                       </div>
 
-                      {/* Leads do Mês */}
                       <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5">
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-sm font-medium text-slate-900 dark:text-white">Leads Mês</p>
@@ -1313,7 +1310,6 @@ export default function MinhaEquipeBeta() {
                         </p>
                       </div>
 
-                      {/* Vendas */}
                       <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5">
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-sm font-medium text-slate-900 dark:text-white">Fechados</p>
@@ -1336,7 +1332,6 @@ export default function MinhaEquipeBeta() {
                     </h3>
 
                     <div className="space-y-4">
-                      {/* Conquista: Vendas Fechadas */}
                       {(teamStats?.leadsFechados || 0) > 0 && (
                         <div className="flex items-center gap-3 p-3 rounded-xl bg-white/50 dark:bg-white/5 border border-white/20">
                           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg flex-shrink-0">
@@ -1349,7 +1344,6 @@ export default function MinhaEquipeBeta() {
                         </div>
                       )}
 
-                      {/* Conquista: Meta Batida */}
                       {(teamStats?.progressoMeta || 0) >= 100 && (
                         <div className="flex items-center gap-3 p-3 rounded-xl bg-white/50 dark:bg-white/5 border border-white/20">
                           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg flex-shrink-0">
@@ -1362,7 +1356,6 @@ export default function MinhaEquipeBeta() {
                         </div>
                       )}
 
-                      {/* Conquista: Primeira venda ou muitos leads */}
                       {(teamStats?.leadsEsteMes || 0) >= 10 && (
                         <div className="flex items-center gap-3 p-3 rounded-xl bg-white/50 dark:bg-white/5 border border-white/20">
                           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg flex-shrink-0">
@@ -1375,7 +1368,6 @@ export default function MinhaEquipeBeta() {
                         </div>
                       )}
 
-                      {/* Empty state */}
                       {!teamStats || ((teamStats.leadsFechados || 0) === 0 && (teamStats.progressoMeta || 0) < 100 && (teamStats.leadsEsteMes || 0) < 10) && (
                         <div className="text-center py-4 text-slate-400">
                           <Trophy className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -1386,11 +1378,125 @@ export default function MinhaEquipeBeta() {
                   </div>
                 </div>
 
+                {/* ===== SEÇÃO 3: PROGRESSO DA EQUIPE (SÓ PARA OWNERS) ===== */}
+                {canManageTeam && (
+                  <div className="space-y-6 pt-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-1.5 rounded-full bg-cyan-500 shadow-[0_0_12px_rgba(6,182,212,0.5)]"></div>
+                      <h2 className="text-2xl font-bold font-outfit text-slate-900 dark:text-white">Progresso Geral da Equipe</h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      <div className="lg:col-span-1 space-y-4">
+                        <div className="rounded-2xl p-6 bg-gradient-to-br from-cyan-500/10 to-blue-600/10 dark:from-cyan-500/5 dark:to-blue-600/5 border border-cyan-500/20 shadow-lg">
+                          <p className="text-sm font-medium text-cyan-600 dark:text-cyan-400 mb-4 flex items-center gap-2">
+                            <Activity className="w-4 h-4" />
+                            Conversão Coletiva
+                          </p>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-5xl font-bold text-slate-900 dark:text-white tracking-tight">
+                              {statsLoading ? '...' : `${teamStats?.equipeTaxaConversao || 0}%`}
+                            </span>
+                            <span className="text-slate-500 dark:text-slate-400 text-sm font-medium">de fechar</span>
+                          </div>
+                          <div className="mt-6 pt-6 border-t border-cyan-500/10 grid grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Total Leads</p>
+                              <p className="text-xl font-bold text-slate-900 dark:text-white">{teamStats?.totalLeads || 0}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Fechados</p>
+                              <p className="text-xl font-bold text-emerald-500">{teamStats?.equipeLeadsFechados || 0}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl p-5 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                              <Zap className="w-5 h-5 text-amber-500" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-slate-900 dark:text-white">Velocidade de Leads</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">Novos leads hoje</p>
+                            </div>
+                          </div>
+                          <p className="text-3xl font-bold text-slate-900 dark:text-white">{teamStats?.leadsHoje || 0}</p>
+                        </div>
+                      </div>
+
+                      <div className="lg:col-span-2 rounded-2xl p-6 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-white/10 overflow-hidden relative">
+                        <div className="absolute top-0 right-0 p-4 opacity-5">
+                          <Trophy className="w-32 h-32" />
+                        </div>
+
+                        <div className="flex items-center justify-between mb-6 relative z-10">
+                          <div>
+                            <h3 className="text-xl font-bold font-outfit text-slate-900 dark:text-white">Desempenho dos Membros</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Classificados por vendas fechadas</p>
+                          </div>
+                          <TrendingUp className="w-5 h-5 text-emerald-500" />
+                        </div>
+
+                        <div className="space-y-3 relative z-10">
+                          {statsLoading ? (
+                            <div className="py-10 text-center text-slate-500">Carregando dados...</div>
+                          ) : !teamStats?.rankingMembros || teamStats.rankingMembros.length === 0 ? (
+                            <div className="py-10 text-center text-slate-400 italic font-light">Nenhum membro ativo encontrado</div>
+                          ) : (
+                            teamStats.rankingMembros.map((m, idx) => {
+                              const membroInfo = equipe.membros.find(mi => mi.user_id === m.id || mi.id === m.id)
+                              return (
+                                <div key={m.id} className="flex items-center gap-4 p-3 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5 hover:border-cyan-500/30 transition-all group">
+                                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${idx === 0 ? 'bg-amber-400 text-amber-900 shadow-lg shadow-amber-400/20' :
+                                    idx === 1 ? 'bg-slate-300 text-slate-700' :
+                                      idx === 2 ? 'bg-orange-300 text-orange-900' :
+                                        'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                                    }`}>
+                                    {idx + 1}
+                                  </div>
+
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                                      {membroInfo?.nome || m.nome || 'Membro'}
+                                      <span className="ml-2 text-[10px] font-normal text-slate-500 px-1.5 py-0.5 rounded-md border border-slate-200 dark:border-white/10 uppercase bg-slate-50 dark:bg-black/20">
+                                        {membroInfo?.role || 'Vendedor'}
+                                      </span>
+                                    </p>
+                                    <div className="flex items-center gap-3 mt-1">
+                                      <p className="text-[10px] text-slate-500 dark:text-slate-400">{m.leads} Leads</p>
+                                      <div className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+                                      <p className="text-[10px] text-slate-500 dark:text-slate-400">{m.fechados} Fechados</p>
+                                    </div>
+                                  </div>
+
+                                  <div className="text-right">
+                                    <p className="text-lg font-bold text-cyan-600 dark:text-cyan-400">{m.taxa}%</p>
+                                    <p className="text-[10px] text-slate-400 uppercase font-medium">Conversão</p>
+                                  </div>
+                                </div>
+                              )
+                            })
+                          )}
+                        </div>
+
+                        {teamStats?.rankingMembros && teamStats.rankingMembros.length > 5 && (
+                          <button
+                            onClick={() => setAbaAtiva('configuracoes')}
+                            className="mt-4 w-full py-2 text-xs font-medium text-slate-500 hover:text-cyan-500 transition-colors"
+                          >
+                            Ver todos os membros
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {abaAtiva === 'produtos' && equipe && (
-              <ProdutosEquipe tenantId={equipe.id} readOnly={!canManageTeam} />
+              <ProdutosEquipe tenantId={equipe.id} />
             )}
 
             {abaAtiva === 'conquistas' && equipe && (
@@ -1676,8 +1782,8 @@ export default function MinhaEquipeBeta() {
               </div>
             )}
           </div>
-        </main>
-      </div>
-    </div>
+        </main >
+      </div >
+    </div >
   )
 }

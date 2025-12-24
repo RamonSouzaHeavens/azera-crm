@@ -50,6 +50,8 @@ import Battlecards from './pages/ferramentas/Battlecards'
 import ResumoReuniao from './pages/ferramentas/ResumoReuniao'
 import SequenciaEmail from './pages/ferramentas/SequenciaEmail'
 import Playbook from './pages/ferramentas/Playbook'
+import SuperAdmin from './pages/SuperAdmin'
+import Vendas from './pages/Vendas'
 
 const queryClient = new QueryClient()
 
@@ -162,6 +164,8 @@ function App() {
                 <Route path="success" element={<Success />} />
                 <Route path="connect-channels" element={<ConnectChannels />} />
                 <Route path="conversations" element={<Conversations />} />
+                <Route path="vendas" element={<Vendas />} />
+                <Route path="super-admin" element={<SuperAdmin />} />
               </Route>
               <Route
                 path="*"

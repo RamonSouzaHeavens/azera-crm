@@ -93,8 +93,8 @@ const Success = () => {
         {/* Ícone de sucesso */}
         <div className="text-center">
           <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-6 ${isDark
-              ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 shadow-lg shadow-emerald-500/20'
-              : 'bg-gradient-to-br from-emerald-50 to-emerald-100 shadow-lg shadow-emerald-500/10'
+            ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 shadow-lg shadow-emerald-500/20'
+            : 'bg-gradient-to-br from-emerald-50 to-emerald-100 shadow-lg shadow-emerald-500/10'
             }`}>
             <CheckCircle2 className={`w-10 h-10 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
           </div>
@@ -108,15 +108,15 @@ const Success = () => {
 
         {/* Card principal */}
         <div className={`rounded-3xl border p-8 ${isDark
-            ? 'bg-white/5 border-white/10'
-            : 'bg-gradient-to-br from-white to-slate-50 border-slate-200'
+          ? 'bg-white/5 border-white/10'
+          : 'bg-gradient-to-br from-white to-slate-50 border-slate-200'
           }`}>
           <div className="space-y-6">
             {/* Plano */}
             <div className="flex items-start gap-4 pb-6 border-b border-slate-200 dark:border-white/10">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isDark
-                  ? 'bg-gradient-to-br from-cyan-500/20 to-blue-500/20'
-                  : 'bg-gradient-to-br from-cyan-100 to-blue-100'
+                ? 'bg-gradient-to-br from-cyan-500/20 to-blue-500/20'
+                : 'bg-gradient-to-br from-cyan-100 to-blue-100'
                 }`}>
                 <Sparkles className={`w-6 h-6 ${isDark ? 'text-cyan-400' : 'text-cyan-600'}`} />
               </div>
@@ -162,8 +162,8 @@ const Success = () => {
             {/* Timer de assinatura */}
             {subscription?.created_at && (
               <div className={`p-4 rounded-xl border ${isDark
-                  ? 'bg-cyan-500/5 border-cyan-500/20'
-                  : 'bg-cyan-50 border-cyan-200'
+                ? 'bg-cyan-500/5 border-cyan-500/20'
+                : 'bg-cyan-50 border-cyan-200'
                 }`}>
                 <SubscriptionTimer
                   createdAt={subscription.created_at}
@@ -179,18 +179,18 @@ const Success = () => {
           <button
             onClick={() => navigate('/dashboard')}
             className={`flex-1 py-3 px-6 rounded-xl font-semibold text-white transition-all duration-300 flex items-center justify-center gap-2 ${isDark
-                ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 hover:shadow-lg hover:shadow-cyan-500/20'
-                : 'bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 hover:shadow-lg hover:shadow-cyan-500/20'
+              ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 hover:shadow-lg hover:shadow-cyan-500/20'
+              : 'bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 hover:shadow-lg hover:shadow-cyan-500/20'
               } active:scale-95`}
           >
             {t('success.goToDashboard')}
             <ArrowRight className="w-5 h-5" />
           </button>
           <button
-            onClick={() => navigate('/billing')}
+            onClick={() => navigate('/app/billing')}
             className={`py-3 px-6 rounded-xl font-semibold transition-all duration-300 ${isDark
-                ? 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200'
+              ? 'bg-white/5 hover:bg-white/10 text-white border border-white/10'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200'
               } active:scale-95`}
           >
             {t('success.manageSubscription')}

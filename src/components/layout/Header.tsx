@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Sun, Moon, User, Settings, ChevronDown, GraduationCap } from 'lucide-react'
+import { Sun, Moon, User, Settings, ChevronDown, GraduationCap, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
@@ -139,7 +139,7 @@ const LanguageSelector = ({ isDark }: { isDark: boolean }) => {
   )
 }
 
-export const Header = ({ onShowTutorial }: { onShowTutorial?: () => void }) => {
+export const Header = ({ onShowTutorial, onShowPreset }: { onShowTutorial?: () => void; onShowPreset?: () => void }) => {
   const { isDark, toggleTheme } = useThemeStore()
   const profile = useAuthStore((state) => state.profile)
   const user = useAuthStore((state) => state.user)
@@ -189,7 +189,7 @@ export const Header = ({ onShowTutorial }: { onShowTutorial?: () => void }) => {
 
         <div className="hidden sm:flex items-center gap-2">
           {isRealSubscription && isActive && (
-            <Link to="/billing">
+            <Link to="/app/billing">
               <Button
                 variant="ghost"
                 size="sm"
@@ -216,6 +216,21 @@ export const Header = ({ onShowTutorial }: { onShowTutorial?: () => void }) => {
             >
               <GraduationCap className="w-4 h-4" />
               <span className="text-sm font-medium hidden lg:inline">Tutorial</span>
+            </button>
+          )}
+
+          {/* Presets Button */}
+          {onShowPreset && (
+            <button
+              onClick={onShowPreset}
+              className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl transition-all hover:scale-105 ${isDark
+                ? 'bg-gradient-to-r from-violet-500/10 to-cyan-500/10 hover:from-violet-500/20 hover:to-cyan-500/20 text-violet-400 border border-violet-500/30'
+                : 'bg-gradient-to-r from-violet-50 to-cyan-50 hover:from-violet-100 hover:to-cyan-100 text-violet-700 border border-violet-200'
+                }`}
+              aria-label="Presets"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span className="text-sm font-medium hidden lg:inline">Presets</span>
             </button>
           )}
 

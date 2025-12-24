@@ -8,6 +8,11 @@ import { useAuthStore } from '../stores/authStore'
 // Flag para bypass em desenvolvimento - defina como true para testar funcionalidades premium
 const DEV_BYPASS_SUBSCRIPTION = import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_SUBSCRIPTION === 'true'
 
+// Emails de administradores que sempre têm acesso premium (bypass da verificação Stripe)
+const ADMIN_BYPASS_EMAILS = [
+  'ramonexecut@gmail.com'
+]
+
 /**
  * Modelo de negócio:
  * - Cada usuário precisa da sua própria assinatura
@@ -16,7 +21,24 @@ const DEV_BYPASS_SUBSCRIPTION = import.meta.env.DEV && import.meta.env.VITE_DEV_
  * - Funcionalidades PREMIUM (requer assinatura): distribuição de leads, canais,
  *   ferramentas pro, automações, chaves API
  */
-const fetchSubscription = async (userId: string): Promise<Subscription | null> => {
+const fetchSubscription = async (userId: string, userEmail?: string): Promise<Subscription | null> => {
+  // Se o email é de um admin, retornar assinatura ativa fake
+  if (userEmail && ADMIN_BYPASS_EMAILS.includes(userEmail.toLowerCase())) {
+    console.log('[useSubscription] Admin bypass ativado para:', userEmail)
+    return {
+      id: 'admin-bypass',
+      user_id: userId,
+      stripe_customer_id: null,
+      stripe_subscription_id: null,
+      stripe_price_id: null,
+      status: 'active',
+      current_period_end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      cancel_at_period_end: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    } as Subscription
+  }
+
   const { data, error } = await supabase
     .from('subscriptions')
     .select('*')
@@ -33,11 +55,12 @@ const fetchSubscription = async (userId: string): Promise<Subscription | null> =
 
 export const useSubscription = () => {
   const userId = useAuthStore((state) => state.user?.id)
+  const userEmail = useAuthStore((state) => state.user?.email)
   const queryClientRef = useRef<any>(null)
 
   const query = useQuery({
-    queryKey: ['subscription', userId],
-    queryFn: () => fetchSubscription(userId!),
+    queryKey: ['subscription', userId, userEmail],
+    queryFn: () => fetchSubscription(userId!, userEmail),
     enabled: Boolean(userId),
     staleTime: 5_000, // 5 segundos (era 60 segundos)
     refetchOnMount: 'always', // Sempre buscar ao montar

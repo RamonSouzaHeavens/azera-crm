@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { ExportLeadsModal } from '../components/modals/ExportLeadsModal'
 import { ImportLeadsModal } from '../components/modals/ImportLeadsModal'
+import { ConfirmDeleteModal } from '../components/modals/ConfirmDeleteModal'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../stores/authStore'
@@ -143,6 +144,7 @@ export default function Leads() {
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set())
   const [deletingSelected, setDeletingSelected] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -648,42 +650,100 @@ export default function Leads() {
 
   const deleteSelectedLeads = async () => {
     if (selectedLeads.size === 0) return
+    setShowDeleteConfirm(true)
+  }
 
-    const confirmed = window.confirm(
-      t('leads.confirmBulkDelete', 'Deseja realmente excluir {{count}} leads selecionados?')
-        .replace('{{count}}', String(selectedLeads.size))
-    )
-
-    if (!confirmed) return
+  const confirmDeleteSelectedLeads = async () => {
+    if (!tenant?.id) {
+      toast.error('Erro: tenant não identificado')
+      return
+    }
 
     setDeletingSelected(true)
     try {
       const idsToDelete = Array.from(selectedLeads)
+      console.log('[Leads] Deletando leads:', idsToDelete)
 
-      // First delete related custom field values
-      await supabase
+      // 1. Delete related custom field values
+      const { error: customFieldError } = await supabase
         .from('lead_custom_field_values')
         .delete()
         .in('lead_id', idsToDelete)
 
-      // Then delete the leads
-      const { error } = await supabase
+      if (customFieldError) {
+        console.warn('[Leads] Erro ao deletar custom fields (continuando):', customFieldError)
+      }
+
+      // 2. Delete related activities
+      const { error: activityError } = await supabase
+        .from('atividades')
+        .delete()
+        .in('cliente_id', idsToDelete)
+        .eq('tenant_id', tenant.id)
+
+      if (activityError) {
+        console.warn('[Leads] Erro ao deletar atividades (continuando):', activityError)
+      }
+
+      // 3. Delete related tasks
+      const { error: taskError } = await supabase
+        .from('tarefas')
+        .delete()
+        .in('cliente_id', idsToDelete)
+        .eq('tenant_id', tenant.id)
+
+      if (taskError) {
+        console.warn('[Leads] Erro ao deletar tarefas (continuando):', taskError)
+      }
+
+      // 4. Delete related attachments
+      const { error: attachmentError } = await supabase
+        .from('lead_attachments')
+        .delete()
+        .in('lead_id', idsToDelete)
+        .eq('tenant_id', tenant.id)
+
+      if (attachmentError) {
+        console.warn('[Leads] Erro ao deletar anexos (continuando):', attachmentError)
+      }
+
+      // 5. Delete related conversations
+      const { error: conversationError } = await supabase
+        .from('conversations')
+        .delete()
+        .in('contact_id', idsToDelete)
+        .eq('tenant_id', tenant.id)
+
+      if (conversationError) {
+        console.warn('[Leads] Erro ao deletar conversas (continuando):', conversationError)
+      }
+
+      // 6. Finally delete the leads
+      const { data, error } = await supabase
         .from('clientes')
         .delete()
         .in('id', idsToDelete)
+        .eq('tenant_id', tenant.id)
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('[Leads] Erro ao deletar leads:', error)
+        throw error
+      }
+
+      console.log('[Leads] Leads deletados com sucesso:', data)
 
       setLeads(prev => prev.filter(l => !selectedLeads.has(l.id)))
       setSelectedLeads(new Set())
       setSelectionMode(false)
       toast.success(t('leads.bulkDeleteSuccess', '{{count}} leads excluídos com sucesso!')
         .replace('{{count}}', String(idsToDelete.length)))
-    } catch (err) {
-      console.error(err)
-      toast.error(t('leads.bulkDeleteFailed', 'Falha ao excluir leads selecionados'))
+    } catch (err: any) {
+      console.error('[Leads] Erro completo:', err)
+      toast.error(t('leads.bulkDeleteFailed', 'Falha ao excluir leads selecionados') + ': ' + (err?.message || 'Erro desconhecido'))
     } finally {
       setDeletingSelected(false)
+      setShowDeleteConfirm(false)
     }
   }
 
@@ -1184,131 +1244,134 @@ export default function Leads() {
         {viewMode === 'kanban' && (
           <div className="hidden lg:block">
             <DragDropContext onDragEnd={onDragEnd}>
-              <div className="flex gap-4 overflow-x-auto pb-4 px-6 py-6 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
-                {pipelineStages.map((stage) => (
-                  <Droppable droppableId={stage.key} key={stage.key}>
-                    {(provided) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className="flex-shrink-0 w-80 snap-start rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 p-4 min-h-[70vh] shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="text-sm font-bold text-slate-900 dark:text-white flex flex-col gap-1 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className={`w-3 h-3 rounded-full`} style={{ background: stage.color }} />
-                              {stage.label}
-                              <span className="text-[12px] font-semibold text-slate-500 dark:text-gray-400 bg-slate-200 dark:bg-white/10 px-2 py-0.5 rounded-lg">({grouped[stage.key]?.length || 0})</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                                ID: {stage.id || stage.key}
-                              </span>
-                              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                                Key: {stage.key}
-                              </span>
+              {/* Container com altura fixa e scroll horizontal visível */}
+              <div className="relative h-[calc(100vh-220px)] overflow-x-auto overflow-y-hidden pb-4 px-6 py-6 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-slate-100 dark:scrollbar-track-slate-800">
+                <div className="flex gap-4 min-w-max snap-x snap-mandatory h-full">
+                  {pipelineStages.map((stage) => (
+                    <Droppable droppableId={stage.key} key={stage.key}>
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className="flex-shrink-0 w-80 snap-start rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 p-4 h-full max-h-full flex flex-col shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="text-sm font-bold text-slate-900 dark:text-white flex flex-col gap-1 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`w-3 h-3 rounded-full`} style={{ background: stage.color }} />
+                                {stage.label}
+                                <span className="text-[12px] font-semibold text-slate-500 dark:text-gray-400 bg-slate-200 dark:bg-white/10 px-2 py-0.5 rounded-lg">({grouped[stage.key]?.length || 0})</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                                  ID: {stage.id || stage.key}
+                                </span>
+                                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                                  Key: {stage.key}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="space-y-2">
-                          {(grouped[stage.key] || []).map((l, idx) => (
-                            <Draggable key={l.id} draggableId={l.id} index={idx}>
-                              {(pp, snapshot) => (
-                                <div
-                                  ref={pp.innerRef}
-                                  {...pp.draggableProps}
-                                  {...pp.dragHandleProps}
-                                  className={`rounded-lg bg-white dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 p-4 cursor-grab active:cursor-grabbing transition-all ${snapshot.isDragging ? 'ring-2 ring-cyan-500/60 ring-offset-2 dark:ring-offset-slate-900 scale-[1.02] shadow-md' : 'hover:border-slate-400 dark:hover:border-slate-600 hover:shadow-sm'}`}
-                                  onClick={() => openLead(l)}
-                                >
-                                  <div className="flex items-start justify-between gap-2 mb-2">
-                                    <div className="flex-1">
-                                      <div className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{l.nome}</div>
-                                      <div className="text-xs text-slate-600 dark:text-gray-400 mt-0.5">{l.campanhaNome || '—'}</div>
+                          <div className="space-y-2 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent pr-1">
+                            {(grouped[stage.key] || []).map((l, idx) => (
+                              <Draggable key={l.id} draggableId={l.id} index={idx}>
+                                {(pp, snapshot) => (
+                                  <div
+                                    ref={pp.innerRef}
+                                    {...pp.draggableProps}
+                                    {...pp.dragHandleProps}
+                                    className={`rounded-lg bg-white dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700 p-4 cursor-grab active:cursor-grabbing transition-all ${snapshot.isDragging ? 'ring-2 ring-cyan-500/60 ring-offset-2 dark:ring-offset-slate-900 scale-[1.02] shadow-md' : 'hover:border-slate-400 dark:hover:border-slate-600 hover:shadow-sm'}`}
+                                    onClick={() => openLead(l)}
+                                  >
+                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                      <div className="flex-1">
+                                        <div className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{l.nome}</div>
+                                        <div className="text-xs text-slate-600 dark:text-gray-400 mt-0.5">{l.campanhaNome || '—'}</div>
+                                      </div>
+                                      <div className="text-sm text-slate-700 dark:text-cyan-400 font-bold">
+                                        {typeof l.valor_potencial === 'number' ? brl(l.valor_potencial) : '—'}
+                                      </div>
                                     </div>
-                                    <div className="text-sm text-slate-700 dark:text-cyan-400 font-bold">
-                                      {typeof l.valor_potencial === 'number' ? brl(l.valor_potencial) : '—'}
-                                    </div>
+                                    {truncate(l.ultimaNota, 100) && (
+                                      <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-gray-400 line-clamp-2">
+                                        {truncate(l.ultimaNota, 120)}
+                                      </div>
+                                    )}
                                   </div>
-                                  {truncate(l.ultimaNota, 100) && (
-                                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-gray-400 line-clamp-2">
-                                      {truncate(l.ultimaNota, 120)}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                        </div>
-                      </div>
-                    )}
-                  </Droppable>
-                ))}
-
-                {/* Coluna dinâmica: Sem classificação (aparece apenas se houver leads sem status) */}
-                {grouped.unclassified && grouped.unclassified.length > 0 && (
-                  <Droppable droppableId="unclassified" key="unclassified">
-                    {(provided) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className="flex-shrink-0 w-80 snap-start rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 p-4 min-h-[70vh] shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="text-sm font-bold text-amber-900 dark:text-amber-200 flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-amber-500" />
-                            {t('leads.unclassified')}
-                            <span className="text-[12px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-200 dark:bg-amber-900/40 px-2 py-0.5 rounded-lg">({grouped.unclassified.length})</span>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
                           </div>
                         </div>
-                        <div className="space-y-2">
-                          {grouped.unclassified.map((l, idx) => (
-                            <Draggable key={l.id} draggableId={`unclassified-${l.id}`} index={idx}>
-                              {(pp, snapshot) => (
-                                <div
-                                  ref={pp.innerRef}
-                                  {...pp.draggableProps}
-                                  {...pp.dragHandleProps}
-                                  className={`rounded-lg bg-white dark:bg-slate-800/60 border border-amber-200 dark:border-amber-700 p-4 cursor-grab active:cursor-grabbing transition-all ${snapshot.isDragging ? 'ring-2 ring-amber-500/60 ring-offset-2 dark:ring-offset-slate-900 scale-[1.02] shadow-md' : 'hover:border-amber-300 dark:hover:border-amber-600 hover:shadow-sm'}`}
-                                  onClick={() => openLead(l)}
-                                >
-                                  <div className="flex items-start justify-between gap-2 mb-2">
-                                    <div className="flex-1">
-                                      <div className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{l.nome}</div>
-                                      <div className="text-xs text-slate-600 dark:text-gray-400 mt-0.5">{l.campanhaNome || '—'}</div>
-                                      <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-mono break-all">{l.id}</div>
-                                    </div>
-                                    <div className="text-sm text-slate-700 dark:text-amber-300 font-bold">
-                                      {typeof l.valor_potencial === 'number' ? brl(l.valor_potencial) : '—'}
-                                    </div>
-                                  </div>
-                                  {truncate(l.ultimaNota, 100) && (
-                                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-gray-400 line-clamp-2">
-                                      {truncate(l.ultimaNota, 120)}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                        </div>
-                      </div>
-                    )}
-                  </Droppable>
-                )}
+                      )}
+                    </Droppable>
+                  ))}
 
-                {/* Coluna para adicionar novo estágio */}
-                <div
-                  onClick={() => setShowPipelineSettings(true)}
-                  className="flex-shrink-0 w-80 snap-start rounded-xl bg-slate-100/50 dark:bg-slate-900/30 border-2 border-dashed border-slate-300 dark:border-slate-700 p-4 min-h-[70vh] flex flex-col items-center justify-center cursor-pointer hover:border-cyan-500 dark:hover:border-cyan-500 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all group"
-                >
-                  <div className="w-16 h-16 rounded-2xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center mb-4 group-hover:bg-cyan-500/20 transition-colors">
-                    <Plus className="w-8 h-8 text-slate-400 dark:text-slate-500 group-hover:text-cyan-500 transition-colors" />
+                  {/* Coluna dinâmica: Sem classificação (aparece apenas se houver leads sem status) */}
+                  {grouped.unclassified && grouped.unclassified.length > 0 && (
+                    <Droppable droppableId="unclassified" key="unclassified">
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className="flex-shrink-0 w-80 snap-start rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 p-4 h-full max-h-full flex flex-col shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="text-sm font-bold text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-full bg-amber-500" />
+                              {t('leads.unclassified')}
+                              <span className="text-[12px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-200 dark:bg-amber-900/40 px-2 py-0.5 rounded-lg">({grouped.unclassified.length})</span>
+                            </div>
+                          </div>
+                          <div className="space-y-2 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-amber-300 dark:scrollbar-thumb-amber-600 scrollbar-track-transparent pr-1">
+                            {grouped.unclassified.map((l, idx) => (
+                              <Draggable key={l.id} draggableId={`unclassified-${l.id}`} index={idx}>
+                                {(pp, snapshot) => (
+                                  <div
+                                    ref={pp.innerRef}
+                                    {...pp.draggableProps}
+                                    {...pp.dragHandleProps}
+                                    className={`rounded-lg bg-white dark:bg-slate-800/60 border border-amber-200 dark:border-amber-700 p-4 cursor-grab active:cursor-grabbing transition-all ${snapshot.isDragging ? 'ring-2 ring-amber-500/60 ring-offset-2 dark:ring-offset-slate-900 scale-[1.02] shadow-md' : 'hover:border-amber-300 dark:hover:border-amber-600 hover:shadow-sm'}`}
+                                    onClick={() => openLead(l)}
+                                  >
+                                    <div className="flex items-start justify-between gap-2 mb-2">
+                                      <div className="flex-1">
+                                        <div className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{l.nome}</div>
+                                        <div className="text-xs text-slate-600 dark:text-gray-400 mt-0.5">{l.campanhaNome || '—'}</div>
+                                        <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-mono break-all">{l.id}</div>
+                                      </div>
+                                      <div className="text-sm text-slate-700 dark:text-amber-300 font-bold">
+                                        {typeof l.valor_potencial === 'number' ? brl(l.valor_potencial) : '—'}
+                                      </div>
+                                    </div>
+                                    {truncate(l.ultimaNota, 100) && (
+                                      <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-gray-400 line-clamp-2">
+                                        {truncate(l.ultimaNota, 120)}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                          </div>
+                        </div>
+                      )}
+                    </Droppable>
+                  )}
+
+                  {/* Coluna para adicionar novo estágio */}
+                  <div
+                    onClick={() => setShowPipelineSettings(true)}
+                    className="flex-shrink-0 w-80 snap-start rounded-xl bg-slate-100/50 dark:bg-slate-900/30 border-2 border-dashed border-slate-300 dark:border-slate-700 p-4 h-full flex flex-col items-center justify-center cursor-pointer hover:border-cyan-500 dark:hover:border-cyan-500 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all group"
+                  >
+                    <div className="w-16 h-16 rounded-2xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center mb-4 group-hover:bg-cyan-500/20 transition-colors">
+                      <Plus className="w-8 h-8 text-slate-400 dark:text-slate-500 group-hover:text-cyan-500 transition-colors" />
+                    </div>
+                    <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 group-hover:text-cyan-500 transition-colors">{t('leads.addColumn')}</span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500 mt-1">{t('leads.clickToManageStages')}</span>
                   </div>
-                  <span className="text-sm font-semibold text-slate-500 dark:text-slate-400 group-hover:text-cyan-500 transition-colors">{t('leads.addColumn')}</span>
-                  <span className="text-xs text-slate-400 dark:text-slate-500 mt-1">{t('leads.clickToManageStages')}</span>
                 </div>
               </div>
             </DragDropContext>
@@ -1969,45 +2032,86 @@ export default function Leads() {
                       {t('leads.customFields')}
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      {customFields.map(field => (
-                        <div key={field.id}>
-                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                            {field.field_name}
-                          </label>
-                          {field.field_type === 'text' && (
-                            <input
-                              name={`custom_field_${field.id}`}
-                              type="text"
-                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            />
-                          )}
-                          {field.field_type === 'number' && (
-                            <input
-                              name={`custom_field_${field.id}`}
-                              type="number"
-                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            />
-                          )}
-                          {field.field_type === 'select' && (
-                            <select
-                              name={`custom_field_${field.id}`}
-                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            >
-                              <option value="">{t('common.select')}</option>
-                              {field.options?.map(opt => (
-                                <option key={opt} value={opt}>{opt}</option>
-                              ))}
-                            </select>
-                          )}
-                          {field.field_type === 'date' && (
-                            <input
-                              name={`custom_field_${field.id}`}
-                              type="date"
-                              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            />
-                          )}
-                        </div>
-                      ))}
+                      {customFields.map(field => {
+                        // Normalizar tipo para lowercase
+                        const fieldType = (field.field_type || 'text').toLowerCase();
+                        return (
+                          <div key={field.id}>
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                              {field.field_name}
+                            </label>
+                            {fieldType === 'text' && (
+                              <input
+                                name={`custom_field_${field.id}`}
+                                type="text"
+                                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                              />
+                            )}
+                            {fieldType === 'number' && (
+                              <input
+                                name={`custom_field_${field.id}`}
+                                type="number"
+                                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                              />
+                            )}
+                            {fieldType === 'select' && (
+                              <select
+                                name={`custom_field_${field.id}`}
+                                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                              >
+                                <option value="">{t('common.select')}</option>
+                                {field.options?.map(opt => (
+                                  <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                              </select>
+                            )}
+                            {fieldType === 'multiselect' && (
+                              <select
+                                name={`custom_field_${field.id}`}
+                                multiple
+                                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 min-h-[100px]"
+                              >
+                                {field.options?.map(opt => (
+                                  <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                              </select>
+                            )}
+                            {fieldType === 'date' && (
+                              <input
+                                name={`custom_field_${field.id}`}
+                                type="date"
+                                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                              />
+                            )}
+                            {fieldType === 'boolean' && (
+                              <select
+                                name={`custom_field_${field.id}`}
+                                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                              >
+                                <option value="">{t('common.select')}</option>
+                                <option value="true">Sim</option>
+                                <option value="false">Não</option>
+                              </select>
+                            )}
+                            {fieldType === 'tags' && (
+                              <input
+                                name={`custom_field_${field.id}`}
+                                type="text"
+                                placeholder="Digite tags separadas por vírgula..."
+                                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                              />
+                            )}
+                            {/* Fallback para tipos não reconhecidos */}
+                            {!['text', 'number', 'select', 'multiselect', 'date', 'boolean', 'tags'].includes(fieldType) && (
+                              <input
+                                name={`custom_field_${field.id}`}
+                                type="text"
+                                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -2052,6 +2156,17 @@ export default function Leads() {
           setShowImportModal(false)
           loadLeads()
         }}
+      />
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={confirmDeleteSelectedLeads}
+        title={t('leads.deleteLeads', 'Excluir Leads')}
+        message={t('leads.confirmBulkDelete', 'Deseja realmente excluir {{count}} leads selecionados? Esta ação não pode ser desfeita.').replace('{{count}}', String(selectedLeads.size))}
+        confirmText={t('leads.deleteSelected', 'Excluir selecionados')}
+        loading={deletingSelected}
       />
     </div>
   )

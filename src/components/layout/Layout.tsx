@@ -4,16 +4,17 @@ import { Header } from './Header'
 
 type LayoutContextType = {
   onShowTutorial?: () => void
+  onShowPreset?: () => void
 }
 
-export const Layout = ({ onShowTutorial }: { onShowTutorial?: () => void }) => {
+export const Layout = ({ onShowTutorial, onShowPreset }: { onShowTutorial?: () => void; onShowPreset?: () => void }) => {
   return (
-  <div className="flex h-screen">
+    <div className="flex h-screen">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onShowTutorial={onShowTutorial} />
+        <Header onShowTutorial={onShowTutorial} onShowPreset={onShowPreset} />
         <main className="flex-1 overflow-y-auto">
-          <Outlet context={{ onShowTutorial } satisfies LayoutContextType} />
+          <Outlet context={{ onShowTutorial, onShowPreset } satisfies LayoutContextType} />
         </main>
       </div>
     </div>
@@ -23,3 +24,4 @@ export const Layout = ({ onShowTutorial }: { onShowTutorial?: () => void }) => {
 export function useLayoutContext() {
   return useOutletContext<LayoutContextType>()
 }
+

@@ -6,7 +6,13 @@ export default defineConfig({
   base: '/',
   plugins: [react()],
   server: {
-    https: true,
+    // https: true, // Desabilitado temporariamente - problemas de certificado SSL
+    headers: {
+      'X-Frame-Options': 'DENY',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
+    }
   },
   resolve: {
     alias: {
@@ -20,6 +26,7 @@ export default defineConfig({
   build: {
     target: 'esnext',
     minify: 'esbuild',
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -29,14 +36,6 @@ export default defineConfig({
           'supabase': ['@supabase/supabase-js']
         }
       }
-    }
-  },
-  server: {
-    headers: {
-      'X-Frame-Options': 'DENY',
-      'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy': 'strict-origin-when-cross-origin',
-      'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
     }
   },
   preview: {

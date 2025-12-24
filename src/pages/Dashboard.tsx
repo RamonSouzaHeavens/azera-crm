@@ -136,7 +136,7 @@ async function fetchDashboardData(
     receitaFechadaRes, // New query for revenue from closed leads
   ] = await Promise.all([
     supabase.from('clientes').select('id, status').eq('tenant_id', tenantId),
-    supabase.from('vendas').select('valor, data_venda').eq('tenant_id', tenantId).gte('data_venda', sixStart.toISOString()).lt('data_venda', nextStart.toISOString()),
+    supabase.from('lead_sales').select('value, due_date').eq('tenant_id', tenantId).eq('status', 'paid').gte('due_date', sixStart.toISOString()).lt('due_date', nextStart.toISOString()),
     supabase.from('tarefas').select('id, titulo, status, created_at, clientes(nome)').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(3),
     supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('status', 'concluida'),
     supabase.from('clientes').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).gte('created_at', currentStart.toISOString()).lt('created_at', nextStart.toISOString()),
@@ -176,7 +176,11 @@ async function fetchDashboardData(
     { name: 'Perdido', value: counts.perdido || 0, count: counts.perdido || 0, color: PIPELINE_COLORS.Perdido },
   ]
 
-  const vendas = vendasRes.data || []
+  const vendasRaw = vendasRes.data || []
+  const vendas = vendasRaw.map((v: any) => ({
+    valor: Number(v.value),
+    data_venda: v.due_date
+  }))
   // Calculate revenue from Vendas table
   let totalVendasCur = vendas.filter(v => {
     const d = new Date(v.data_venda)

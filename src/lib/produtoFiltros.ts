@@ -1,31 +1,9 @@
-import type { ProdutoFiltros } from '../types/produtos'
+// =====================================================
+// LIB: Produto Filtros Utilities
+// =====================================================
 
-const numberCleaner = (value: string) => value.replace(/\s+/g, '').replace(/\./g, '').replace(',', '.')
-
-export const parseOptionalNumber = (value?: string) => {
-  if (!value) return undefined
-  const parsed = Number(numberCleaner(value))
-  return Number.isFinite(parsed) ? parsed : undefined
-}
-
-export const cleanString = (value?: string) => {
-  const trimmed = value?.trim()
-  return trimmed ? trimmed : undefined
-}
-
-const cleanArray = (values?: string[]) => {
-  if (!values?.length) return undefined
-  const cleaned = Array.from(
-    new Set(
-      values
-        .map((entry) => entry.trim())
-        .filter((entry) => Boolean(entry))
-    )
-  )
-  return cleaned.length ? cleaned : undefined
-}
-
-export type ProdutoFiltrosFormValues = {
+// Types
+export interface ProdutoFiltrosFormValues {
   incorporadora: string
   empreendimento: string
   fase: string
@@ -34,6 +12,7 @@ export type ProdutoFiltrosFormValues = {
   bairro: string
   endereco: string
   preco_min: string
+  preco_max: string
   metragem_min: string
   metragem_max: string
   tipologia: string[]
@@ -43,120 +22,119 @@ export type ProdutoFiltrosFormValues = {
   decorado: boolean
 }
 
-export const emptyProdutoFiltrosForm = (): ProdutoFiltrosFormValues => ({
-  incorporadora: '',
-  empreendimento: '',
-  fase: '',
-  entrega: '',
-  regiao: '',
-  bairro: '',
-  endereco: '',
-  preco_min: '',
-  metragem_min: '',
-  metragem_max: '',
-  tipologia: [],
-  modalidade: [],
-  vaga: '',
-  financiamento_incorporadora: false,
-  decorado: false
-})
-
-export type ProdutoFiltrosListState = {
+export interface ProdutoFiltrosListState {
   incorporadora: string
   empreendimento: string
   fase: string
   regiao: string
   bairro: string
   endereco: string
-  tipologia: string[]
-  modalidade: string[]
   preco_min: string
   preco_max: string
   metragem_min: string
   metragem_max: string
-  entrega_de: string
-  entrega_ate: string
+  tipologia: string[]
+  modalidade: string[]
+  vaga: string
   financiamento_incorporadora: 'any' | 'true' | 'false'
   decorado: 'any' | 'true' | 'false'
-  vaga: string
+  entrega_de: string
+  entrega_ate: string
 }
 
-export const emptyProdutoFiltrosListState = (): ProdutoFiltrosListState => ({
-  incorporadora: '',
-  empreendimento: '',
-  fase: '',
-  regiao: '',
-  bairro: '',
-  endereco: '',
-  tipologia: [],
-  modalidade: [],
-  preco_min: '',
-  preco_max: '',
-  metragem_min: '',
-  metragem_max: '',
-  entrega_de: '',
-  entrega_ate: '',
-  financiamento_incorporadora: 'any',
-  decorado: 'any',
-  vaga: ''
-})
-
-export const hydrateProdutoFiltrosForm = (filtros?: ProdutoFiltros | null): ProdutoFiltrosFormValues => ({
-  incorporadora: filtros?.incorporadora ?? '',
-  empreendimento: filtros?.empreendimento ?? '',
-  fase: filtros?.fase ?? '',
-  entrega: filtros?.entrega ?? '',
-  regiao: filtros?.regiao ?? '',
-  bairro: filtros?.bairro ?? '',
-  endereco: filtros?.endereco ?? '',
-  preco_min: filtros?.preco_min !== undefined && filtros?.preco_min !== null ? String(filtros.preco_min) : '',
-  metragem_min: filtros?.metragem_min !== undefined && filtros?.metragem_min !== null ? String(filtros.metragem_min) : '',
-  metragem_max: filtros?.metragem_max !== undefined && filtros?.metragem_max !== null ? String(filtros.metragem_max) : '',
-  tipologia: filtros?.tipologia ?? [],
-  modalidade: Array.isArray(filtros?.modalidade) ? filtros.modalidade : (filtros?.modalidade ? [filtros.modalidade] : []),
-  vaga: filtros?.vaga !== undefined && filtros?.vaga !== null ? String(filtros.vaga) : '',
-  financiamento_incorporadora: Boolean(filtros?.financiamento_incorporadora),
-  decorado: Boolean(filtros?.decorado)
-})
-
-export const normalizeProdutoFiltros = (form: ProdutoFiltrosFormValues): ProdutoFiltros => {
-  const normalized: ProdutoFiltros = {}
-
-  const addIfDefined = <T>(key: keyof ProdutoFiltros, value: T | undefined | null) => {
-    if (value !== undefined && value !== null) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      normalized[key] = value as any
-    }
+// Empty state factories
+export function emptyProdutoFiltrosForm(): ProdutoFiltrosFormValues {
+  return {
+    incorporadora: '',
+    empreendimento: '',
+    fase: '',
+    entrega: '',
+    regiao: '',
+    bairro: '',
+    endereco: '',
+    preco_min: '',
+    preco_max: '',
+    metragem_min: '',
+    metragem_max: '',
+    tipologia: [],
+    modalidade: [],
+    vaga: '',
+    financiamento_incorporadora: false,
+    decorado: false
   }
-
-  addIfDefined('incorporadora', cleanString(form.incorporadora))
-  addIfDefined('empreendimento', cleanString(form.empreendimento))
-  addIfDefined('fase', cleanString(form.fase))
-  addIfDefined('entrega', cleanString(form.entrega))
-  addIfDefined('regiao', cleanString(form.regiao))
-  addIfDefined('bairro', cleanString(form.bairro))
-  addIfDefined('endereco', cleanString(form.endereco))
-  addIfDefined('preco_min', parseOptionalNumber(form.preco_min))
-  addIfDefined('metragem_min', parseOptionalNumber(form.metragem_min))
-  addIfDefined('metragem_max', parseOptionalNumber(form.metragem_max))
-  addIfDefined('tipologia', cleanArray(form.tipologia))
-  addIfDefined('modalidade', form.modalidade ? [form.modalidade] : undefined)
-
-  if (form.vaga) {
-    const parsedVaga = Number(numberCleaner(form.vaga))
-    normalized.vaga = Number.isFinite(parsedVaga) ? parsedVaga : null
-  } else if (form.vaga === '') {
-    normalized.vaga = null
-  }
-
-  normalized.financiamento_incorporadora = Boolean(form.financiamento_incorporadora)
-  normalized.decorado = Boolean(form.decorado)
-
-  return normalized
 }
 
-export const isProdutoFiltrosEmpty = (filtros: ProdutoFiltros) =>
-  Object.values(filtros).every((value) => {
-    if (Array.isArray(value)) return value.length === 0
-    return value === undefined || value === null || value === ''
-  })
+export function emptyProdutoFiltrosListState(): ProdutoFiltrosListState {
+  return {
+    incorporadora: '',
+    empreendimento: '',
+    fase: '',
+    regiao: '',
+    bairro: '',
+    endereco: '',
+    preco_min: '',
+    preco_max: '',
+    metragem_min: '',
+    metragem_max: '',
+    tipologia: [],
+    modalidade: [],
+    vaga: '',
+    financiamento_incorporadora: 'any',
+    decorado: 'any',
+    entrega_de: '',
+    entrega_ate: ''
+  }
+}
+
+// Utility: parse optional number
+export function parseOptionalNumber(value: string | number | null | undefined): number | undefined {
+  if (value === null || value === undefined || value === '') return undefined
+  const num = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(num) ? num : undefined
+}
+
+// Utility: clean string
+export function cleanString(value: string | null | undefined): string {
+  if (!value) return ''
+  return value.trim()
+}
+
+// Normalize form values to DB payload
+export function normalizeProdutoFiltros(form: ProdutoFiltrosFormValues): Record<string, unknown> {
+  const result: Record<string, unknown> = {}
+
+  // String fields
+  if (form.incorporadora.trim()) result.incorporadora = form.incorporadora.trim()
+  if (form.empreendimento.trim()) result.empreendimento = form.empreendimento.trim()
+  if (form.fase.trim()) result.fase = form.fase.trim()
+  if (form.entrega.trim()) result.entrega = form.entrega.trim()
+  if (form.regiao.trim()) result.regiao = form.regiao.trim()
+  if (form.bairro.trim()) result.bairro = form.bairro.trim()
+  if (form.endereco.trim()) result.endereco = form.endereco.trim()
+
+  // Numeric fields
+  const precoMin = parseOptionalNumber(form.preco_min)
+  if (precoMin !== undefined) result.preco_min = precoMin
+
+  const precoMax = parseOptionalNumber(form.preco_max)
+  if (precoMax !== undefined) result.preco_max = precoMax
+
+  const metragemMin = parseOptionalNumber(form.metragem_min)
+  if (metragemMin !== undefined) result.metragem_min = metragemMin
+
+  const metragemMax = parseOptionalNumber(form.metragem_max)
+  if (metragemMax !== undefined) result.metragem_max = metragemMax
+
+  const vaga = parseOptionalNumber(form.vaga)
+  if (vaga !== undefined) result.vaga = vaga
+
+  // Array fields
+  if (form.tipologia.length > 0) result.tipologia = form.tipologia
+  if (form.modalidade.length > 0) result.modalidade = form.modalidade
+
+  // Boolean fields
+  if (form.financiamento_incorporadora) result.financiamento_incorporadora = true
+  if (form.decorado) result.decorado = true
+
+  return result
+}

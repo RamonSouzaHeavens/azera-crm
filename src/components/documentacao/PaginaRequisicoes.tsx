@@ -48,7 +48,7 @@ interface EndpointItemProps {
 export default function PaginaRequisicoes() {
   const { t } = useTranslation()
   const [aba, setAba] = useState<'inicio' | 'credenciais' | 'exemplos' | 'endpoints'>('inicio')
-  const [subAba, setSubAba] = useState<'leads' | 'tarefas' | 'produtos' | 'conversas'>('leads')
+  const [subAba, setSubAba] = useState<'leads' | 'tarefas' | 'produtos' | 'conversas' | 'vendas'>('leads')
   const [copiado, setCopiado] = useState<string>('')
 
   // Dados reais do usuário
@@ -400,6 +400,15 @@ export default function PaginaRequisicoes() {
                 >
                   {t('documentation.requests.examples.tabs.properties')}
                 </button>
+                <button
+                  onClick={() => setSubAba('vendas')}
+                  className={`flex-1 px-6 py-3 font-semibold rounded-xl transition-all duration-300 whitespace-nowrap ${subAba === 'vendas'
+                    ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white shadow-lg shadow-amber-500/25 scale-105'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-800/80 hover:shadow-md'
+                    }`}
+                >
+                  Vendas
+                </button>
               </div>
 
               {/* Leads Examples */}
@@ -750,6 +759,167 @@ export default function PaginaRequisicoes() {
                   </div>
                 </div>
               )}
+
+              {/* Vendas Examples */}
+              {subAba === 'vendas' && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-amber-600 rounded-xl flex items-center justify-center">
+                      <span className="text-white text-lg">💰</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                      Vendas (Transações Financeiras)
+                    </h3>
+                  </div>
+
+                  <InfoBox type="info" title="Sobre a API de Vendas">
+                    <p>A tabela <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">lead_sales</code> permite registrar múltiplas transações por lead, incluindo vendas únicas e recorrentes (parceladas). Use o campo <code className="bg-slate-200 dark:bg-slate-700 px-1 rounded">recurrence_id</code> para agrupar parcelas.</p>
+                  </InfoBox>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div className="flex flex-col h-full">
+                      <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
+                        Listar Vendas de um Lead
+                      </h4>
+                      <div className="flex-1 mb-3">
+                        <CodeBlock
+                          code={`curl -X GET "${baseUrl}/rest/v1/lead_sales?lead_id=eq.LEAD_ID&order=due_date.asc" \\
+  -H "apikey: ${apiKey}" \\
+  -H "Authorization: Bearer ${apiKey}"`}
+                        />
+                      </div>
+                      <CopyButton
+                        text={`curl -X GET "${baseUrl}/rest/v1/lead_sales?lead_id=eq.LEAD_ID&order=due_date.asc" -H "apikey: ${apiKey}" -H "Authorization: Bearer ${apiKey}"`}
+                        id="vendas-list"
+                      />
+                    </div>
+
+                    <div className="flex flex-col h-full">
+                      <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
+                        Criar Venda Única
+                      </h4>
+                      <div className="flex-1 mb-3">
+                        <CodeBlock
+                          code={`curl -X POST "${baseUrl}/rest/v1/lead_sales" \\
+  -H "apikey: ${apiKey}" \\
+  -H "Authorization: Bearer ${apiKey}" \\
+  -H "Content-Type: application/json" \\
+  -H "Prefer: return=representation" \\
+  -d '{
+    "tenant_id": "${tenantId}",
+    "lead_id": "LEAD_ID",
+    "title": "Consultoria Inicial",
+    "value": 500.00,
+    "due_date": "2024-01-20T14:00:00Z",
+    "status": "paid"
+  }'`}
+                        />
+                      </div>
+                      <CopyButton
+                        text={`curl -X POST "${baseUrl}/rest/v1/lead_sales" -H "apikey: ${apiKey}" -H "Authorization: Bearer ${apiKey}" -H "Content-Type: application/json" -H "Prefer: return=representation" -d '{"tenant_id": "${tenantId}", "lead_id": "LEAD_ID", "title": "Consultoria Inicial", "value": 500.00, "due_date": "2024-01-20T14:00:00Z", "status": "paid"}'`}
+                        id="vendas-create"
+                      />
+                    </div>
+
+                    <div className="flex flex-col h-full">
+                      <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
+                        Criar Vendas Recorrentes (Array)
+                      </h4>
+                      <div className="flex-1 mb-3">
+                        <CodeBlock
+                          code={`curl -X POST "${baseUrl}/rest/v1/lead_sales" \\
+  -H "apikey: ${apiKey}" \\
+  -H "Authorization: Bearer ${apiKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '[
+    {
+      "tenant_id": "${tenantId}",
+      "lead_id": "LEAD_ID",
+      "title": "Mensalidade 1/3",
+      "value": 300,
+      "due_date": "2024-02-01T10:00:00Z",
+      "status": "paid",
+      "recurrence_id": "REC_ID"
+    },
+    {
+      "tenant_id": "${tenantId}",
+      "lead_id": "LEAD_ID",
+      "title": "Mensalidade 2/3",
+      "value": 300,
+      "due_date": "2024-03-01T10:00:00Z",
+      "status": "pending",
+      "recurrence_id": "REC_ID"
+    }
+  ]'`}
+                        />
+                      </div>
+                      <CopyButton
+                        text={`curl -X POST "${baseUrl}/rest/v1/lead_sales" -H "apikey: ${apiKey}" -H "Authorization: Bearer ${apiKey}" -H "Content-Type: application/json" -d '[{"tenant_id": "${tenantId}", "lead_id": "LEAD_ID", "title": "Mensalidade 1/3", "value": 300, "due_date": "2024-02-01T10:00:00Z", "status": "paid", "recurrence_id": "REC_ID"}, {"tenant_id": "${tenantId}", "lead_id": "LEAD_ID", "title": "Mensalidade 2/3", "value": 300, "due_date": "2024-03-01T10:00:00Z", "status": "pending", "recurrence_id": "REC_ID"}]'`}
+                        id="vendas-recurrent"
+                      />
+                    </div>
+
+                    <div className="flex flex-col h-full">
+                      <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
+                        Marcar como Pago
+                      </h4>
+                      <div className="flex-1 mb-3">
+                        <CodeBlock
+                          code={`curl -X PATCH "${baseUrl}/rest/v1/lead_sales?id=eq.SALE_ID" \\
+  -H "apikey: ${apiKey}" \\
+  -H "Authorization: Bearer ${apiKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "status": "paid"
+  }'`}
+                        />
+                      </div>
+                      <CopyButton
+                        text={`curl -X PATCH "${baseUrl}/rest/v1/lead_sales?id=eq.SALE_ID" -H "apikey: ${apiKey}" -H "Authorization: Bearer ${apiKey}" -H "Content-Type: application/json" -d '{"status": "paid"}'`}
+                        id="vendas-pay"
+                      />
+                    </div>
+
+                    <div className="flex flex-col h-full">
+                      <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
+                        Cancelar Venda
+                      </h4>
+                      <div className="flex-1 mb-3">
+                        <CodeBlock
+                          code={`curl -X PATCH "${baseUrl}/rest/v1/lead_sales?id=eq.SALE_ID" \\
+  -H "apikey: ${apiKey}" \\
+  -H "Authorization: Bearer ${apiKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "status": "canceled"
+  }'`}
+                        />
+                      </div>
+                      <CopyButton
+                        text={`curl -X PATCH "${baseUrl}/rest/v1/lead_sales?id=eq.SALE_ID" -H "apikey: ${apiKey}" -H "Authorization: Bearer ${apiKey}" -H "Content-Type: application/json" -d '{"status": "canceled"}'`}
+                        id="vendas-cancel"
+                      />
+                    </div>
+
+                    <div className="flex flex-col h-full">
+                      <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
+                        Deletar Venda
+                      </h4>
+                      <div className="flex-1 mb-3">
+                        <CodeBlock
+                          code={`curl -X DELETE "${baseUrl}/rest/v1/lead_sales?id=eq.SALE_ID" \\
+  -H "apikey: ${apiKey}" \\
+  -H "Authorization: Bearer ${apiKey}"`}
+                        />
+                      </div>
+                      <CopyButton
+                        text={`curl -X DELETE "${baseUrl}/rest/v1/lead_sales?id=eq.SALE_ID" -H "apikey: ${apiKey}" -H "Authorization: Bearer ${apiKey}"`}
+                        id="vendas-delete"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -854,6 +1024,34 @@ export default function PaginaRequisicoes() {
                     method="PATCH"
                     path="/rest/v1/tarefas?id=eq.{id}"
                     description="Atualizar Tarefa"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-slate-900 dark:text-white mb-3">
+                  Vendas (lead_sales)
+                </h3>
+                <div className="space-y-3">
+                  <EndpointItem
+                    method="GET"
+                    path="/rest/v1/lead_sales"
+                    description="Listar vendas (filtrar por lead_id)"
+                  />
+                  <EndpointItem
+                    method="POST"
+                    path="/rest/v1/lead_sales"
+                    description="Criar venda(s)"
+                  />
+                  <EndpointItem
+                    method="PATCH"
+                    path="/rest/v1/lead_sales?id=eq.{id}"
+                    description="Atualizar venda (status, valor, etc)"
+                  />
+                  <EndpointItem
+                    method="DELETE"
+                    path="/rest/v1/lead_sales?id=eq.{id}"
+                    description="Deletar venda"
                   />
                 </div>
               </div>

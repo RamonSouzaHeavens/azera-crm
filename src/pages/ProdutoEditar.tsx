@@ -1,911 +1,972 @@
-import { useState, useMemo, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
-import { uploadFileWithValidation } from '../services/storageService'
-import { UploadCloud, X, Plus, Edit2 } from 'lucide-react'
+import type { ProdutoFiltros } from '../types/produtos'
+import { fetchProdutoFiltroOptions, ProdutoFiltroOptions, addIncorporadora, addRegiao, addBairro } from '../services/produtoFiltersService'
+import { updateProdutoRobust } from '../services/produtoService'
+import {
+  emptyProdutoFiltrosForm,
+  normalizeProdutoFiltros,
+  ProdutoFiltrosFormValues,
+} from '../lib/produtoFiltros'
+import { 
+  UploadCloud, 
+  X, 
+  Building,
+  Plus,
+  Power
+} from 'lucide-react'
+import type { ImovelTipo, ImovelFinalidade } from './Produtos'
 
-export default function ProdutoEditar() {
-  const { t: t18n } = useTranslation()
-  const navigate = useNavigate()
+// Utility functions for file uploads
+const createFileUploadHandler = (setterFunction: (value: string) => void) => () => {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.onchange = (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (file) {
+      const url = URL.createObjectURL(file)
+      setterFunction(url)
+    }
+  }
+  input.click()
+}
+
+const createMultipleFileUploadHandler = (setterFunction: React.Dispatch<React.SetStateAction<string[]>>, accept = 'image/*') => () => {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = accept
+  input.multiple = true
+  input.onchange = (e) => {
+    const files = Array.from((e.target as HTMLInputElement).files || [])
+    const urls = files.map(file => URL.createObjectURL(file))
+    setterFunction(prev => [...prev, ...urls])
+  }
+  input.click()
+}
+
+const getFileIcon = (url: string) => {
+  const ext = url.split('.').pop()?.toLowerCase()
+  switch (ext) {
+    case 'pdf': return '📄'
+    case 'doc':
+    case 'docx': return '📄'
+    case 'xls':
+    case 'xlsx': return '📈'
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+    case 'gif': return '🖼️'
+    default: return '📁'
+  }
+}
+
+export default function ImovelEditar() {
   const { id } = useParams<{ id: string }>()
-  const { tenant, member } = useAuthStore()
+  const navigate = useNavigate()
+  const { tenant, member, user } = useAuthStore()
   const tenantId = useMemo(() => tenant?.id ?? member?.tenant_id ?? '', [tenant?.id, member?.tenant_id])
   
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  
-  // Campos básicos universais
   const [titulo, setTitulo] = useState('')
   const [descricao, setDescricao] = useState('')
   const [valor, setValor] = useState('')
-  const [categoria, setCategoria] = useState('')
-  
-  // Mídia
-  const [capa, setCapa] = useState<string | null>(null)
+  const [tipo, setTipo] = useState<ImovelTipo>('apartamento')
+  const [finalidade, setFinalidade] = useState<ImovelFinalidade>('venda')
+  const [areaTotal, setAreaTotal] = useState('')
+  const [areaConstruida, setAreaConstruida] = useState('')
+  const [quartos, setQuartos] = useState('')
+  const [banheiros, setBanheiros] = useState('')
+  const [vagasGaragem, setVagasGaragem] = useState('')
+  const [endereco, setEndereco] = useState('')
+  const [bairro, setBairro] = useState('')
+  const [cidade, setCidade] = useState('')
+  const [cep, setCep] = useState('')
+  const [destaque, setDestaque] = useState(false)
+  const [ativo, setAtivo] = useState(true)
+  const [tags, setTags] = useState('')
+  const [capa, setCapa] = useState<string|null>(null)
   const [galeria, setGaleria] = useState<string[]>([])
+  const [arquivos, setArquivos] = useState<string[]>([])
   
-  // Anexos
-  const [anexos, setAnexos] = useState<string[]>([])
-  
-  // Campos Personalizados
-  interface CustomField {
-    id: string
-    nome: string
-    informacao: string
-    tipo: 'text' | 'number' | 'date' | 'select'
-    opcoes?: string[] // Para tipo select
-  }
-  
-  const [customFields, setCustomFields] = useState<CustomField[]>([])
-  const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | number | null>>({})
-  const [showFieldModal, setShowFieldModal] = useState(false)
-  const [editingField, setEditingField] = useState<CustomField | null>(null)
-  
-  // Estado do formulário do modal
-  const [fieldForm, setFieldForm] = useState({
-    nome: '',
-    informacao: '',
-    tipo: 'text' as 'text' | 'number' | 'date' | 'select',
-    opcoes: [] as string[]
+  // Campos herdados dos produtos
+  const [filtroOptions, setFiltroOptions] = useState<ProdutoFiltroOptions>({
+    incorporadoras: [],
+    empreendimentos: [],
+    fases: [],
+    regioes: [],
+    bairros: [],
+    tipologias: [],
+    modalidades: []
   })
-  const [newOpcao, setNewOpcao] = useState('')
+  const [produtoFiltros, setProdutoFiltros] = useState<ProdutoFiltrosFormValues>(() => emptyProdutoFiltrosForm())
 
-  useEffect(() => {
-    if (!id || !tenantId) return
-    
-    const loadProduct = async () => {
-      try {
-        setLoading(true)
-        const { data, error } = await supabase
-          .from('produtos')
-          .select('*')
-          .eq('id', id)
-          .eq('tenant_id', tenantId)
-          .single()
-        
-        if (error) throw error
-        
-        if (data) {
-          setTitulo(data.nome || '')
-          setDescricao(data.descricao || '')
-          setValor(data.valor ? String(data.valor) : '')
-          setCategoria(data.categoria || '')
-          setCapa(data.capa_url || null)
-          setGaleria((data.galeria as string[]) || [])
-          setAnexos((data.anexos as string[]) || [])
-        }
+  // Estados para modal de adicionar opcões
+  const [modalAddOpen, setModalAddOpen] = useState(false)
+  const [modalAddType, setModalAddType] = useState<'incorporadora' | 'regiao' | 'bairro' | null>(null)
+  const [modalAddValue, setModalAddValue] = useState('')
 
-        // Carregar valores de campos personalizados do campo filtros
-        if (data.filtros && typeof data.filtros === 'object') {
-          setCustomFieldValues(data.filtros as Record<string, string | number | null>)
-        }
-      } catch (err) {
-        console.error('Erro ao carregar produto:', err)
-        toast.error('Erro ao carregar produto')
-        navigate('/produtos')
-      } finally {
-        setLoading(false)
-      }
-    }
-    
-    loadProduct()
-  }, [id, tenantId, navigate])
+  // Utility functions for managing arrays
+  const removeFromGaleria = (index: number) => {
+    setGaleria(prev => prev.filter((_, i) => i !== index))
+  }
 
-  // Carregar campos personalizados do banco de dados
-  useEffect(() => {
+  const removeFromArquivos = (index: number) => {
+    setArquivos(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Upload handlers
+  const onPickCapa = createFileUploadHandler(setCapa)
+  const onPickGaleria = createMultipleFileUploadHandler(setGaleria, 'image/*')
+  const onPickArquivos = createMultipleFileUploadHandler(setArquivos, '*/*')
+
+  // Carregar opções de filtros
+  const refreshFiltroOptions = useCallback(async () => {
     if (!tenantId) return
-    
-    const loadCustomFields = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('product_custom_fields')
-          .select('id, field_key, field_label, field_type, field_options, field_default')
-          .eq('tenant_id', tenantId)
-          .eq('active', true)
-          .order('display_order', { ascending: true })
-        
-        if (error) throw error
-        
-        if (data) {
-          const fields: CustomField[] = data.map(f => ({
-            id: f.id,
-            nome: f.field_label,
-            informacao: f.field_default || '',
-            tipo: (f.field_type || 'text') as 'text' | 'number' | 'date' | 'select',
-            opcoes: f.field_options || []
-          }))
-          setCustomFields(fields)
-        }
-      } catch (err) {
-        console.error('Erro ao carregar campos personalizados:', err)
-      }
+
+    try {
+      const options = await fetchProdutoFiltroOptions(tenantId)
+      setFiltroOptions(options)
+    } catch (err) {
+      console.error('Erro ao buscar opções de filtros:', err)
     }
-    
-    loadCustomFields()
   }, [tenantId])
 
-  const uploadToStorage = async (path: string, file: File): Promise<string | null> => {
+  // Funções para gerenciar filtros
+  const updateProdutoFiltro = <K extends keyof ProdutoFiltrosFormValues>(
+    key: K,
+    value: ProdutoFiltrosFormValues[K]
+  ) => {
+    setProdutoFiltros((prev) => ({
+      ...prev,
+      [key]: value
+    }))
+  }
+
+  // Handlers para adicionar novas opções
+  const handleAddIncorporadora = useCallback(() => {
+    setModalAddType('incorporadora')
+    setModalAddValue('')
+    setModalAddOpen(true)
+  }, [])
+
+  const handleAddRegiao = useCallback(() => {
+    setModalAddType('regiao')
+    setModalAddValue('')
+    setModalAddOpen(true)
+  }, [])
+
+  const handleAddBairro = useCallback(() => {
+    setModalAddType('bairro')
+    setModalAddValue('')
+    setModalAddOpen(true)
+  }, [])
+
+  const handleConfirmAdd = useCallback(async () => {
+    if (!modalAddValue.trim() || !tenantId || !modalAddType) return
+
     try {
-      const result = await uploadFileWithValidation('produtos', path, file)
-      if (result.success && result.url) {
-        return result.url
+      let success = false
+      if (modalAddType === 'incorporadora') {
+        success = await addIncorporadora(tenantId, modalAddValue)
+      } else if (modalAddType === 'regiao') {
+        success = await addRegiao(tenantId, modalAddValue)
+      } else if (modalAddType === 'bairro') {
+        success = await addBairro(tenantId, modalAddValue)
+      }
+
+      if (success) {
+        const typeLabel = modalAddType === 'incorporadora' ? 'Incorporadora' : modalAddType === 'regiao' ? 'Referência' : 'Estado'
+        toast.success(`${typeLabel} adicionada!`)
+        await refreshFiltroOptions()
+        setModalAddOpen(false)
+        setModalAddValue('')
+        setModalAddType(null)
       } else {
-        throw new Error(result.error || 'Erro ao fazer upload')
+        toast.error('Erro ao adicionar')
       }
-    } catch (error) {
-      console.error('Erro na função uploadToStorage:', error)
-      return null
-    }
-  }
-
-  const onPickCapa = async () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.onchange = async (e: Event) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (file) {
-        try {
-          const tempId = Date.now().toString()
-          const ext = file.name.split('.').pop() ?? 'jpg'
-          const path = `capa/${tenantId}/${tempId}/capa.${ext}`
-          const url = await uploadToStorage(path, file)
-          if (url) {
-            setCapa(url)
-            toast.success('Capa carregada!')
-          }
-        } catch (error) {
-          console.error('Erro ao fazer upload da capa:', error)
-          toast.error('Erro ao carregar capa')
-        }
-      }
-    }
-    input.click()
-  }
-
-  const onPickGaleria = async () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.multiple = true
-    input.onchange = async (e: Event) => {
-      const files = Array.from((e.target as HTMLInputElement).files || [])
-      if (files.length > 0) {
-        try {
-          const urls: string[] = []
-          const tempId = Date.now().toString()
-          for (let i = 0; i < files.length; i++) {
-            const file = files[i]
-            const ext = file.name.split('.').pop() ?? 'jpg'
-            const path = `galeria/${tenantId}/${tempId}/${i}.${ext}`
-            const url = await uploadToStorage(path, file)
-            if (url) {
-              urls.push(url)
-            }
-          }
-          setGaleria(prev => [...prev, ...urls])
-          toast.success(`${urls.length} imagem(ns) adicionada(s)!`)
-        } catch (error) {
-          console.error('Erro ao fazer upload da galeria:', error)
-          toast.error('Erro ao carregar imagens')
-        }
-      }
-    }
-    input.click()
-  }
-
-  const onPickAnexos = async () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = '.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx'
-    input.multiple = true
-    input.onchange = async (e: Event) => {
-      const files = Array.from((e.target as HTMLInputElement).files || [])
-      if (files.length > 0) {
-        try {
-          const urls: string[] = []
-          const tempId = Date.now().toString()
-          for (let i = 0; i < files.length; i++) {
-            const file = files[i]
-            const ext = file.name.split('.').pop() ?? 'pdf'
-            const path = `anexos/${tenantId}/${tempId}/${i}.${ext}`
-            const url = await uploadToStorage(path, file)
-            if (url) {
-              urls.push(url)
-            }
-          }
-          setAnexos(prev => [...prev, ...urls])
-          toast.success(`${urls.length} documento(s) anexado(s)!`)
-        } catch (error) {
-          console.error('Erro ao fazer upload dos anexos:', error)
-          toast.error('Erro ao anexar documentos')
-        }
-      }
-    }
-    input.click()
-  }
-
-  // Funções para campos personalizados
-  const handleOpenFieldModal = (field?: CustomField) => {
-    if (field) {
-      setEditingField(field)
-      setFieldForm({
-        nome: field.nome,
-        informacao: field.informacao,
-        tipo: field.tipo,
-        opcoes: field.opcoes || []
-      })
-    } else {
-      setEditingField(null)
-      setFieldForm({ nome: '', informacao: '', tipo: 'text', opcoes: [] })
-    }
-    setNewOpcao('')
-    setShowFieldModal(true)
-  }
-
-  const handleCloseFieldModal = () => {
-    setShowFieldModal(false)
-    setEditingField(null)
-    setFieldForm({ nome: '', informacao: '', tipo: 'text', opcoes: [] })
-    setNewOpcao('')
-  }
-
-  const handleSaveField = async () => {
-    if (!fieldForm.nome.trim()) {
-      toast.error('Nome do campo é obrigatório!')
-      return
-    }
-
-    if (fieldForm.tipo === 'select' && fieldForm.opcoes.length === 0) {
-      toast.error('Adicione pelo menos uma opção para o campo de seleção!')
-      return
-    }
-
-    try {
-      if (editingField) {
-        // Atualizar campo existente no banco
-        const { error } = await supabase
-          .from('product_custom_fields')
-          .update({
-            field_label: fieldForm.nome,
-            field_default: fieldForm.informacao,
-            field_type: fieldForm.tipo,
-            field_options: fieldForm.tipo === 'select' ? fieldForm.opcoes : null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingField.id)
-          .eq('tenant_id', tenantId)
-        
-        if (error) throw error
-        
-        // Atualizar estado local
-        setCustomFields(prev => 
-          prev.map(f => f.id === editingField.id 
-            ? { ...f, nome: fieldForm.nome, informacao: fieldForm.informacao, tipo: fieldForm.tipo, opcoes: fieldForm.opcoes }
-            : f
-          )
-        )
-        toast.success('Campo atualizado!')
-      } else {
-        // Criar novo campo no banco
-        const { data, error } = await supabase
-          .from('product_custom_fields')
-          .insert({
-            tenant_id: tenantId,
-            field_key: `field_${Date.now()}`,
-            field_label: fieldForm.nome,
-            field_type: fieldForm.tipo,
-            field_default: fieldForm.informacao,
-            field_options: fieldForm.tipo === 'select' ? fieldForm.opcoes : null,
-            active: true,
-            display_order: customFields.length
-          })
-          .select()
-        
-        if (error) throw error
-        
-        if (data && data[0]) {
-          const newField: CustomField = {
-            id: data[0].id,
-            nome: fieldForm.nome,
-            informacao: fieldForm.informacao,
-            tipo: fieldForm.tipo,
-            opcoes: fieldForm.opcoes
-          }
-          setCustomFields(prev => [...prev, newField])
-          toast.success('Campo criado!')
-        }
-      }
-
-      handleCloseFieldModal()
-    } catch (error) {
-      console.error('Erro ao salvar campo:', error)
-      toast.error('Erro ao salvar campo')
-    }
-  }
-
-  const handleDeleteField = async (fieldId: string) => {
-    try {
-      const { error } = await supabase
-        .from('product_custom_fields')
-        .update({ active: false })
-        .eq('id', fieldId)
-        .eq('tenant_id', tenantId)
-      
-      if (error) throw error
-      
-      setCustomFields(prev => prev.filter(f => f.id !== fieldId))
-      toast.success('Campo removido!')
     } catch (err) {
-      console.error('Erro ao remover campo:', err)
-      toast.error('Erro ao remover campo')
+      console.error('Erro:', err)
+      toast.error('Erro ao adicionar')
     }
-  }
+  }, [modalAddValue, tenantId, modalAddType, refreshFiltroOptions])
 
-  const handleAddOpcao = () => {
-    if (!newOpcao.trim()) {
-      toast.error('Digite uma opção!')
-      return
+  useEffect(() => {
+    refreshFiltroOptions()
+  }, [refreshFiltroOptions])
+
+  useEffect(() => {
+    async function fetchImovel() {
+      if (!tenantId || !id) return
+      setLoading(true)
+      
+      const { data, error } = await supabase
+        .from('produtos')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .eq('id', id)
+        .single()
+      
+      if (error) {
+        toast.error('Erro ao carregar imóvel')
+        setLoading(false)
+        return
+      }
+      
+      if (data) {
+        setTitulo(data.nome || '')
+        setDescricao(data.descricao || '')
+        setValor(data.price ? String(data.price) : (data.preco ? String(data.preco) : ''))
+        setTipo(data.tipo || 'apartamento')
+        setFinalidade(data.finalidade || 'venda')
+        setAreaTotal(data.area_total ? String(data.area_total) : '')
+        setAreaConstruida(data.area_construida ? String(data.area_construida) : '')
+        setQuartos(data.quartos ? String(data.quartos) : '')
+        setBanheiros(data.banheiros ? String(data.banheiros) : '')
+        setVagasGaragem(data.vagas_garagem ? String(data.vagas_garagem) : '')
+        setEndereco(data.endereco || '')
+        setBairro(data.bairro || '')
+        setCidade(data.cidade || '')
+        setCep(data.cep || '')
+        setDestaque(Boolean(data.destaque))
+        setAtivo(data.ativo !== false)
+        setTags(data.tags ? data.tags.join(', ') : '')
+        setCapa(data.capa_url || null)
+        setGaleria((data.galeria as string[]) || [])
+        setArquivos((data.anexos as string[]) || [])
+        
+        // Carregar filtros se existirem
+        if (data.filtros) {
+          const filtros = data.filtros as ProdutoFiltros
+          setProdutoFiltros({
+            incorporadora: filtros.incorporadora || '',
+            empreendimento: filtros.empreendimento || '',
+            fase: filtros.fase || '',
+            regiao: filtros.regiao || '',
+            bairro: filtros.bairro || '',
+            endereco: filtros.endereco || '',
+            preco_min: filtros.preco_min ? (String(filtros.preco_min)) : '',
+            metragem_min: filtros.metragem_min ? String(filtros.metragem_min) : '',
+            metragem_max: filtros.metragem_max ? String(filtros.metragem_max) : '',
+            entrega: filtros.entrega || '',
+            vaga: filtros.vaga ? String(filtros.vaga) : '',
+            tipologia: filtros.tipologia || [],
+            modalidade: filtros.modalidade || [],
+            financiamento_incorporadora: filtros.financiamento_incorporadora !== undefined 
+              ? Boolean(filtros.financiamento_incorporadora)
+              : false,
+            decorado: filtros.decorado !== undefined 
+              ? Boolean(filtros.decorado)
+              : false,
+          })
+        }
+      }
+      setLoading(false)
     }
-    setFieldForm(prev => ({
-      ...prev,
-      opcoes: [...prev.opcoes, newOpcao.trim()]
-    }))
-    setNewOpcao('')
-  }
+    
+    fetchImovel()
+  }, [id, tenantId, user?.id])
 
-  const handleRemoveOpcao = (index: number) => {
-    setFieldForm(prev => ({
-      ...prev,
-      opcoes: prev.opcoes.filter((_, i) => i !== index)
-    }))
-  }
-
-
-
-  const handleSalvar = async (e: React.FormEvent) => {
+  async function handleSalvar(e: React.FormEvent) {
     e.preventDefault()
     
-    if (!titulo.trim()) {
-      toast.error('Nome do produto é obrigatório')
-      return
-    }
-
     if (!id) {
       toast.error('ID do produto não encontrado')
+      setLoading(false)
+      return
+    }
+    
+    // Validar que as URLs não são blob URLs
+    if (capa?.startsWith('blob:')) {
+      toast.error('Finalize o upload da imagem de capa antes de salvar')
+      setLoading(false)
       return
     }
 
-    setSaving(true)
-
-    try {
-      const updateData = {
-        nome: titulo,
-        descricao: descricao || null,
-        valor: valor ? Number(valor) : null,
-        capa_url: capa,
-        galeria: galeria.length > 0 ? galeria : null,
-        anexos: anexos.length > 0 ? anexos : null,
-        categoria: categoria || null,
-        filtros: customFieldValues // ✅ Salvar campos personalizados no campo filtros
+    for (const url of galeria) {
+      if (url.startsWith('blob:')) {
+        toast.error('Finalize o upload de todas as imagens da galeria antes de salvar')
+        setLoading(false)
+        return
       }
-
-      const { error } = await supabase
-        .from('produtos')
-        .update(updateData)
-        .eq('id', id)
-        .eq('tenant_id', tenantId)
-
-      if (error) throw error
-
-      toast.success('Produto atualizado com sucesso!')
-      navigate(`/app/produtos/${id}`)
-    } catch (err) {
-      console.error('Erro ao atualizar produto:', err)
-      toast.error('Erro ao atualizar produto')
-    } finally {
-      setSaving(false)
     }
+
+    setLoading(true)
+    
+    const filtrosPayload = normalizeProdutoFiltros(produtoFiltros)
+    const userId = user?.id
+
+    if (!userId) {
+      toast.error('Usuário não autenticado')
+      setLoading(false)
+      return
+    }
+
+    const updateData = {
+      nome: titulo,
+      descricao,
+      preco: Number(valor),
+      tipo: tipo,
+      finalidade: finalidade,
+      area_total: areaTotal ? Number(areaTotal) : null,
+      area_construida: areaConstruida ? Number(areaConstruida) : null,
+      quartos: quartos ? Number(quartos) : null,
+      banheiros: banheiros ? Number(banheiros) : null,
+      vagas_garagem: vagasGaragem ? Number(vagasGaragem) : null,
+      endereco: endereco || null,
+      bairro: bairro || null,
+      cidade: cidade || null,
+      cep: cep || null,
+      destaque,
+      ativo,
+      tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+      capa_url: capa,
+      galeria: galeria.length > 0 ? galeria : null,
+      anexos: arquivos.length > 0 ? arquivos : null,
+      filtros: filtrosPayload,
+    }
+    
+    const { success, error } = await updateProdutoRobust(id, tenantId, updateData)
+    
+    if (!success) {
+      toast.error('Erro ao salvar: ' + (error instanceof Error ? error.message : 'Erro desconhecido'))
+      setLoading(false)
+      return
+    }
+    toast.success('Imóvel atualizado!')
+    navigate(`/produtos/${id}`)
   }
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-cyan-500"></div>
-      </div>
-    )
+  async function handleToggleStatus() {
+    const newAtivo = !ativo
+    setAtivo(newAtivo)
+    
+    try {
+      const { error } = await supabase
+        .from('produtos')
+        .update({ ativo: newAtivo })
+        .eq('id', id)
+      
+      if (error) {
+        toast.error('Erro ao atualizar status: ' + error.message)
+        // Reverter estado
+        setAtivo(ativo)
+        return
+      }
+      
+      toast.success(`Imóvel ${newAtivo ? 'ativado' : 'desativado'} com sucesso!`)
+    } catch {
+      toast.error('Erro ao atualizar status')
+      setAtivo(ativo)
+    }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl w-full max-w-7xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => navigate(`/produtos/${id}`)} />
+      <div className="absolute inset-2 md:inset-4 rounded-2xl bg-slate-900/98 border border-white/10 shadow-2xl max-w-[98vw] max-h-[96vh] mx-auto overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="sticky top-0 flex items-center justify-between p-6 border-b border-gray-200 bg-white/95 backdrop-blur">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Editar Produto</h2>
-            <p className="text-sm text-gray-600 mt-0.5">Atualize as informações do seu produto</p>
+        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 text-white flex items-center justify-center border border-white/10">
+              <Building className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">Editar Imóvel</h1>
+              <p className="text-sm text-gray-400">Atualize as informações do imóvel</p>
+            </div>
           </div>
-          <button
-            onClick={() => navigate('/produtos')}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleToggleStatus}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition-all shadow-lg border ${
+                ativo
+                  ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white border-emerald-400/20 hover:from-emerald-600 hover:to-emerald-700 shadow-emerald-500/20'
+                  : 'bg-gradient-to-r from-rose-500 to-rose-600 text-white border-rose-400/20 hover:from-rose-600 hover:to-rose-700 shadow-rose-500/20'
+              }`}
+              title={ativo ? 'Desativar imóvel' : 'Ativar imóvel'}
+            >
+              <Power className="w-4 h-4" />
+              {ativo ? 'Ativo' : 'Inativo'}
+            </button>
+            <button className="p-2.5 rounded-xl hover:bg-white/5 border border-white/10 transition" onClick={() => navigate(`/produtos/${id}`)}>
+              <X className="w-5 h-5 text-slate-200" />
+            </button>
+          </div>
         </div>
 
-        {/* Content */}
-        <form id="edit-form" onSubmit={handleSalvar} className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Coluna 1: Básico */}
-            <div className="space-y-4">
-              <div className="pb-2 border-b border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Informações Básicas</h3>
-              </div>
-
-              {/* Grid para campos principais */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-3">
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                    Título *
-                  </label>
-                  <input
-                    value={titulo}
-                    onChange={e => setTitulo(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm transition-colors"
-                    placeholder="Nome do produto"
-                    required
-                  />
-                </div>
-
+        <div className="flex-1 overflow-y-auto flex items-center justify-start">
+          <form id="edit-form" onSubmit={handleSalvar} className="p-6 w-full">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+              {/* Coluna 1: Dados do Imóvel */}
+              <div className="bg-slate-800/50 rounded-xl p-6 border border-white/10 space-y-6">
+                {/* Seção Identificação */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                    Valor (R$)
-                  </label>
-                  <input
-                    type="number"
-                    value={valor}
-                    onChange={e => setValor(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm transition-colors"
-                    placeholder="0.00"
-                    step="0.01"
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2.5">Título *</label>
+                    <input 
+                      value={titulo} 
+                      onChange={e => setTitulo(e.target.value)} 
+                      className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-sm"
+                      placeholder="Apartamento Luxo" 
+                    />
+                  </div>
                 </div>
 
+                {/* Seção Classificação */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                    Categoria
-                  </label>
-                  <select
-                    value={categoria}
-                    onChange={e => setCategoria(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm transition-colors"
-                  >
-                    <option value="">Selecione uma categoria</option>
-                    <option value="servico">Serviço</option>
-                    <option value="produto">Produto</option>
-                    <option value="consulta">Consulta</option>
-                    <option value="pacote">Pacote</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                  Descrição
-                </label>
-                <textarea
-                  value={descricao}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescricao(e.target.value)}
-                  rows={4}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm transition-colors resize-none"
-                  placeholder="Descreva brevemente o produto..."
-                />
-              </div>
-
-              {/* Campos Personalizados */}
-              <div>
-                <div className="pb-2 border-b border-gray-200 mb-4">
-                  <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Campos Personalizados</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">Tipo</label>
+                      <select 
+                        value={tipo} 
+                        onChange={e => setTipo(e.target.value as ImovelTipo)} 
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-sm [&>option]:bg-slate-800"
+                      >
+                        <option value="apartamento">Apto</option>
+                        <option value="casa">Casa</option>
+                        <option value="sobrado">Sobrado</option>
+                        <option value="cobertura">Cobertura</option>
+                        <option value="terreno">Terreno</option>
+                        <option value="comercial">Comercial</option>
+                        <option value="industrial">Industrial</option>
+                        <option value="rural">Rural</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">Finalidade</label>
+                      <select 
+                        value={finalidade} 
+                        onChange={e => setFinalidade(e.target.value as ImovelFinalidade)} 
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-sm [&>option]:bg-slate-800"
+                      >
+                        <option value="venda">Venda</option>
+                        <option value="aluguel">Aluguel</option>
+                        <option value="venda_aluguel">Ambos</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Grid de campos personalizados */}
-                <div className="grid grid-cols-2 gap-3">
-                  {customFields.map((field) => (
-                    <div key={field.id} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                          {field.nome}
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenFieldModal(field)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <Edit2 className="w-3 h-3" />
-                        </button>
+                {/* Seção Dimensões */}
+                <div>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">Área Total</label>
+                      <input 
+                        value={areaTotal} 
+                        onChange={e => setAreaTotal(e.target.value)} 
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-sm"
+                        placeholder="m²"
+                        type="number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">Construída</label>
+                      <input 
+                        value={areaConstruida} 
+                        onChange={e => setAreaConstruida(e.target.value)} 
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-sm"
+                        placeholder="m²"
+                        type="number"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">🛏️ Quartos</label>
+                      <input 
+                        value={quartos} 
+                        onChange={e => setQuartos(e.target.value)} 
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-sm"
+                        type="number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">🚿 Banhos</label>
+                      <input 
+                        value={banheiros} 
+                        onChange={e => setBanheiros(e.target.value)} 
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-sm"
+                        type="number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">🚗 Vagas</label>
+                      <input 
+                        value={vagasGaragem} 
+                        onChange={e => setVagasGaragem(e.target.value)} 
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-sm"
+                        type="number"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seção Localização */}
+                <div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">Endereço</label>
+                      <input 
+                        value={endereco} 
+                        onChange={e => setEndereco(e.target.value)} 
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-sm"
+                        placeholder="Rua, número, complemento"
+                      />
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2.5">Bairro</label>
+                        <input 
+                          value={bairro} 
+                          onChange={e => setBairro(e.target.value)} 
+                          className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-sm"
+                          placeholder="Bairro"
+                        />
                       </div>
-                      
-                      {field.tipo === 'text' ? (
-                        <input
-                          type="text"
-                          defaultValue={customFieldValues[field.id] || field.informacao}
-                          onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))}
-                          className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm transition-colors"
-                          placeholder={field.informacao || 'Digite aqui...'}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2.5">Cidade</label>
+                        <input 
+                          value={cidade} 
+                          onChange={e => setCidade(e.target.value)} 
+                          className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-sm"
+                          placeholder="Cidade"
                         />
-                      ) : field.tipo === 'number' ? (
-                        <input
-                          type="number"
-                          defaultValue={customFieldValues[field.id] || field.informacao}
-                          onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))}
-                          className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm transition-colors"
-                          placeholder={field.informacao || 'Digite aqui...'}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2.5">CEP</label>
+                        <input 
+                          value={cep} 
+                          onChange={e => setCep(e.target.value)} 
+                          className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 text-sm"
+                          placeholder="CEP"
                         />
-                      ) : field.tipo === 'date' ? (
-                        <input
-                          type="date"
-                          defaultValue={customFieldValues[field.id] || field.informacao}
-                          onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))}
-                          className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm transition-colors"
-                        />
-                      ) : field.tipo === 'select' && field.opcoes ? (
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Coluna 2: Filtros de Busca */}
+              <div className="bg-slate-800/50 rounded-xl p-6 border border-white/10 space-y-6">
+                {/* Seção Empreendimento */}
+                <div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">Incorporadora</label>
+                      <div className="flex gap-2">
                         <select
-                          defaultValue={customFieldValues[field.id] || field.informacao}
-                          onChange={(e) => setCustomFieldValues(prev => ({ ...prev, [field.id]: e.target.value }))}
-                          className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm transition-colors"
+                          value={produtoFiltros.incorporadora}
+                          onChange={(e) => updateProdutoFiltro('incorporadora', e.target.value)}
+                          className="flex-1 px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/40 text-sm [&>option]:bg-slate-800"
                         >
                           <option value="">Selecione...</option>
-                          {field.opcoes.map((opcao, idx) => (
-                            <option key={idx} value={opcao}>{opcao}</option>
+                          {filtroOptions.incorporadoras.map((value) => (
+                            <option key={value} value={value}>{value}</option>
                           ))}
                         </select>
-                      ) : null}
-                    </div>
-                  ))}
-
-                  {/* Botão adicionar novo campo */}
-                  <button
-                    type="button"
-                    onClick={() => handleOpenFieldModal()}
-                    className="h-24 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all flex flex-col items-center justify-center gap-2 group"
-                  >
-                    <Plus className="w-5 h-5 text-gray-400 group-hover:text-blue-500" />
-                    <span className="text-xs text-gray-500 group-hover:text-blue-600 font-medium">
-                      Adicionar novo Campo
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Coluna 2: Mídia */}
-            <div className="space-y-4">
-              <div className="pb-2 border-b border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Mídia</h3>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-3">
-                  Capa Principal
-                </label>
-                <div className="w-full h-48 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center relative overflow-hidden">
-                  {capa ? (
-                    <>
-                      <img src={capa} alt="Capa" className="absolute inset-0 w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => setCapa(null)}
-                        className="absolute top-2 right-2 p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition shadow-lg"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={onPickCapa}
-                      className="flex flex-col items-center gap-2 text-gray-400 hover:text-blue-500"
-                    >
-                      <UploadCloud className="w-8 h-8" />
-                      <span className="text-sm font-medium">Clique para enviar</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                    Galeria ({galeria.length})
-                  </label>
-                  <button
-                    type="button"
-                    onClick={onPickGaleria}
-                    className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded text-xs font-medium transition-colors border border-blue-200"
-                  >
-                    + Adicionar
-                  </button>
-                </div>
-
-                {galeria.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    {galeria.map((img, i) => (
-                      <div key={i} className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 bg-gray-50">
-                        <img src={img} alt={`Galeria ${i}`} className="w-full h-full object-cover" />
                         <button
                           type="button"
-                          onClick={() => setGaleria(galeria.filter((_, idx) => idx !== i))}
-                          className="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 text-white rounded-md transition"
+                          onClick={handleAddIncorporadora}
+                          className="px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center transition-colors"
+                          title="Adicionar incorporadora"
                         >
-                          <X className="w-3 h-3" />
+                          <Plus className="w-5 h-5" />
                         </button>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500 text-sm">
-                    Nenhuma imagem na galeria
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                    Anexos ({anexos.length})
-                  </label>
-                  <button
-                    type="button"
-                    onClick={onPickAnexos}
-                    className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded text-xs font-medium transition-colors border border-blue-200"
-                  >
-                    + Adicionar
-                  </button>
-                </div>
-
-                {anexos.length > 0 ? (
-                  <div className="space-y-2">
-                    {anexos.map((url, i) => {
-                      const fileName = url.split('/').pop() || `Arquivo ${i + 1}`
-                      return (
-                        <div key={i} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-300 rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 bg-blue-100 rounded flex items-center justify-center">
-                              <span className="text-xs text-blue-600">📄</span>
-                            </div>
-                            <span className="flex-1 text-sm text-gray-700 font-medium">{fileName}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setAnexos(anexos.filter((_, idx) => idx !== i))}
-                            className="text-red-500 hover:text-red-700 text-sm"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-gray-500 text-sm">
-                    Nenhum documento anexado
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </form>
-
-        {/* Footer */}
-        <div className="sticky bottom-0 p-6 border-t border-gray-200 bg-white/95 backdrop-blur flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => navigate('/produtos')}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800 text-sm font-medium transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            form="edit-form"
-            type="submit"
-            disabled={saving}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-semibold rounded-lg transition-colors disabled:cursor-not-allowed"
-          >
-            {saving ? 'Salvando...' : 'Salvar Produto'}
-          </button>
-        </div>
-      </div>
-
-      {/* Modal de Criação/Edição de Campo Personalizado */}
-      {showFieldModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-2xl w-full max-w-md">
-            {/* Header do Modal */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="text-lg font-bold text-gray-900">
-                {editingField ? t18n('products.customFields.editField') : t18n('products.customFields.newField')}
-              </h3>
-              <button
-                onClick={handleCloseFieldModal}
-                className="p-1 rounded hover:bg-gray-100 transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            {/* Body do Modal */}
-            <div className="p-4 space-y-4">
-              {/* ID do campo (somente ao editar) */}
-              {editingField && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                    {t18n('products.customFields.fieldId')}
-                  </label>
-                  <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-600 text-sm font-mono">
-                    {editingField.id}
-                  </div>
-                </div>
-              )}
-
-              {/* Nome */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                  {t18n('products.customFields.nameRequired')}
-                </label>
-                <input
-                  type="text"
-                  value={fieldForm.nome}
-                  onChange={e => setFieldForm(prev => ({ ...prev, nome: e.target.value }))}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm"
-                  placeholder={t18n('products.customFields.namePlaceholder')}
-                />
-              </div>
-
-              {/* Informação, Data Padrão ou Seleção Padrão */}
-              {fieldForm.tipo === 'date' ? (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                    {t18n('products.customFields.defaultDate')}
-                  </label>
-                  <input
-                    type="date"
-                    value={fieldForm.informacao}
-                    onChange={e => setFieldForm(prev => ({ ...prev, informacao: e.target.value }))}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm"
-                  />
-                </div>
-              ) : fieldForm.tipo === 'select' && fieldForm.opcoes.length > 0 ? (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                    {t18n('products.customFields.defaultValue')}
-                  </label>
-                  <select
-                    value={fieldForm.informacao}
-                    onChange={e => setFieldForm(prev => ({ ...prev, informacao: e.target.value }))}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm"
-                  >
-                    <option value="">{t18n('products.customFields.noDefaultValue')}</option>
-                    {fieldForm.opcoes.map((opcao, idx) => (
-                      <option key={idx} value={opcao}>{opcao}</option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                    {t18n('products.customFields.information')}
-                  </label>
-                  <textarea
-                    value={fieldForm.informacao}
-                    onChange={e => setFieldForm(prev => ({ ...prev, informacao: e.target.value }))}
-                    rows={3}
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm resize-none"
-                    placeholder={t18n('products.customFields.informationPlaceholder')}
-                  />
-                </div>
-              )}
-
-              {/* Tipo de Campo */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                  {t18n('products.customFields.fieldType')}
-                </label>
-                <select
-                  value={fieldForm.tipo}
-                  onChange={e => setFieldForm(prev => ({ ...prev, tipo: e.target.value as any }))}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm"
-                >
-                  <option value="text">{t18n('products.customFields.typeText')}</option>
-                  <option value="number">{t18n('products.customFields.typeNumber')}</option>
-                  <option value="date">{t18n('products.customFields.typeDate')}</option>
-                  <option value="select">{t18n('products.customFields.typeSelect')}</option>
-                </select>
-              </div>
-
-              {/* Opções (somente para tipo select) */}
-              {fieldForm.tipo === 'select' && (
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                    {t18n('products.customFields.optionsRequired')}
-                  </label>
-                  
-                  {/* Lista de opções */}
-                  {fieldForm.opcoes.length > 0 && (
-                    <div className="space-y-1 mb-2">
-                      {fieldForm.opcoes.map((opcao, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
-                          <span className="text-sm text-gray-700">{opcao}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveOpcao(idx)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
                     </div>
-                  )}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">Empreendimento</label>
+                      <input
+                        type="text"
+                        placeholder="Nome do empreendimento"
+                        value={produtoFiltros.empreendimento}
+                        onChange={(e) => updateProdutoFiltro('empreendimento', e.target.value)}
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
 
-                  {/* Input para adicionar nova opção */}
-                  <div className="flex gap-2">
+                {/* Seção Localização */}
+                <div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">Referência</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={produtoFiltros.regiao}
+                          onChange={(e) => updateProdutoFiltro('regiao', e.target.value)}
+                          className="flex-1 px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/40 text-sm [&>option]:bg-slate-800"
+                        >
+                          <option value="">Selecione...</option>
+                          {filtroOptions.regioes.map((value) => (
+                            <option key={value} value={value}>{value}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={handleAddRegiao}
+                          className="px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center transition-colors"
+                          title="Adicionar referência"
+                        >
+                          <Plus className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">Estado</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={produtoFiltros.bairro}
+                          onChange={(e) => updateProdutoFiltro('bairro', e.target.value)}
+                          className="flex-1 px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/40 text-sm [&>option]:bg-slate-800"
+                        >
+                          <option value="">Selecione...</option>
+                          {filtroOptions.bairros.map((value) => (
+                            <option key={value} value={value}>{value}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={handleAddBairro}
+                          className="px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center transition-colors"
+                          title="Adicionar estado"
+                        >
+                          <Plus className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seção Preço */}
+                <div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2.5">Preço Mínimo</label>
                     <input
-                      type="text"
-                      value={newOpcao}
-                      onChange={e => setNewOpcao(e.target.value)}
-                      onKeyPress={e => e.key === 'Enter' && (e.preventDefault(), handleAddOpcao())}
-                      className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm"
-                      placeholder={t18n('products.customFields.optionPlaceholder')}
+                      type="number"
+                      placeholder="R$ 0"
+                      value={produtoFiltros.preco_min}
+                      onChange={(e) => updateProdutoFiltro('preco_min', e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/40 text-sm"
                     />
+                  </div>
+                </div>
+
+                {/* Seção Metragem */}
+                <div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">Área Mínima (m2)</label>
+                      <input
+                        type="number"
+                        placeholder="m²"
+                        value={produtoFiltros.metragem_min}
+                        onChange={(e) => updateProdutoFiltro('metragem_min', e.target.value)}
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/40 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">Área Máxima (m2)</label>
+                      <input
+                        type="number"
+                        placeholder="m²"
+                        value={produtoFiltros.metragem_max}
+                        onChange={(e) => updateProdutoFiltro('metragem_max', e.target.value)}
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/40 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seção Obras */}
+                <div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">Fase</label>
+                      <select
+                        value={produtoFiltros.fase}
+                        onChange={(e) => updateProdutoFiltro('fase', e.target.value)}
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/40 text-sm [&>option]:bg-slate-800"
+                      >
+                        <option value="">Selecione...</option>
+                        <option value="LANÇAMENTO">🚀 Lançamento</option>
+                        <option value="EM OBRAS">👷 Em Obras</option>
+                        <option value="PRONTO">✅ Pronto</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">Data de Entrega</label>
+                      <input
+                        type="date"
+                        value={produtoFiltros.entrega}
+                        onChange={(e) => updateProdutoFiltro('entrega', e.target.value)}
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/40 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seção Modalidade */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2.5">Modalidade</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: R2V, HMP, HIS2, N.R."
+                    value={produtoFiltros.modalidade?.join(', ') || ''}
+                    onChange={(e) => {
+                      const values = e.target.value.split(',').map(v => v.trim()).filter(Boolean)
+                      updateProdutoFiltro('modalidade', values)
+                    }}
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40 text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Separe múltiplas modalidades por vírgula</p>
+                </div>
+
+                {/* Seção Ofertas */}
+                <div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">Financiamento</label>
+                      <select
+                        value={produtoFiltros.financiamento_incorporadora ? 'true' : 'false'}
+                        onChange={(e) => updateProdutoFiltro('financiamento_incorporadora', e.target.value === 'true')}
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/40 text-sm [&>option]:bg-slate-800"
+                      >
+                        <option value="false">❌ Não</option>
+                        <option value="true">✅ Sim</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2.5">Decorado</label>
+                      <select
+                        value={produtoFiltros.decorado ? 'true' : 'false'}
+                        onChange={(e) => updateProdutoFiltro('decorado', e.target.value === 'true')}
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500/40 text-sm [&>option]:bg-slate-800"
+                      >
+                        <option value="false">❌ Não</option>
+                        <option value="true">✨ Sim</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Coluna 3: Mídia */}
+              <div className="bg-slate-800/50 rounded-xl p-6 border border-white/10 space-y-6">
+                {/* Seção Imagens */}
+                <div>
+                  
+                  {/* Capa */}
+                  <div className="mb-5">
+                    <label className="text-sm font-medium text-gray-300 mb-2.5 block">Capa Principal</label>
+                    <div 
+                      onClick={onPickCapa}
+                      className="border-2 border-dashed border-white/20 rounded-lg p-4 hover:border-emerald-400/50 hover:bg-white/5 transition cursor-pointer"
+                    >
+                      {capa ? (
+                        <div className="relative">
+                          <img src={capa} alt="Capa" className="w-full h-24 object-cover rounded-lg" />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setCapa(null)
+                            }}
+                            className="absolute top-2 right-2 w-6 h-6 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-sm"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-center py-4">
+                          <UploadCloud className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-400">Clique para enviar capa</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Galeria */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2.5">
+                      <label className="text-sm font-medium text-gray-300">Galeria ({galeria.length})</label>
+                      <button
+                        type="button"
+                        onClick={onPickGaleria}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
+                      >
+                        + Adicionar
+                      </button>
+                    </div>
+                    {galeria.length > 0 ? (
+                      <div className="grid grid-cols-4 gap-2 max-h-28 overflow-y-auto">
+                        {galeria.map((url, idx) => (
+                          <div key={idx} className="relative group">
+                            <img src={url} alt={`Gal ${idx + 1}`} className="w-full h-20 object-cover rounded-lg" />
+                            <button
+                              type="button"
+                              onClick={() => removeFromGaleria(idx)}
+                              className="absolute top-1 right-1 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-xs"
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-3 border-2 border-dashed border-white/20 rounded-lg text-sm text-gray-400">
+                        Nenhuma imagem
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Seção Documentos */}
+                <div>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <label className="text-sm font-medium text-gray-300">Arquivos ({arquivos.length})</label>
                     <button
                       type="button"
-                      onClick={handleAddOpcao}
-                      className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-sm font-medium transition-colors border border-blue-200"
+                      onClick={onPickArquivos}
+                      className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium"
                     >
-                      <Plus className="w-4 h-4" />
+                      + Adicionar
                     </button>
                   </div>
+                  {arquivos.length > 0 ? (
+                    <div className="space-y-2 max-h-28 overflow-y-auto">
+                      {arquivos.map((url, idx) => {
+                        const fileName = url.split('/').pop()?.slice(0, 20) || `Arq ${idx + 1}`
+                        return (
+                          <div key={idx} className="flex items-center gap-2 px-3 py-2.5 bg-white/5 rounded-lg group">
+                            <span className="text-lg">{getFileIcon(url)}</span>
+                            <span className="text-gray-300 truncate flex-1 text-sm">{fileName}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeFromArquivos(idx)}
+                              className="w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-xs"
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-3 border-2 border-dashed border-white/20 rounded-lg text-sm text-gray-400">
+                      Nenhum arquivo
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Footer do Modal */}
-            <div className="flex justify-between items-center p-4 border-t border-gray-200">
-              {editingField && (
+                {/* Seção Tags e Destaque */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-4">Tags e Destaque</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <input 
+                        value={tags} 
+                        onChange={e => setTags(e.target.value)} 
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 text-sm"
+                        placeholder="Ex: luxo, piscina, garagem..." 
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-3 px-4 py-2.5 bg-white/5 rounded-lg border border-white/10 h-full">
+                        <input
+                          type="checkbox"
+                          id="destaque"
+                          checked={destaque}
+                          onChange={(e) => setDestaque(e.target.checked)}
+                          className="w-5 h-5 rounded border-white/20 bg-white/5 text-emerald-500 focus:ring-emerald-500/40 cursor-pointer flex-shrink-0"
+                        />
+                        <label htmlFor="destaque" className="text-sm text-gray-300 cursor-pointer">
+                          Imóvel em Destaque?
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </form>
+        </div>
+
+        {/* Modal de Adicionar Opção */}
+        {modalAddOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setModalAddOpen(false)} />
+            <div className="absolute bg-slate-900/98 border border-white/10 rounded-2xl p-6 shadow-2xl w-96 max-w-[90vw]">
+              <h2 className="text-lg font-bold text-white mb-4">
+                {modalAddType === 'incorporadora' && 'Adicionar Incorporadora'}
+                {modalAddType === 'regiao' && 'Adicionar Referência'}
+                {modalAddType === 'bairro' && 'Adicionar Estado'}
+              </h2>
+              <input
+                type="text"
+                value={modalAddValue}
+                onChange={(e) => setModalAddValue(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleConfirmAdd()}
+                placeholder={
+                  modalAddType === 'incorporadora' ? 'Ex: Construtora XYZ' :
+                  modalAddType === 'regiao' ? 'Ex: Centro' :
+                  'Ex: São Paulo'
+                }
+                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 mb-6"
+                autoFocus
+              />
+              <div className="flex gap-3 justify-end">
                 <button
                   type="button"
-                  onClick={() => {
-                    handleDeleteField(editingField.id)
-                    handleCloseFieldModal()
-                  }}
-                  className="px-4 py-2 text-red-600 hover:text-red-800 text-sm font-medium transition-colors"
+                  onClick={() => setModalAddOpen(false)}
+                  className="px-6 py-2 rounded-lg text-slate-300 hover:bg-white/5 border border-white/10 font-medium transition-all"
                 >
-                  {t18n('products.customFields.deleteField')}
+                  Cancelar
                 </button>
-              )}
-              <div className="flex gap-3 ml-auto">
                 <button
                   type="button"
-                  onClick={handleCloseFieldModal}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 text-sm font-medium transition-colors"
+                  onClick={handleConfirmAdd}
+                  disabled={!modalAddValue.trim()}
+                  className="px-6 py-2 rounded-lg text-white font-medium bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {t18n('products.customFields.cancel')}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveField}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
-                >
-                  {t18n('products.customFields.save')}
+                  Adicionar
                 </button>
               </div>
             </div>
           </div>
+        )}
+
+        {/* Footer */}
+        <div className="px-8 py-5 border-t border-white/10 flex justify-between gap-6 flex-shrink-0 bg-slate-800/30">
+          <div className="flex gap-4 ml-auto">
+            <button 
+              type="button"
+              onClick={() => navigate(`/imoveis/${id}`)}
+              className="px-8 py-3 rounded-lg text-slate-200 hover:bg-white/5 border border-white/10 font-semibold transition-all text-base"
+            >
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              form="edit-form"
+              disabled={loading}
+              className="px-8 py-3 rounded-lg text-white font-semibold transition-all shadow-lg hover:shadow-xl disabled:cursor-not-allowed text-base bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-60"
+            >
+              {loading ? '⏳ Salvando…' : '✅ Salvar Imóvel'}
+            </button>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }

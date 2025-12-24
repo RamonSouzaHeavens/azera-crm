@@ -8,6 +8,7 @@ import { LeadTimeline } from '../components/team/LeadTimeline';
 import { LeadAttachments } from '../components/team/LeadAttachments';
 import { LeadCustomFields } from '../components/team/LeadCustomFields';
 import { AddActivityModal } from '../components/team/AddActivityModal';
+import { LeadSalesTab } from '../components/team/LeadSalesTab';
 import { Plus, Edit3, Save, X, ChevronDown } from 'lucide-react';
 import { getTeamOverview } from '../services/equipeService';
 import toast from 'react-hot-toast';
@@ -68,6 +69,7 @@ const LeadDetails: React.FC = () => {
   const [origins, setOrigins] = useState<LeadOrigin[]>([]);
   const [lossReasons, setLossReasons] = useState<LeadLossReason[]>([]);
   const [teamMembers, setTeamMembers] = useState<{ id: string, name: string }[]>([]);
+  const [pipelineStages, setPipelineStages] = useState<Array<{ id?: string; key: string; label: string; color: string }>>([]);
 
   // Funções para adicionar opções
   const handleConfirmAdd = async () => {
@@ -299,6 +301,38 @@ const LeadDetails: React.FC = () => {
         if (lossReasonsError) throw lossReasonsError;
         setLossReasons(lossReasonsData || []);
 
+        // Carregar estágios do pipeline
+        try {
+          const { data: stagesData, error: stagesError } = await supabase
+            .from('pipeline_stages')
+            .select('*')
+            .eq('tenant_id', tenant.id)
+            .order('order', { ascending: true });
+
+          if (!stagesError && stagesData && stagesData.length > 0) {
+            setPipelineStages(stagesData.map((s: any) => ({
+              id: s.id,
+              key: s.key,
+              label: s.label,
+              color: s.color
+            })));
+          } else {
+            // Fallback: estágios padrão
+            setPipelineStages([
+              { key: 'lead', label: 'Lead', color: '#8B5CF6' },
+              { key: 'negociacao', label: 'Negociação', color: '#06B6D4' },
+              { key: 'fechado', label: 'Fechado', color: '#10B981' }
+            ]);
+          }
+        } catch (stagesError) {
+          console.warn('Erro ao carregar estágios do pipeline, usando padrão:', stagesError);
+          setPipelineStages([
+            { key: 'lead', label: 'Lead', color: '#8B5CF6' },
+            { key: 'negociacao', label: 'Negociação', color: '#06B6D4' },
+            { key: 'fechado', label: 'Fechado', color: '#10B981' }
+          ]);
+        }
+
         // Carregar campos personalizados
         // O componente LeadCustomFields gerencia isso internamente
       } catch (error) {
@@ -407,9 +441,7 @@ const LeadDetails: React.FC = () => {
   );
 
   return (
-    <div className="min-h-full p-6 bg-white dark:bg-[#0C1326] text-slate-900 dark:text-slate-200 flex flex-col">
-      {/* HUD glow grid background + overlay (mesma do Leads) */}
-      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.08),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(139,92,246,0.06),transparent_40%),radial-gradient(circle_at_50%_100%,rgba(16,185,129,0.06),transparent_45%)]" />
+    <div className="min-h-full p-6 bg-background text-slate-900 dark:text-slate-200 flex flex-col">
 
       <main className="relative flex-1 w-full px-3.5 sm:px-4 py-3.5 sm:py-6 overflow-y-auto">
         <div className="w-full sm:max-w-7xl sm:mx-auto space-y-6">
@@ -560,16 +592,14 @@ const LeadDetails: React.FC = () => {
                     onChange={(e) => setEditedLead(prev => ({ ...prev, status: e.target.value }))}
                     className="w-full px-3 py-2 rounded-lg bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
                   >
-                    <option value="novo">Novo</option>
-                    <option value="contatado">Contatado</option>
-                    <option value="qualificado">Qualificado</option>
-                    <option value="proposta">Proposta</option>
-                    <option value="negociacao">Negociação</option>
-                    <option value="fechado">Fechado</option>
-                    <option value="perdido">Perdido</option>
+                    {pipelineStages.map(stage => (
+                      <option key={stage.key} value={stage.key}>{stage.label}</option>
+                    ))}
                   </select>
                 ) : (
-                  <p className="text-slate-600 dark:text-slate-400">{lead.status}</p>
+                  <p className="text-slate-600 dark:text-slate-400">
+                    {pipelineStages.find(s => s.key === lead.status)?.label || lead.status}
+                  </p>
                 )}
               </div>
 
@@ -714,6 +744,11 @@ const LeadDetails: React.FC = () => {
                 )
               )}
             </div>
+          </div>
+
+          <div className="rounded-lg p-5 bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-4">Financeiro & Vendas</h2>
+            <LeadSalesTab leadId={lead.id} />
           </div>
 
           <div className="rounded-lg p-5 bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10">

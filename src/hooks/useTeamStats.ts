@@ -31,6 +31,17 @@ export interface TeamStats {
   // Contatos
   contatosFeitos: number
   contatosEstaSemana: number
+
+  // Métricas da Equipe Completa (Proprietário)
+  equipeLeadsFechados: number
+  equipeTaxaConversao: number
+  rankingMembros?: {
+    id: string
+    nome: string
+    leads: number
+    fechados: number
+    taxa: number
+  }[]
 }
 
 export interface TarefaResumida {
@@ -177,6 +188,31 @@ export function useTeamStats() {
       const leadsDoUsuarioEsteMesCount = leadsDoUsuarioEsteMes.length
       const progressoMeta = Math.round((leadsDoUsuarioEsteMesCount / metaMensal) * 100)
 
+      // Métricas da Equipe Completa
+      const equipeLeadsFechados = leadsData?.filter(l => l.status === 'fechado').length || 0
+      const equipeTaxaConversao = totalLeads > 0
+        ? Math.round((equipeLeadsFechados / totalLeads) * 100)
+        : 0
+
+      // Ranking de Membros
+      const rankingMembros = (membersData || []).map(m => {
+        const leadsDoMembro = leadsData?.filter(l => l.proprietario_id === m.id) || []
+        const fechadosDoMembro = leadsDoMembro.filter(l => l.status === 'fechado').length
+        const taxaMembro = leadsDoMembro.length > 0
+          ? Math.round((fechadosDoMembro / leadsDoMembro.length) * 100)
+          : 0
+
+        // Tentar achar o nome do membro (isso pode requerer outra query ou ser passado pela equipe)
+        // Como o memberships não tem nome, vamos usar o ID por enquanto ou esperar que o componente resolva
+        return {
+          id: m.id,
+          nome: 'Membro', // Placeholder, será resolvido no componente se necessário
+          leads: leadsDoMembro.length,
+          fechados: fechadosDoMembro,
+          taxa: taxaMembro
+        }
+      }).sort((a, b) => b.fechados - a.fechados || b.taxa - a.taxa)
+
       setStats({
         membrosAtivos,
         totalVendedores,
@@ -194,7 +230,10 @@ export function useTeamStats() {
         metaMensal,
         progressoMeta,
         contatosFeitos,
-        contatosEstaSemana
+        contatosEstaSemana,
+        equipeLeadsFechados,
+        equipeTaxaConversao,
+        rankingMembros
       })
 
       setTarefas(tarefasResumidas)

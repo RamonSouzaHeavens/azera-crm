@@ -708,7 +708,7 @@ export default function Tarefas() {
                           <div
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-                            className={`flex-1 overflow-y-auto p-3 space-y-3 transition-colors ${snapshot.isDraggingOver ? 'bg-indigo-500/5' : ''}`}
+                            className={`flex-1 overflow-y-auto p-3 space-y-3 transition-colors scrollbar-thin ${snapshot.isDraggingOver ? 'bg-indigo-500/5' : ''}`}
                           >
                             {byStatus(stage.key).map((t, index) => (
                               <Draggable key={t.id} draggableId={t.id} index={index}>

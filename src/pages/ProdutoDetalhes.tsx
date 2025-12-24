@@ -1,23 +1,33 @@
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { useState, useCallback, useEffect } from 'react'
-import { X, Edit3, FileText, Image as ImageIcon, Download } from 'lucide-react'
+import { Edit3, FileText, Download, ChevronLeft, Calendar, Tag, Layers, Hash, Globe, CheckCircle2, ImageIcon } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
+import { formatCurrency, type CurrencyCode, isValidCurrency, getCurrencyConfig } from '../lib/currency'
 
-function currencyBRL(value?: number | null): string {
-  if (!value && value !== 0) return 'R$ 0,00'
-  return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+// --- HELPERS ---
+function currencyBRL(value?: number | null, currency?: CurrencyCode | string): string {
+  if (!value && value !== 0) return '—'
+  const validCurrency = currency && isValidCurrency(currency) ? currency : 'BRL'
+  return formatCurrency(value, validCurrency)
 }
 
-function fmtDate(d?: string | null) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('pt-BR')
+function fmtDate(dateStr?: string | null) {
+  if (!dateStr) return '—'
+  return new Date(dateStr).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 const handleDownload = (url: string, fileName: string) => {
   const link = document.createElement('a')
   link.href = url
   link.download = fileName
+  link.target = '_blank'
   link.click()
 }
 
@@ -27,6 +37,7 @@ interface Produto {
   nome: string
   descricao: string | null
   valor: number | null
+  currency: CurrencyCode | null
   categoria: string | null
   destaque: boolean
   status: string | null
@@ -58,13 +69,13 @@ export default function ProdutoDetalhes() {
     if (!id || !tenantId) return
     try {
       setLoading(true)
-      
+
       console.log('🔍 [ProdutoDetalhes] Buscando produto:', { id, tenantId })
 
       const { data, error } = await supabase
         .from('produtos')
         .select(`
-          id, tenant_id, nome, descricao, valor, categoria,
+          id, tenant_id, nome, descricao, valor, currency, categoria,
           created_at, updated_at, capa_url, galeria, anexos,
           destaque, status
         `)
@@ -73,14 +84,14 @@ export default function ProdutoDetalhes() {
         .single()
 
       if (error) throw error
-      
+
       console.log('✅ [ProdutoDetalhes] Produto carregado:', data)
       setProduto(data)
 
       // Carregar todos os campos personalizados do tenant
       const { data: allFieldsData, error: allFieldsError } = await supabase
         .from('product_custom_fields')
-        .select('id, field_label, field_type, field_options, field_default')
+        .select('id, field_name, field_type, options, required')
         .eq('tenant_id', tenantId)
         .eq('active', true)
         .order('display_order', { ascending: true })
@@ -90,7 +101,7 @@ export default function ProdutoDetalhes() {
       // Carregar valores dos campos para este produto específico
       const { data: valuesData, error: valuesError } = await supabase
         .from('product_custom_field_values')
-        .select('custom_field_id, value_text, value_number, value_boolean, value_date, value_datetime, value_json')
+        .select('custom_field_id, value_text, value_number, value_boolean')
         .eq('produto_id', id)
 
       if (valuesError) throw valuesError
@@ -99,30 +110,29 @@ export default function ProdutoDetalhes() {
       const valuesMap = new Map()
       if (valuesData) {
         valuesData.forEach(item => {
-          // Determinar qual valor usar baseado no tipo
           let value = null
           if (item.value_text !== null) value = item.value_text
           else if (item.value_number !== null) value = item.value_number
           else if (item.value_boolean !== null) value = item.value_boolean
-          else if (item.value_date !== null) value = item.value_date
-          else if (item.value_datetime !== null) value = item.value_datetime
-          else if (item.value_json !== null) value = item.value_json
-          
           valuesMap.set(item.custom_field_id, value)
         })
       }
 
-      // Combinar campos com valores (ou valores padrão)
+      // Combinar campos com valores
       const customFieldsFormatted: CustomField[] = []
       if (allFieldsData) {
         allFieldsData.forEach(field => {
-          customFieldsFormatted.push({
-            id: field.id,
-            nome: field.field_label,
-            tipo: field.field_type,
-            opcoes: field.field_options || [],
-            valor: valuesMap.get(field.id) ?? field.field_default ?? null
-          })
+          const valor = valuesMap.get(field.id)
+          // Só adicionar se tiver valor
+          if (valor !== null && valor !== undefined && valor !== '') {
+            customFieldsFormatted.push({
+              id: field.id,
+              nome: field.field_name,
+              tipo: field.field_type,
+              opcoes: field.options || [],
+              valor: valor
+            })
+          }
         })
       }
 
@@ -139,21 +149,26 @@ export default function ProdutoDetalhes() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-cyan-500"></div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm animate-pulse">Carregando detalhes...</p>
+        </div>
       </div>
     )
   }
 
   if (!produto) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Produto não encontrado</h1>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="bg-[#121215] rounded-2xl border border-white/5 p-8 text-center max-w-md">
+          <h1 className="text-2xl font-bold text-white mb-4">Produto não encontrado</h1>
+          <p className="text-gray-400 mb-6">O produto que você está procurando não existe ou foi removido.</p>
           <Link
             to="/app/produtos"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold transition-colors"
           >
+            <ChevronLeft className="w-4 h-4" />
             Voltar para lista
           </Link>
         </div>
@@ -161,215 +176,289 @@ export default function ProdutoDetalhes() {
     )
   }
 
+  const currencyConfig = getCurrencyConfig(produto.currency || 'BRL')
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h2 className="text-3xl font-bold text-white">{produto.nome}</h2>
-            <p className="text-sm text-gray-400 mt-2">Cadastrado em {fmtDate(produto.created_at)}</p>
-            <p className="text-sm text-gray-400 font-mono">ID: {produto.id}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              to={`/app/produtos/editar/${produto.id}`}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Edit3 className="w-4 h-4" />
-              Editar
-            </Link>
-            <button
-              onClick={() => navigate('/app/produtos')}
-              className="p-2 rounded-lg hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
+    <div className="min-h-screen bg-background text-gray-200 pb-20 font-sans">
+      <div className="max-w-7xl mx-auto p-6 md:p-8 relative z-10">
+
+        {/* HEADER DE NAVEGAÇÃO - ESTILO PREMIUM */}
+        <div className="sticky top-0 z-20 backdrop-blur-xl bg-background/80 -mx-6 md:-mx-8 px-6 md:px-8 py-4 mb-6 border-b border-white/5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/app/produtos')}
+                className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:border-white/20 transition-all group"
+              >
+                <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+              </button>
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <Layers className="w-7 h-7" />
+              </div>
+              <div>
+                <div className="flex items-center gap-3 mb-1">
+                  <span className="text-xs font-mono text-cyan-500 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 truncate max-w-[150px] md:max-w-none">
+                    ID: {produto.id.slice(0, 8)}...
+                  </span>
+                  {produto.destaque && (
+                    <span className="text-xs font-bold text-amber-400 flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded">
+                      <CheckCircle2 className="w-3 h-3" /> Destaque
+                    </span>
+                  )}
+                  <span className={`px-2 py-0.5 rounded text-xs font-semibold capitalize ${
+                    produto.status === 'disponivel' ? 'bg-emerald-500/20 text-emerald-400' :
+                    produto.status === 'reservado' ? 'bg-amber-500/20 text-amber-400' :
+                    produto.status === 'vendido' ? 'bg-blue-500/20 text-blue-400' :
+                    'bg-slate-500/20 text-slate-400'
+                  }`}>
+                    {produto.status || 'Disponível'}
+                  </span>
+                </div>
+                <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight font-outfit">{produto.nome}</h1>
+                <p className="text-sm text-gray-400 mt-0.5">Detalhes completos do produto</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Link
+                to="/app/produtos"
+                className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-gray-300 text-sm font-medium rounded-xl transition-all border border-white/10"
+              >
+                Ver Todos
+              </Link>
+              <Link
+                to={`/app/produtos/editar/${produto.id}`}
+                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/20"
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>Editar Produto</span>
+              </Link>
+            </div>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Coluna 1: Informações */}
-            <div className="space-y-4">
-              <div className="pb-2 border-b border-white/10">
-                <h3 className="text-sm font-semibold text-white uppercase tracking-wide">Informações Básicas</h3>
-              </div>
+        {/* GRID PRINCIPAL */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-              {/* Grid para campos principais */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Preço */}
-                <div className="md:col-span-3">
-                  <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wide mb-2">
-                    Preço (R$)
-                  </label>
-                  <div className="w-full px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-300 text-sm">
-                    {currencyBRL(produto.valor)}
-                  </div>
-                </div>
+          {/* COLUNA ESQUERDA - DETALHES (8/12) */}
+          <div className="lg:col-span-8 space-y-6">
 
-                {/* Categoria */}
+            {/* CARD 1: HERO INFO */}
+            <div className="bg-[#121215] border border-white/5 rounded-2xl p-6 md:p-8 relative overflow-hidden group">
+              {/* Glow effect sutil */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 blur-[80px] rounded-full group-hover:bg-cyan-500/10 transition-colors duration-500" />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wide mb-2">
-                    Categoria
-                  </label>
-                  <div className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm capitalize">
-                    {produto.categoria || '—'}
+                  <label className="text-xs uppercase tracking-widest text-gray-500 font-semibold mb-2 block">Valor do Produto</label>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-bold text-white tracking-tight">
+                      {currencyBRL(produto.valor, produto.currency || 'BRL')}
+                    </span>
+                    <span className="text-sm text-gray-500 font-medium">{currencyConfig.code}</span>
                   </div>
                 </div>
 
-                {/* Status */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wide mb-2">
-                    Status
-                  </label>
-                  <div className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm capitalize">
-                    {produto.status || 'Disponível'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Descrição */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wide mb-2">
-                  Descrição
-                </label>
-                <div className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-200 text-sm min-h-[80px] whitespace-pre-wrap">
-                  {produto.descricao || 'Sem descrição'}
-                </div>
-              </div>
-
-              {/* Campos Personalizados */}
-              {customFields.length > 0 && (
-                <div>
-                  <div className="pb-2 border-b border-white/10 mb-4">
-                    <h3 className="text-sm font-semibold text-white uppercase tracking-wide">Campos Personalizados</h3>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {customFields.map((field) => (
-                      <div key={field.id}>
-                        <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wide mb-2">
-                          {field.nome}
-                        </label>
-                        <div className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-200 text-sm">
-                          {field.tipo === 'select' && field.opcoes && field.opcoes.length > 0
-                            ? (field.opcoes.find(op => op === field.valor) || field.valor || '—')
-                            : (field.valor || '—')
-                          }
-                        </div>
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400">
+                        <Tag className="w-4 h-4" />
                       </div>
-                    ))}
+                      <div>
+                        <p className="text-xs text-gray-500">Categoria</p>
+                        <p className="text-sm font-medium text-white capitalize">{produto.categoria || '—'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                        <Layers className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Status Atual</p>
+                        <p className="text-sm font-medium text-white capitalize">{produto.status || 'Disponível'}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              )}
+              </div>
+            </div>
 
-              {/* Anexos */}
-              <div>
-                <div className="pb-2 border-b border-gray-200 mb-3">
-                  <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-                    Anexos ({produto.anexos?.length || 0})
-                  </h3>
+            {/* CARD 2: DESCRIÇÃO */}
+            {produto.descricao && (
+              <div className="bg-[#121215] border border-white/5 rounded-2xl p-6 md:p-8">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-gray-500" />
+                  Descrição
+                </h3>
+                <div className="prose prose-invert prose-sm max-w-none text-gray-400 leading-relaxed bg-[#09090b] p-6 rounded-xl border border-white/5">
+                  {produto.descricao.split('\n').map((line, i) => (
+                    <p key={i} className="mb-2 last:mb-0 min-h-[1rem]">{line || '\u00A0'}</p>
+                  ))}
                 </div>
-                {produto.anexos && produto.anexos.length > 0 ? (
-                  <div className="space-y-2">
-                    {produto.anexos.map((url, i) => {
-                      if (!url || typeof url !== 'string') return null
-                      const fileName = url.split('/').pop() || `Arquivo ${i + 1}`
-                      return (
-                      <div key={i} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors">
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                          <span className="flex-1 text-sm text-gray-700 font-medium">{fileName}</span>
+              </div>
+            )}
+
+            {/* CARD 3: CAMPOS PERSONALIZADOS */}
+            {customFields.length > 0 && (
+              <div className="bg-[#121215] border border-white/5 rounded-2xl p-6 md:p-8">
+                <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                  <Hash className="w-5 h-5 text-gray-500" />
+                  Informações Adicionais
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {customFields.map((field) => (
+                    <div key={field.id} className="p-4 rounded-xl bg-[#09090b] border border-white/5 hover:border-white/10 transition-colors">
+                      <label className="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1 block">
+                        {field.nome}
+                      </label>
+                      <div className="text-sm text-gray-200 font-medium">
+                        {field.tipo === 'boolean'
+                          ? (field.valor ? 'Sim' : 'Não')
+                          : (field.valor || '—')
+                        }
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* CARD 4: ANEXOS */}
+            {produto.anexos && produto.anexos.length > 0 && (
+              <div className="bg-[#121215] border border-white/5 rounded-2xl p-6 md:p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <Download className="w-5 h-5 text-gray-500" />
+                    Arquivos Anexados
+                  </h3>
+                  <span className="text-xs bg-white/10 px-2 py-1 rounded text-gray-400">{produto.anexos.length}</span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                  {produto.anexos.map((url, i) => {
+                    if (!url || typeof url !== 'string') return null
+                    const fileName = url.split('/').pop() || `Documento_${i + 1}.pdf`
+                    return (
+                      <div key={i} className="flex items-center justify-between p-4 rounded-xl bg-[#09090b] border border-white/5 hover:border-cyan-500/30 hover:bg-white/[0.02] transition-all group">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-lg bg-[#18181b] flex items-center justify-center text-gray-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <span className="text-sm text-gray-300 font-medium truncate max-w-[200px] md:max-w-xs">{fileName}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <a
                             href={url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 text-sm"
+                            className="px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                           >
-                            Ver
+                            Visualizar
                           </a>
                           <button
                             onClick={() => handleDownload(url, fileName)}
-                            className="text-green-600 hover:text-green-800 text-sm flex items-center gap-1"
+                            className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-lg transition-colors"
+                            title="Baixar arquivo"
                           >
-                            <Download className="w-3 h-3" />
-                            Baixar
+                            <Download className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-gray-500 text-sm">
-                    Nenhum documento anexado
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Coluna 2: Mídia */}
-            <div className="space-y-4">
-              <div className="pb-2 border-b border-white/10">
-                <h3 className="text-sm font-semibold text-white uppercase tracking-wide">Mídia</h3>
-              </div>
-
-              {/* Capa */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wide mb-3">
-                  Capa Principal
-                </label>
-                <div className="w-full h-48 rounded-lg border-2 border-dashed border-white/20 bg-white/5 flex items-center justify-center relative overflow-hidden">
-                  {produto.capa_url ? (
-                    <img src={produto.capa_url} alt={produto.nome} className="absolute inset-0 w-full h-full object-cover" />
-                  ) : (
-                    <div className="text-center text-gray-500">
-                      <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <span className="text-sm">Sem imagem</span>
-                    </div>
-                  )}
+                    )
+                  })}
                 </div>
               </div>
+            )}
 
-              {/* Galeria */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-300 uppercase tracking-wide mb-3">
-                  Galeria ({produto.galeria?.length || 0})
-                </label>
-                {produto.galeria && produto.galeria.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2">
-                    {produto.galeria.map((url, i) => (
-                      <button
-                        key={i}
-                        onClick={() => window.open(url, '_blank')}
-                        className="aspect-square rounded-lg border-2 border-white/20 bg-white/5 hover:border-cyan-400 transition-colors overflow-hidden"
-                      >
-                        <img src={url} alt={`Galeria ${i + 1}`} className="w-full h-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
+          </div>
+
+          {/* COLUNA DIREITA - MEDIA (4/12) */}
+          <div className="lg:col-span-4 space-y-6">
+
+            {/* CAPA CARD */}
+            <div className="bg-[#121215] border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
+              <div className="aspect-[3/4] w-full bg-[#09090b] relative group">
+                {produto.capa_url ? (
+                  <>
+                    <img
+                      src={produto.capa_url}
+                      alt={produto.nome}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
+                    <div className="absolute bottom-4 left-4">
+                      <span className="px-2 py-1 bg-black/50 backdrop-blur-md rounded border border-white/10 text-xs text-white">
+                        Imagem Principal
+                      </span>
+                    </div>
+                  </>
                 ) : (
-                  <div className="text-center py-8 text-gray-500 text-sm">
-                    Nenhuma imagem na galeria
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
+                    <ImageIcon className="w-12 h-12 mb-2 opacity-50" />
+                    <span className="text-sm">Sem imagem</span>
                   </div>
                 )}
               </div>
             </div>
-          </div>
 
-        {/* Footer */}
-        <div className="mt-12 pt-6 border-t border-white/10 flex justify-between items-center">
-          <div className="text-xs text-gray-400">
-            Atualizado em {fmtDate(produto.updated_at)}
+            {/* GALERIA CARD */}
+            {produto.galeria && produto.galeria.length > 0 && (
+              <div className="bg-[#121215] border border-white/5 rounded-2xl p-6">
+                <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-4 flex items-center justify-between">
+                  <span>Galeria</span>
+                  <span className="text-xs text-gray-500">{produto.galeria.length} fotos</span>
+                </h3>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {produto.galeria.map((url, i) => (
+                    <button
+                      key={i}
+                      onClick={() => window.open(url, '_blank')}
+                      className="aspect-square rounded-lg border border-white/10 bg-[#09090b] overflow-hidden hover:border-cyan-500/50 hover:shadow-[0_0_15px_rgba(6,182,212,0.15)] transition-all group relative"
+                    >
+                      <img src={url} alt={`Galeria ${i + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* META INFO CARD */}
+            <div className="bg-[#121215] border border-white/5 rounded-2xl p-6">
+              <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">Metadados</h3>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3 text-sm">
+                  <Calendar className="w-4 h-4 text-gray-500 mt-0.5" />
+                  <div>
+                    <p className="text-gray-500 text-xs">Criado em</p>
+                    <p className="text-gray-300">{fmtDate(produto.created_at)}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 text-sm">
+                  <Calendar className="w-4 h-4 text-gray-500 mt-0.5" />
+                  <div>
+                    <p className="text-gray-500 text-xs">Última atualização</p>
+                    <p className="text-gray-300">{fmtDate(produto.updated_at)}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 text-sm pt-4 border-t border-white/5">
+                  <Globe className="w-4 h-4 text-gray-500 mt-0.5" />
+                  <div>
+                    <p className="text-gray-500 text-xs">Moeda Configurada</p>
+                    <p className="text-gray-300 flex items-center gap-2">
+                      {currencyConfig.flag} {currencyConfig.code} ({currencyConfig.symbol})
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
-          <button
-            onClick={() => navigate('/app/produtos')}
-            className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold transition-colors"
-          >
-            Voltar
-          </button>
         </div>
       </div>
     </div>

@@ -1,6 +1,12 @@
 import { Lock, Zap } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useSubscription } from '../../hooks/useSubscription'
+import { useAuthStore } from '../../stores/authStore'
+
+// Emails de administradores que sempre têm acesso premium (bypass)
+const ADMIN_BYPASS_EMAILS = [
+  'ramonexecut@gmail.com'
+]
 
 interface PremiumGateProps {
   children: React.ReactNode
@@ -9,15 +15,19 @@ interface PremiumGateProps {
 
 export default function PremiumGate({ children, featureName }: PremiumGateProps) {
   const { isActive, loading } = useSubscription()
+  const userEmail = useAuthStore((state) => state.user?.email)
   const navigate = useNavigate()
+
+  // Bypass para admins - sempre permitir acesso
+  const isAdminBypass = userEmail && ADMIN_BYPASS_EMAILS.includes(userEmail.toLowerCase())
 
   // Enquanto carrega, mostra o conteúdo sem bloqueio
   if (loading) {
     return <>{children}</>
   }
 
-  // Se tem assinatura ativa, mostra o conteúdo normalmente
-  if (isActive) {
+  // Se é admin ou tem assinatura ativa, mostra o conteúdo normalmente
+  if (isAdminBypass || isActive) {
     return <>{children}</>
   }
 
