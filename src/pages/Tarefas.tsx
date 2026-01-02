@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   Plus, Grid3X3, Kanban, Search, X, AlarmClock, CalendarDays,
   Users, Tag, ListChecks, Check, Timer, Trash2, FileText,
-  ChevronDown, ChevronUp, Filter, Settings, Edit, GripVertical
+  ChevronDown, ChevronUp, Filter, Settings, Edit, GripVertical, Maximize2
 } from 'lucide-react'
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd'
 import toast from 'react-hot-toast'
@@ -153,6 +153,7 @@ export default function Tarefas() {
   // Modal de Tempo
   const [showTimeModal, setShowTimeModal] = useState(false)
   const [timeInput, setTimeInput] = useState('30')
+  const [showDescricaoExpanded, setShowDescricaoExpanded] = useState(false)
 
   // =====================
   // Helpers
@@ -807,12 +808,21 @@ export default function Tarefas() {
                   className="w-full text-xl font-bold bg-transparent border-none focus:ring-0 placeholder-slate-400 p-0"
                   placeholder="Título da Tarefa"
                 />
-                <textarea
-                  value={detalhe.descricao || ''}
-                  onChange={e => updateDetalhe({ descricao: e.target.value })}
-                  className="w-full min-h-[100px] bg-slate-50 dark:bg-white/5 rounded-xl p-3 text-sm border-none focus:ring-1 focus:ring-indigo-500 resize-none"
-                  placeholder="Adicione uma descrição..."
-                />
+                <div className="relative">
+                  <textarea
+                    value={detalhe.descricao || ''}
+                    onChange={e => updateDetalhe({ descricao: e.target.value })}
+                    className="w-full min-h-[100px] bg-slate-50 dark:bg-white/5 rounded-xl p-3 pr-10 text-sm border-none focus:ring-1 focus:ring-indigo-500 resize-none"
+                    placeholder="Adicione uma descrição..."
+                  />
+                  <button
+                    onClick={() => setShowDescricaoExpanded(true)}
+                    className="absolute top-2 right-2 p-1.5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg text-slate-400 hover:text-indigo-500 transition-colors"
+                    title="Expandir descrição"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               {/* Propriedades em Grid */}
@@ -1079,6 +1089,48 @@ export default function Tarefas() {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* =====================
+          Modal: Descrição Expandida
+          ===================== */}
+      {showDescricaoExpanded && detalhe && (
+        <div className="fixed inset-0 z-[70] flex flex-col bg-slate-900/95 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="flex items-center justify-between p-4 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Descrição da Tarefa</h3>
+                <p className="text-xs text-slate-400 truncate max-w-[300px]">{detalhe.titulo}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowDescricaoExpanded(false)}
+              className="p-2 hover:bg-white/10 rounded-xl text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          <div className="flex-1 p-6 overflow-hidden">
+            <textarea
+              value={detalhe.descricao || ''}
+              onChange={e => updateDetalhe({ descricao: e.target.value })}
+              className="w-full h-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 text-base leading-relaxed resize-none"
+              placeholder="Digite a descrição detalhada da tarefa..."
+              autoFocus
+            />
+          </div>
+          <div className="p-4 border-t border-white/10 flex justify-end gap-3">
+            <button
+              onClick={() => setShowDescricaoExpanded(false)}
+              className="px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-indigo-500/25"
+            >
+              Concluir
+            </button>
           </div>
         </div>
       )}

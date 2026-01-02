@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { X, Plus, UploadCloud, CheckCircle, Circle, GripVertical, ArrowLeft, Save, ListChecks } from 'lucide-react'
+import { X, Plus, UploadCloud, CheckCircle, Circle, GripVertical, ArrowLeft, Save, ListChecks, Maximize2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { supabase } from '../lib/supabase'
@@ -51,6 +51,7 @@ export default function TarefaNova() {
   const [responsaveis, setResponsaveis] = useState<UsuarioRef[]>([])
   const [clientes, setClientes] = useState<ClienteRef[]>([])
   const [produtos, setProdutos] = useState<ProdutoRef[]>([])
+  const [showDescricaoExpanded, setShowDescricaoExpanded] = useState(false)
 
   // Aplicar preset selecionado
   const handlePresetSelect = (preset: TaskPreset) => {
@@ -383,9 +384,19 @@ export default function TarefaNova() {
 
               {/* Descrição */}
               <div>
-                <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">
-                  {t('tarefaNova.fields.description.label')}
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">
+                    {t('tarefaNova.fields.description.label')}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowDescricaoExpanded(true)}
+                    className="p-1.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-cyan-400 transition-colors"
+                    title="Expandir descrição"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
+                </div>
                 <textarea
                   value={descricao}
                   onChange={(e) => setDescricao(e.target.value)}
@@ -683,6 +694,46 @@ export default function TarefaNova() {
           </div>
         </div>
       </div>
+
+      {/* Modal: Descrição Expandida */}
+      {showDescricaoExpanded && (
+        <div className="fixed inset-0 z-[60] flex flex-col bg-slate-900/95 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="flex items-center justify-between p-4 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 flex items-center justify-center">
+                <ListChecks className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Descrição da Tarefa</h3>
+                <p className="text-xs text-slate-400">Edição expandida</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowDescricaoExpanded(false)}
+              className="p-2 hover:bg-white/10 rounded-xl text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+          <div className="flex-1 p-6 overflow-hidden">
+            <textarea
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              className="w-full h-full px-6 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 text-base leading-relaxed resize-none"
+              placeholder="Digite a descrição detalhada da tarefa..."
+              autoFocus
+            />
+          </div>
+          <div className="p-4 border-t border-white/10 flex justify-end gap-3">
+            <button
+              onClick={() => setShowDescricaoExpanded(false)}
+              className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-cyan-500/25"
+            >
+              Concluir
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

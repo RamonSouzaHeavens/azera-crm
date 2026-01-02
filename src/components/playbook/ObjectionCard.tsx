@@ -9,7 +9,12 @@ interface ObjectionCardProps {
 }
 
 export function ObjectionCard({ card, onEdit, onDelete, isEditable = false }: ObjectionCardProps) {
-  const stageVariant = stageVariants[card.stage]
+  const stageVariant = stageVariants[card.stage] ?? {
+    label: card.stage || 'Etapa',
+    bg: 'bg-slate-100 dark:bg-slate-800',
+    text: 'text-slate-700 dark:text-slate-200',
+    border: 'border-slate-200 dark:border-slate-700'
+  }
   const tacticVariant = tacticVariants[card.tactic] ?? {
     bg: 'bg-slate-100 dark:bg-slate-800',
     text: 'text-slate-700 dark:text-slate-200',

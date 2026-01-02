@@ -19,7 +19,12 @@ import {
   Archive,
   MoreVertical,
   CheckSquare,
-  Square
+  Square,
+  MailCheck,
+  UserPlus,
+  Settings,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -99,6 +104,12 @@ export default function ConversationsPage() {
   // Estado para imagem colada
   const [pastedImage, setPastedImage] = useState<{ file: File; preview: string } | null>(null);
 
+  // Estados para controle de criação de leads
+  const [autoCreateLeads, setAutoCreateLeads] = useState(true);
+  const [leadExists, setLeadExists] = useState(true);
+  const [creatingLead, setCreatingLead] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+
   const selectedConversa = conversations.find(c => c.id === selectedId);
 
   // Carregar etapas do funil
@@ -154,10 +165,11 @@ export default function ConversationsPage() {
   useEffect(() => {
     const handleClickOutside = () => {
       if (openMenuId) setOpenMenuId(null);
+      if (showSettingsMenu) setShowSettingsMenu(false);
     };
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
-  }, [openMenuId]);
+  }, [openMenuId, showSettingsMenu]);
 
   // Atualizar lead state - buscar lead real do banco de dados
   useEffect(() => {
@@ -212,6 +224,125 @@ export default function ConversationsPage() {
 
     fetchLead();
   }, [selectedConversa?.contact_id, tenant?.id]);
+
+  // Carregar configuração de criação automática de leads
+  useEffect(() => {
+    const loadAutoCreateConfig = async () => {
+      if (!tenant?.id) return;
+      try {
+        const { data } = await supabase
+          .from('integrations')
+          .select('config')
+          .eq('tenant_id', tenant.id)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (data?.config?.auto_create_leads !== undefined) {
+          setAutoCreateLeads(data.config.auto_create_leads);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar config:', err);
+      }
+    };
+    loadAutoCreateConfig();
+  }, [tenant?.id]);
+
+  // Verificar se o lead existe no banco de dados
+  useEffect(() => {
+    const checkLeadExists = async () => {
+      if (!selectedConversa?.contact_id || !tenant?.id) {
+        setLeadExists(false);
+        return;
+      }
+      try {
+        const { data, error } = await supabase
+          .from('clientes')
+          .select('id')
+          .eq('id', selectedConversa.contact_id)
+          .eq('tenant_id', tenant.id)
+          .maybeSingle();
+
+        setLeadExists(!error && !!data);
+      } catch {
+        setLeadExists(false);
+      }
+    };
+    checkLeadExists();
+  }, [selectedConversa?.contact_id, tenant?.id]);
+
+  // Função para alternar criação automática de leads
+  const toggleAutoCreateLeads = async () => {
+    if (!tenant?.id) return;
+    const newValue = !autoCreateLeads;
+    setAutoCreateLeads(newValue);
+
+    try {
+      // Buscar config atual
+      const { data: integration } = await supabase
+        .from('integrations')
+        .select('id, config')
+        .eq('tenant_id', tenant.id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (integration) {
+        const updatedConfig = {
+          ...(integration.config || {}),
+          auto_create_leads: newValue
+        };
+
+        await supabase
+          .from('integrations')
+          .update({ config: updatedConfig })
+          .eq('id', integration.id);
+
+        toast.success(newValue ? 'Leads serão criados automaticamente' : 'Criação automática de leads desativada');
+      }
+    } catch (err) {
+      console.error('Erro ao salvar config:', err);
+      toast.error('Erro ao salvar configuração');
+      setAutoCreateLeads(!newValue); // Reverter em caso de erro
+    }
+  };
+
+  // Função para criar lead manualmente
+  const createLeadManually = async () => {
+    if (!selectedConversa || !tenant?.id) return;
+
+    setCreatingLead(true);
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .insert({
+          id: selectedConversa.contact_id, // Usar o mesmo ID do contact
+          tenant_id: tenant.id,
+          nome: selectedConversa.contact_name,
+          telefone: selectedConversa.contact_number,
+          status: 'lead',
+          categoria: 'trabalho'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '23505') {
+          toast.error('Este lead já existe');
+          setLeadExists(true);
+        } else {
+          throw error;
+        }
+      } else {
+        toast.success('Lead criado com sucesso!');
+        setLeadExists(true);
+        setLead(data as any);
+      }
+    } catch (err: any) {
+      console.error('Erro ao criar lead:', err);
+      toast.error('Erro ao criar lead');
+    } finally {
+      setCreatingLead(false);
+    }
+  };
 
   // Mensagens visíveis (últimas N mensagens)
   const visibleMessages = messages.slice(-visibleMessagesCount);
@@ -311,6 +442,13 @@ export default function ConversationsPage() {
     const promises = Array.from(selectedConversationIds).map(id => archiveConversation(id));
     await Promise.all(promises);
     toast.success(`${selectedConversationIds.size} conversa(s) arquivada(s)`);
+    clearSelection();
+  };
+
+  const batchMarkAsRead = async () => {
+    const promises = Array.from(selectedConversationIds).map(id => markConversationRead(id));
+    await Promise.all(promises);
+    toast.success(`${selectedConversationIds.size} conversa(s) marcada(s) como lida(s)`);
     clearSelection();
   };
 
@@ -475,6 +613,50 @@ export default function ConversationsPage() {
                     >
                       <Archive className="w-4 h-4" />
                     </button>
+                    {/* Settings Menu */}
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowSettingsMenu(!showSettingsMenu);
+                        }}
+                        className={`p-2 rounded-lg transition-colors ${showSettingsMenu ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200' : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500'}`}
+                        title="Configurações"
+                      >
+                        <Settings className="w-4 h-4" />
+                      </button>
+                      {showSettingsMenu && (
+                        <div className="absolute right-0 top-10 w-64 bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 py-2 animate-in fade-in slide-in-from-top-2">
+                          <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Configurações</h4>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleAutoCreateLeads();
+                            }}
+                            className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <UserPlus className="w-4 h-4 text-gray-500" />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">Criar leads automaticamente</span>
+                            </div>
+                            {autoCreateLeads ? (
+                              <ToggleRight className="w-5 h-5 text-emerald-500" />
+                            ) : (
+                              <ToggleLeft className="w-5 h-5 text-gray-400" />
+                            )}
+                          </button>
+                          <div className="px-3 py-1.5">
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                              {autoCreateLeads
+                                ? 'Novos contatos serão salvos como leads automaticamente'
+                                : 'Você precisará criar leads manualmente'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -527,6 +709,13 @@ export default function ConversationsPage() {
                         </button>
                       </div>
                       <div className="flex items-center gap-1">
+                        <button
+                          onClick={batchMarkAsRead}
+                          className="p-1.5 bg-white dark:bg-gray-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded text-emerald-600 dark:text-emerald-400 transition-colors"
+                          title="Marcar como lidas"
+                        >
+                          <MailCheck className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={batchArchive}
                           className="p-1.5 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400 transition-colors"
@@ -895,7 +1084,7 @@ export default function ConversationsPage() {
 
                               {/* Timestamp & Status */}
                               <div className={`px-3 pb-1.5 flex items-center justify-end gap-1 text-[10px] ${isOutbound ? 'text-emerald-100' : 'text-gray-400'}`}>
-                                <span>{format(new Date(msg.created_at), 'HH:mm')}</span>
+                                <span>{format(new Date(msg.created_at), 'dd/MM')} - {format(new Date(msg.created_at), 'HH:mm')}</span>
                                 {isOutbound && (
                                   <CheckCheck className="w-3 h-3 opacity-80" />
                                 )}
@@ -1339,13 +1528,34 @@ export default function ConversationsPage() {
                       </div>
                     </div>
 
-                    <div className="pt-6">
-                      <button
-                        onClick={() => lead?.id && navigate(`/app/clientes/${lead.id}`)}
-                        className="w-full py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-                      >
-                        {t('conversations.viewFullProfile')}
-                      </button>
+                    <div className="pt-6 space-y-2">
+                      {!leadExists && selectedConversa && (
+                        <button
+                          onClick={createLeadManually}
+                          disabled={creatingLead}
+                          className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-400 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 shadow-sm"
+                        >
+                          {creatingLead ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              Criando...
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="w-4 h-4" />
+                              Criar lead
+                            </>
+                          )}
+                        </button>
+                      )}
+                      {leadExists && lead?.id && (
+                        <button
+                          onClick={() => navigate(`/app/clientes/${lead.id}`)}
+                          className="w-full py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        >
+                          {t('conversations.viewFullProfile')}
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}

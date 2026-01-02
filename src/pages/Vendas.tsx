@@ -3,14 +3,13 @@ import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   DollarSign, Plus, Search, Filter, X, Calendar,
-  CheckCircle, Clock, AlertCircle, Ban, Trash2,
-  ChevronDown, User, ExternalLink, Repeat, BarChart3, LayoutGrid, List as ListIcon, PieChart
+  Repeat, LayoutGrid, List as ListIcon, PieChart
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useNavigate } from 'react-router-dom'
 
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
+import { useThemeStore } from '../stores/themeStore'
 
 // Componentes
 import SalesDashboard from '../components/sales/SalesDashboard'
@@ -46,10 +45,40 @@ interface Filters {
   leadId?: string
   dateFrom?: string
   dateTo?: string
+  month?: string // formato: YYYY-MM
 }
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+}
+
+// Gera lista de meses (últimos 12 + próximos 12)
+const generateMonthOptions = () => {
+  const options: { value: string; label: string }[] = []
+  const today = new Date()
+
+  // Últimos 12 meses
+  for (let i = 12; i >= 1; i--) {
+    const date = new Date(today.getFullYear(), today.getMonth() - i, 1)
+    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    const label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    options.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) })
+  }
+
+  // Mês atual
+  const currentValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
+  const currentLabel = today.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+  options.push({ value: currentValue, label: `${currentLabel.charAt(0).toUpperCase() + currentLabel.slice(1)} (Atual)` })
+
+  // Próximos 12 meses
+  for (let i = 1; i <= 12; i++) {
+    const date = new Date(today.getFullYear(), today.getMonth() + i, 1)
+    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    const label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    options.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) })
+  }
+
+  return options
 }
 
 // =====================
@@ -57,8 +86,8 @@ const formatCurrency = (value: number) => {
 // =====================
 export default function Vendas() {
   useTranslation()
-  const navigate = useNavigate()
   const { tenant, member } = useAuthStore()
+  const { isDark } = useThemeStore()
   const tenantId = useMemo(() => tenant?.id ?? member?.tenant_id ?? '', [tenant?.id, member?.tenant_id])
 
   // Estados de Interface
@@ -115,12 +144,24 @@ export default function Vendas() {
       if (filters.leadId && filters.leadId !== 'todos') {
         query = query.eq('lead_id', filters.leadId)
       }
-      if (filters.dateFrom) {
-        query = query.gte('due_date', filters.dateFrom)
+
+      // Filtro de mês específico (sobrescreve dateFrom/dateTo)
+      if (filters.month) {
+        const [year, month] = filters.month.split('-')
+        const startDate = `${year}-${month}-01`
+        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
+        const endDate = `${year}-${month}-${lastDay}`
+        query = query.gte('due_date', startDate).lte('due_date', endDate + 'T23:59:59')
+      } else {
+        // Filtros de data manual (apenas se não houver filtro de mês)
+        if (filters.dateFrom) {
+          query = query.gte('due_date', filters.dateFrom)
+        }
+        if (filters.dateTo) {
+          query = query.lte('due_date', filters.dateTo + 'T23:59:59')
+        }
       }
-      if (filters.dateTo) {
-        query = query.lte('due_date', filters.dateTo + 'T23:59:59')
-      }
+
       if (filters.q) {
         query = query.ilike('title', `%${filters.q}%`)
       }
@@ -245,9 +286,9 @@ export default function Vendas() {
   // Render
   // =====================
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className={`min-h-screen ${isDark ? 'bg-slate-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
       {/* Background decorativo */}
-      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.08),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(139,92,246,0.06),transparent_40%),radial-gradient(circle_at_50%_100%,rgba(16,185,129,0.06),transparent_45%)]" />
+      <div className={`pointer-events-none fixed inset-0 z-0 ${isDark ? 'bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.08),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(139,92,246,0.06),transparent_40%),radial-gradient(circle_at_50%_100%,rgba(16,185,129,0.06),transparent_45%)]' : 'bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.03),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(139,92,246,0.03),transparent_40%)]'}`} />
 
       <div className="relative z-10 p-6 max-w-[1800px] mx-auto space-y-6">
         {/* Header */}
@@ -258,7 +299,7 @@ export default function Vendas() {
             </div>
             <div>
               <h1 className="text-3xl font-bold font-outfit">Gestão de Vendas</h1>
-              <p className="text-base mt-1 text-slate-400">Hub Financeiro Inteligente</p>
+              <p className={`text-base mt-1 ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>Hub Financeiro Inteligente</p>
             </div>
           </div>
 
@@ -266,26 +307,26 @@ export default function Vendas() {
             {/* Toggle Dashboard */}
             <button
               onClick={() => setShowDashboard(!showDashboard)}
-              className={`p-2 rounded-xl border transition ${showDashboard ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400' : 'bg-white/5 border-white/10 hover:bg-white/10 text-slate-400'}`}
+              className={`p-2 rounded-xl border transition ${showDashboard ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-400' : `${isDark ? 'bg-white/5 border-white/10 hover:bg-white/10 text-slate-400' : 'bg-white border-gray-200 hover:bg-gray-50 text-gray-600'}`}`}
               title="Alternar Dashboard"
             >
               <PieChart className="w-5 h-5" />
             </button>
 
-            <div className="h-6 w-px bg-white/10 mx-2 hidden sm:block"></div>
+            <div className={`h-6 w-px ${isDark ? 'bg-white/10' : 'bg-gray-200'} mx-2 hidden sm:block`}></div>
 
             {/* Toggle View Mode */}
-            <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+            <div className={`flex ${isDark ? 'bg-white/5' : 'bg-white'} p-1 rounded-xl border ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
               <button
                 onClick={() => setViewMode('table')}
-                className={`p-2 rounded-lg transition ${viewMode === 'table' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                className={`p-2 rounded-lg transition ${viewMode === 'table' ? `${isDark ? 'bg-slate-700 text-white' : 'bg-gray-100 text-gray-900'} shadow-sm` : `${isDark ? 'text-slate-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}`}
                 title="Lista"
               >
                 <ListIcon className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('kanban')}
-                className={`p-2 rounded-lg transition ${viewMode === 'kanban' ? 'bg-slate-700 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                className={`p-2 rounded-lg transition ${viewMode === 'kanban' ? `${isDark ? 'bg-slate-700 text-white' : 'bg-gray-100 text-gray-900'} shadow-sm` : `${isDark ? 'text-slate-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}`}
                 title="Kanban"
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -294,26 +335,26 @@ export default function Vendas() {
 
             {/* Busca */}
             <div className="relative hidden sm:block">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
               <input
                 type="text"
                 placeholder="Buscar vendas..."
                 value={filters.q ?? ''}
                 onChange={e => setFilters(p => ({ ...p, q: e.target.value }))}
-                className="pl-10 pr-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 w-64"
+                className={`pl-10 pr-3 py-2 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/50 w-64 ${isDark ? 'bg-white/5 border-white/10 text-white placeholder-gray-500' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}`}
               />
             </div>
 
             <button
               onClick={() => setFiltersOpen(!filtersOpen)}
-              className={`p-2 rounded-xl border transition ${filtersOpen ? 'bg-amber-500/20 border-amber-500/50' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+              className={`p-2 rounded-xl border transition ${filtersOpen ? 'bg-amber-500/20 border-amber-500/50' : `${isDark ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-gray-200 hover:bg-gray-50'}`}`}
             >
               <Filter className="w-5 h-5" />
             </button>
 
             <button
               onClick={() => setShowModal(true)}
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-xl text-sm font-medium flex items-center gap-2 shadow-lg hover:shadow-amber-500/20 transition"
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-xl text-sm font-medium flex items-center gap-2 shadow-lg hover:shadow-amber-500/20 transition text-white"
             >
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Nova Venda</span>
@@ -330,61 +371,100 @@ export default function Vendas() {
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden"
             >
-              <div className="p-4 bg-white/5 rounded-2xl border border-white/10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className={`p-4 rounded-2xl border space-y-4 ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'}`}>
+                {/* Filtro Rápido de Mês */}
                 <div>
-                  <label className="text-xs font-medium mb-1 block text-slate-400">Status</label>
+                  <label className={`text-xs font-medium mb-2 block flex items-center gap-2 ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>
+                    <Calendar className="w-4 h-4" />
+                    Filtro Rápido por Mês
+                  </label>
                   <select
-                    value={filters.status}
-                    onChange={e => setFilters({ ...filters, status: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/20 border border-white/10 text-sm"
+                    value={filters.month || ''}
+                    onChange={e => setFilters({ ...filters, month: e.target.value || undefined, dateFrom: undefined, dateTo: undefined })}
+                    className={`w-full p-2.5 rounded-lg border text-sm focus:ring-2 focus:ring-amber-500/50 ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                    style={isDark ? { backgroundColor: '#1e293b', color: '#ffffff', borderColor: '#475569' } : {}}
                   >
-                    <option value="todos">Todos</option>
-                    <option value="pending">Pendente</option>
-                    <option value="paid">Pago</option>
-                    <option value="overdue">Vencido</option>
-                    <option value="canceled">Cancelado</option>
+                    <option value="">Todos os meses</option>
+                    {generateMonthOptions().map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
                   </select>
+                  {filters.month && (
+                    <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
+                      Mostrando vendas de {generateMonthOptions().find(o => o.value === filters.month)?.label}
+                    </p>
+                  )}
                 </div>
 
-                <div>
-                  <label className="text-xs font-medium mb-1 block text-slate-400">Lead</label>
-                  <select
-                    value={filters.leadId}
-                    onChange={e => setFilters({ ...filters, leadId: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/20 border border-white/10 text-sm"
-                  >
-                    <option value="todos">Todos</option>
-                    {leads.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
-                  </select>
+                {/* Outros Filtros */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label className={`text-xs font-medium mb-1 block ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>Status</label>
+                    <select
+                      value={filters.status}
+                      onChange={e => setFilters({ ...filters, status: e.target.value })}
+                      className={`w-full p-2 rounded-lg border text-sm ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                      style={isDark ? { backgroundColor: '#1e293b', color: '#ffffff', borderColor: '#475569' } : {}}
+                    >
+                      <option value="todos">Todos</option>
+                      <option value="pending">Pendente</option>
+                      <option value="paid">Pago</option>
+                      <option value="overdue">Vencido</option>
+                      <option value="canceled">Cancelado</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className={`text-xs font-medium mb-1 block ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>Lead</label>
+                    <select
+                      value={filters.leadId}
+                      onChange={e => setFilters({ ...filters, leadId: e.target.value })}
+                      className={`w-full p-2 rounded-lg border text-sm ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                      style={isDark ? { backgroundColor: '#1e293b', color: '#ffffff', borderColor: '#475569' } : {}}
+                    >
+                      <option value="todos">Todos</option>
+                      {leads.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className={`text-xs font-medium mb-1 block ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>Data Início</label>
+                    <input
+                      type="date"
+                      value={filters.dateFrom || ''}
+                      onChange={e => setFilters({ ...filters, dateFrom: e.target.value, month: undefined })}
+                      disabled={!!filters.month}
+                      className={`w-full p-2 rounded-lg border text-sm disabled:opacity-50 disabled:cursor-not-allowed ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`text-xs font-medium mb-1 block ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>Data Fim</label>
+                    <input
+                      type="date"
+                      value={filters.dateTo || ''}
+                      onChange={e => setFilters({ ...filters, dateTo: e.target.value, month: undefined })}
+                      disabled={!!filters.month}
+                      className={`w-full p-2 rounded-lg border text-sm disabled:opacity-50 disabled:cursor-not-allowed ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="text-xs font-medium mb-1 block text-slate-400">Data Início</label>
-                  <input
-                    type="date"
-                    value={filters.dateFrom || ''}
-                    onChange={e => setFilters({ ...filters, dateFrom: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/20 border border-white/10 text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium mb-1 block text-slate-400">Data Fim</label>
-                  <input
-                    type="date"
-                    value={filters.dateTo || ''}
-                    onChange={e => setFilters({ ...filters, dateTo: e.target.value })}
-                    className="w-full p-2 rounded-lg bg-black/20 border border-white/10 text-sm"
-                  />
-                </div>
-
-                <div className="flex items-end">
+                <div className={`flex items-center justify-between pt-2 border-t ${isDark ? 'border-white/10' : 'border-gray-200'}`}>
                   <button
                     onClick={() => setFilters({ status: 'todos', leadId: 'todos' })}
                     className="text-xs text-rose-400 hover:underline"
                   >
                     Limpar Filtros
                   </button>
+                  {filters.month && (
+                    <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Total previsto: <span className="text-amber-400 font-semibold">
+                        {formatCurrency(sales.reduce((sum, s) => sum + Number(s.value), 0))}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -411,7 +491,7 @@ export default function Vendas() {
             <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : sales.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400 bg-white/5 rounded-2xl border border-white/10">
+          <div className={`flex flex-col items-center justify-center py-20 rounded-2xl border ${isDark ? 'text-slate-400 bg-white/5 border-white/10' : 'text-gray-500 bg-white border-gray-200'}`}>
             <DollarSign className="w-12 h-12 mb-4 opacity-30" />
             <p>Nenhuma venda encontrada com os filtros atuais</p>
             <button
@@ -456,11 +536,11 @@ export default function Vendas() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={e => e.stopPropagation()}
-              className="bg-slate-800 border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl"
+              className={`border rounded-2xl p-6 w-full max-w-md shadow-2xl ${isDark ? 'bg-slate-800 border-white/10' : 'bg-white border-gray-200'}`}
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold">Nova Venda</h3>
-                <button onClick={() => setShowModal(false)} className="p-2 hover:bg-white/10 rounded-lg">
+                <button onClick={() => setShowModal(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -468,11 +548,11 @@ export default function Vendas() {
               <div className="space-y-4">
                 {/* Lead */}
                 <div>
-                  <label className="text-sm font-medium mb-1 block text-slate-300">Lead *</label>
+                  <label className={`text-sm font-medium mb-1 block ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>Lead *</label>
                   <select
                     value={saleForm.lead_id}
                     onChange={e => setSaleForm({ ...saleForm, lead_id: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-black/20 border border-white/10 text-sm focus:ring-2 focus:ring-amber-500/50"
+                    className={`w-full p-3 rounded-xl border text-sm focus:ring-2 focus:ring-amber-500/50 ${isDark ? 'bg-black/20 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
                   >
                     <option value="">Selecione o lead</option>
                     {leads.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
@@ -481,13 +561,13 @@ export default function Vendas() {
 
                 {/* Título */}
                 <div>
-                  <label className="text-sm font-medium mb-1 block text-slate-300">Descrição *</label>
+                  <label className={`text-sm font-medium mb-1 block ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>Descrição *</label>
                   <input
                     type="text"
                     value={saleForm.title}
                     onChange={e => setSaleForm({ ...saleForm, title: e.target.value })}
                     placeholder="Ex: Mensalidade, Consultoria..."
-                    className="w-full p-3 rounded-xl bg-black/20 border border-white/10 text-sm focus:ring-2 focus:ring-amber-500/50"
+                    className={`w-full p-3 rounded-xl border text-sm focus:ring-2 focus:ring-amber-500/50 ${isDark ? 'bg-black/20 border-white/10 text-white placeholder-gray-500' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}`}
                   />
                 </div>
 
@@ -565,7 +645,7 @@ export default function Vendas() {
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-medium transition"
+                  className={`flex-1 px-4 py-3 border rounded-xl font-medium transition ${isDark ? 'bg-white/5 hover:bg-white/10 border-white/10' : 'bg-gray-100 hover:bg-gray-200 border-gray-200'}`}
                 >
                   Cancelar
                 </button>

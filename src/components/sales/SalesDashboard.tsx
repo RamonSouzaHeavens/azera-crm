@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react'
+import { useMemo } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts'
 import { TrendingUp, Calendar, AlertCircle, Wallet, CheckCircle2 } from 'lucide-react'
+import { useThemeStore } from '../../stores/themeStore'
 
 // Tipos
 interface Sale {
