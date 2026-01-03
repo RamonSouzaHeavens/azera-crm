@@ -33,19 +33,10 @@ export function useConversations() {
 
     setLoading(true)
 
+    // Buscar conversas SEM depender da tabela clientes
     const { data, error } = await supabase
       .from('conversations')
-      .select(`
-        *,
-        clientes!inner(
-          nome,
-          telefone,
-          status,
-          categoria,
-          etapa_funil_id,
-          pipeline_stages:etapa_funil_id(label, color)
-        )
-      `)
+      .select('*')
       .eq('tenant_id', tenant.id)
       .is('deleted_at', null)
       .order('last_message_at', { ascending: false })
@@ -55,39 +46,38 @@ export function useConversations() {
       toast.error('Erro ao carregar conversas')
     } else {
       const mappedConversations = (data || []).map(conv => {
-        // Acessar pipeline_stages corretamente
-        const pipelineStage = conv.clientes?.pipeline_stages as any;
-
         return {
           id: conv.id,
           contact_id: conv.contact_id,
-          contact_name: conv.clientes?.nome || 'Contato Desconhecido',
-          contact_number: conv.clientes?.telefone || '',
+          contact_name: conv.contact_name || 'Contato',
+          contact_number: conv.contact_phone || '',
           channel: conv.channel,
           last_message_content: conv.last_message_content || '',
           last_message_at: conv.last_message_at,
           unread_count: conv.unread_count || 0,
           avatar: conv.avatar_url || undefined,
           avatar_url: conv.avatar_url || undefined,
-          status: conv.clientes?.status,
-          categoria: conv.clientes?.categoria || 'trabalho',
+          status: undefined,
+          categoria: 'trabalho',
           archived: conv.archived || false,
           deleted_at: conv.deleted_at,
-          etapa_funil_id: conv.clientes?.etapa_funil_id,
-          etapa_funil_label: pipelineStage?.label,
-          etapa_funil_color: pipelineStage?.color
+          etapa_funil_id: undefined,
+          etapa_funil_label: undefined,
+          etapa_funil_color: undefined
         }
       })
 
       // Garantir unicidade por número de contato (manter a conversa mais recente)
+      // Usar o id da conversa como fallback se não tiver número
       const uniqueConversations = mappedConversations.reduce((acc, conv) => {
-        if (!acc.has(conv.contact_number)) {
-          acc.set(conv.contact_number, conv)
+        const key = conv.contact_number || conv.id // Usar id como fallback
+        if (!acc.has(key)) {
+          acc.set(key, conv)
         } else {
           // Se já existe, manter a mais recente
-          const existing = acc.get(conv.contact_number)!
+          const existing = acc.get(key)!
           if (new Date(conv.last_message_at) > new Date(existing.last_message_at)) {
-            acc.set(conv.contact_number, conv)
+            acc.set(key, conv)
           }
         }
         return acc

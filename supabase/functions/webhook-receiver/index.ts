@@ -453,61 +453,32 @@ serve(async (req) => {
     }
 
     const tenantId = integration.tenant_id
+    const autoCreateLeads = integration.config?.auto_create_leads !== false // Default to true
     console.log('[WEBHOOK] Found integration for tenant:', tenantId)
+    console.log('[WEBHOOK] Auto create leads:', autoCreateLeads)
 
-    // Find or Create Client
-    let clientId = null
-    const { data: existingClient } = await supabase
-      .from('clientes')
-      .select('id')
-      .eq('tenant_id', tenantId)
-      .eq('telefone', phoneNumber)
-      .maybeSingle()
+    // =========================================================================
+    // CONVERSATIONS ARE INDEPENDENT FROM LEADS
+    // Find conversation by phone number, NOT by contact_id
+    // =========================================================================
 
-    if (existingClient) {
-      clientId = existingClient.id
-      // Update avatar if we have one and client doesn't
-      if (avatarUrl) {
-        await supabase
-          .from('clientes')
-          .update({ avatar_url: avatarUrl, nome: contactName })
-          .eq('id', clientId)
-      }
-    } else {
-      const { data: newClient, error: clientError } = await supabase
-        .from('clientes')
-        .insert({
-          tenant_id: tenantId,
-          nome: contactName,
-          telefone: phoneNumber,
-          status: 'lead',
-          avatar_url: avatarUrl
-        })
-        .select()
-        .single()
-
-      if (clientError) {
-        console.error('[WEBHOOK] Error creating client:', clientError)
-        return new Response(JSON.stringify({ error: 'Client creation failed' }), { status: 200, headers: corsHeaders })
-      }
-      clientId = newClient.id
-    }
-
-    // Find or Create Conversation
+    // Find existing conversation by phone number
     let conversationId = null
     const { data: existingConv } = await supabase
       .from('conversations')
       .select('id, unread_count')
       .eq('tenant_id', tenantId)
-      .eq('contact_id', clientId)
+      .eq('contact_phone', phoneNumber)
       .eq('channel', 'whatsapp')
       .maybeSingle()
 
     if (existingConv) {
       conversationId = existingConv.id
+      // Update conversation with latest message
       await supabase
         .from('conversations')
         .update({
+          contact_name: contactName, // Always update name in case it changed
           last_message_content: messageText || `[${messageType}]`,
           last_message_at: new Date().toISOString(),
           unread_count: (existingConv.unread_count || 0) + 1,
@@ -515,11 +486,14 @@ serve(async (req) => {
         })
         .eq('id', conversationId)
     } else {
+      // Create new conversation (independent from leads)
       const { data: newConv, error: convError } = await supabase
         .from('conversations')
         .insert({
           tenant_id: tenantId,
-          contact_id: clientId,
+          contact_id: null, // No dependency on clientes table
+          contact_name: contactName,
+          contact_phone: phoneNumber,
           channel: 'whatsapp',
           status: 'open',
           unread_count: 1,
@@ -536,6 +510,50 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Conversation creation failed' }), { status: 200, headers: corsHeaders })
       }
       conversationId = newConv.id
+      console.log('[WEBHOOK] Created new conversation:', conversationId)
+    }
+
+    // =========================================================================
+    // LEADS ARE OPTIONAL - Only create if auto_create_leads is enabled
+    // =========================================================================
+    if (autoCreateLeads) {
+      // Check if lead already exists
+      const { data: existingClient } = await supabase
+        .from('clientes')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('telefone', phoneNumber)
+        .maybeSingle()
+
+      if (existingClient) {
+        // Update existing lead
+        if (avatarUrl) {
+          await supabase
+            .from('clientes')
+            .update({ avatar_url: avatarUrl, nome: contactName })
+            .eq('id', existingClient.id)
+        }
+      } else {
+        // Create new lead
+        const { error: clientError } = await supabase
+          .from('clientes')
+          .insert({
+            tenant_id: tenantId,
+            nome: contactName,
+            telefone: phoneNumber,
+            status: 'lead',
+            avatar_url: avatarUrl
+          })
+
+        if (clientError) {
+          console.error('[WEBHOOK] Error creating lead (non-blocking):', clientError)
+          // Don't return error - conversation was already created, lead is optional
+        } else {
+          console.log('[WEBHOOK] Lead created automatically')
+        }
+      }
+    } else {
+      console.log('[WEBHOOK] Auto create leads disabled - skipping lead creation')
     }
 
     // Handle message type
