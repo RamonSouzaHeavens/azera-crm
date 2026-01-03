@@ -24,7 +24,8 @@ import {
   UserPlus,
   Settings,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  RefreshCw
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -612,6 +613,14 @@ export default function ConversationsPage() {
                       title={showArchived ? 'Ver conversas ativas' : 'Ver arquivadas'}
                     >
                       <Archive className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => refetchConversations()}
+                      disabled={loading}
+                      className={`p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 disabled:opacity-50`}
+                      title="Atualizar conversas"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                     </button>
                     {/* Settings Menu */}
                     <div className="relative">
