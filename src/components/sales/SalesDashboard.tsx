@@ -29,6 +29,7 @@ const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 
 export default function SalesDashboard({ sales }: SalesDashboardProps) {
+  const { isDark } = useThemeStore()
 
   // 1. Dados para o Gráfico de Área
   const cashFlowData = useMemo(() => {
@@ -36,9 +37,8 @@ export default function SalesDashboard({ sales }: SalesDashboardProps) {
 
     const today = new Date()
 
-    // Encontrar o range de meses das vendas
-    let minDate = new Date(today.getFullYear(), today.getMonth() - 3, 1) // 3 meses atrás
-    let maxDate = new Date(today.getFullYear(), today.getMonth() + 3, 1) // 3 meses à frente
+    let minDate = new Date(today.getFullYear(), today.getMonth() - 3, 1)
+    let maxDate = new Date(today.getFullYear(), today.getMonth() + 3, 1)
 
     sales.forEach(sale => {
       const saleDate = new Date(sale.due_date)
@@ -46,10 +46,9 @@ export default function SalesDashboard({ sales }: SalesDashboardProps) {
       if (saleDate > maxDate) maxDate = new Date(saleDate.getFullYear(), saleDate.getMonth(), 1)
     })
 
-    // Criar grupos para cada mês no range
     let current = new Date(minDate)
     while (current <= maxDate) {
-      const key = current.toISOString().slice(0, 7) // "YYYY-MM"
+      const key = current.toISOString().slice(0, 7)
       const name = current.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
       groups[key] = { name, date: key, income: 0, forecast: 0 }
       current.setMonth(current.getMonth() + 1)
@@ -99,7 +98,7 @@ export default function SalesDashboard({ sales }: SalesDashboardProps) {
       .reduce((acc, s) => acc + Number(s.value), 0)
   }, [sales])
 
-  // 4. Total Recebido (todas as vendas pagas)
+  // 4. Total Recebido
   const totalReceived = useMemo(() => {
     return sales
       .filter(s => s.status === 'paid')
@@ -108,6 +107,22 @@ export default function SalesDashboard({ sales }: SalesDashboardProps) {
 
   const hasReceived = totalReceived > 0
 
+  // Theme-aware styles
+  const cardBg = isDark
+    ? 'bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700/50'
+    : 'bg-white border-gray-200 shadow-sm'
+  const chartBg = isDark
+    ? 'bg-slate-800/50 border-slate-700/50'
+    : 'bg-white border-gray-200 shadow-sm'
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900'
+  const textSecondary = isDark ? 'text-slate-400' : 'text-gray-600'
+  const textMuted = isDark ? 'text-slate-500' : 'text-gray-500'
+  const chartGridColor = isDark ? '#334155' : '#e5e7eb'
+  const chartTickColor = isDark ? '#94a3b8' : '#6b7280'
+  const tooltipBg = isDark ? '#1e293b' : '#ffffff'
+  const tooltipBorder = isDark ? '#334155' : '#e5e7eb'
+  const tooltipText = isDark ? '#fff' : '#1f2937'
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
@@ -115,69 +130,69 @@ export default function SalesDashboard({ sales }: SalesDashboardProps) {
       <div className={`grid grid-cols-1 gap-4 ${hasReceived ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
 
         {/* Card 1: Previsão */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-6 relative overflow-hidden group">
+        <div className={`${cardBg} border rounded-2xl p-6 relative overflow-hidden group`}>
           <div className="absolute right-0 top-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-amber-500/20" />
           <div className="flex items-start justify-between relative z-10">
             <div>
-              <p className="text-slate-400 font-medium mb-1 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-amber-400" />
+              <p className={`${textSecondary} font-medium mb-1 flex items-center gap-2`}>
+                <TrendingUp className="w-4 h-4 text-amber-500" />
                 Previsão (30 dias)
               </p>
-              <h3 className="text-3xl font-bold text-white tracking-tight">
+              <h3 className={`text-3xl font-bold ${textPrimary} tracking-tight`}>
                 {formatCurrency(forecast30Days)}
               </h3>
-              <p className="text-xs text-slate-500 mt-2">
+              <p className={`text-xs ${textMuted} mt-2`}>
                 A receber confirmado
               </p>
             </div>
-            <div className="p-3 bg-white/5 rounded-xl border border-white/10">
-              <Wallet className="w-6 h-6 text-amber-400" />
+            <div className={`p-3 ${isDark ? 'bg-white/5 border-white/10' : 'bg-amber-50 border-amber-100'} rounded-xl border`}>
+              <Wallet className="w-6 h-6 text-amber-500" />
             </div>
           </div>
         </div>
 
-        {/* Card 2: Recebido Este Mês (Condicional) */}
+        {/* Card 2: Recebido (Condicional) */}
         {hasReceived && (
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-6 relative overflow-hidden group">
+          <div className={`${cardBg} border rounded-2xl p-6 relative overflow-hidden group`}>
             <div className="absolute right-0 top-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-emerald-500/20" />
             <div className="flex items-start justify-between relative z-10">
               <div>
-                <p className="text-slate-400 font-medium mb-1 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <p className={`${textSecondary} font-medium mb-1 flex items-center gap-2`}>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                   Recebido (Total)
                 </p>
-                <h3 className="text-3xl font-bold text-white tracking-tight">
+                <h3 className={`text-3xl font-bold ${textPrimary} tracking-tight`}>
                   {formatCurrency(totalReceived)}
                 </h3>
-                <p className="text-xs text-slate-500 mt-2">
+                <p className={`text-xs ${textMuted} mt-2`}>
                   Total de vendas confirmadas
                 </p>
               </div>
-              <div className="p-3 bg-white/5 rounded-xl border border-white/10">
-                <Wallet className="w-6 h-6 text-emerald-400" />
+              <div className={`p-3 ${isDark ? 'bg-white/5 border-white/10' : 'bg-emerald-50 border-emerald-100'} rounded-xl border`}>
+                <Wallet className="w-6 h-6 text-emerald-500" />
               </div>
             </div>
           </div>
         )}
 
         {/* Card 3: Inadimplência */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 rounded-2xl p-6 relative overflow-hidden group">
+        <div className={`${cardBg} border rounded-2xl p-6 relative overflow-hidden group`}>
           <div className="absolute right-0 top-0 w-32 h-32 bg-rose-500/10 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-rose-500/20" />
           <div className="flex items-start justify-between relative z-10">
             <div>
-              <p className="text-slate-400 font-medium mb-1 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-400" />
+              <p className={`${textSecondary} font-medium mb-1 flex items-center gap-2`}>
+                <AlertCircle className="w-4 h-4 text-rose-500" />
                 Inadimplência
               </p>
-              <h3 className="text-3xl font-bold text-white tracking-tight">
+              <h3 className={`text-3xl font-bold ${textPrimary} tracking-tight`}>
                 {formatCurrency(sales.filter(s => s.status === 'overdue').reduce((a, b) => a + Number(b.value), 0))}
               </h3>
-              <p className="text-xs text-slate-500 mt-2">
+              <p className={`text-xs ${textMuted} mt-2`}>
                 Total vencido
               </p>
             </div>
-            <div className="p-3 bg-white/5 rounded-xl border border-white/10">
-              <Calendar className="w-6 h-6 text-rose-400" />
+            <div className={`p-3 ${isDark ? 'bg-white/5 border-white/10' : 'bg-rose-50 border-rose-100'} rounded-xl border`}>
+              <Calendar className="w-6 h-6 text-rose-500" />
             </div>
           </div>
         </div>
@@ -186,8 +201,8 @@ export default function SalesDashboard({ sales }: SalesDashboardProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Gráfico Principal: Fluxo de Caixa */}
-        <div className="lg:col-span-2 bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6">
-          <h3 className="text-lg font-semibold text-white mb-6">Fluxo de Caixa (Realizado vs Previsto)</h3>
+        <div className={`lg:col-span-2 ${chartBg} border rounded-2xl p-6`}>
+          <h3 className={`text-lg font-semibold ${textPrimary} mb-6`}>Fluxo de Caixa (Realizado vs Previsto)</h3>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={cashFlowData}>
@@ -201,23 +216,23 @@ export default function SalesDashboard({ sales }: SalesDashboardProps) {
                     <stop offset="95%" stopColor={COLORS.pending} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={chartGridColor} vertical={false} />
                 <XAxis
                   dataKey="name"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: '#94a3b8', fontSize: 12 }}
+                  tick={{ fill: chartTickColor, fontSize: 12 }}
                   dy={10}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: '#94a3b8', fontSize: 12 }}
+                  tick={{ fill: chartTickColor, fontSize: 12 }}
                   tickFormatter={(value) => `R$${value / 1000}k`}
                 />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff' }}
-                  itemStyle={{ color: '#fff' }}
+                  contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, color: tooltipText, borderRadius: '8px' }}
+                  itemStyle={{ color: tooltipText }}
                   formatter={(value: number) => formatCurrency(value)}
                 />
                 <Legend verticalAlign="top" height={36} />
@@ -246,8 +261,8 @@ export default function SalesDashboard({ sales }: SalesDashboardProps) {
         </div>
 
         {/* Gráfico Secundário: Distribuição */}
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-6 flex flex-col">
-          <h3 className="text-lg font-semibold text-white mb-2">Composição da Carteira</h3>
+        <div className={`${chartBg} border rounded-2xl p-6 flex flex-col`}>
+          <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>Composição da Carteira</h3>
           <div className="flex-1 min-h-[280px] relative">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -265,22 +280,22 @@ export default function SalesDashboard({ sales }: SalesDashboardProps) {
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff', borderRadius: '8px' }}
+                  contentStyle={{ backgroundColor: tooltipBg, borderColor: tooltipBorder, color: tooltipText, borderRadius: '8px' }}
                   formatter={(value: number) => formatCurrency(value)}
                 />
                 <Legend
                   verticalAlign="bottom"
                   layout="horizontal"
                   iconType="circle"
-                  formatter={(value) => <span className="text-slate-300 ml-1">{value}</span>}
+                  formatter={(value) => <span className={textSecondary + ' ml-1'}>{value}</span>}
                 />
               </PieChart>
             </ResponsiveContainer>
             {/* Total no centro */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8">
               <div className="text-center">
-                <span className="block text-xs text-slate-400 mb-1">Total</span>
-                <span className="block text-base sm:text-lg font-bold text-white whitespace-nowrap">
+                <span className={`block text-xs ${textMuted} mb-1`}>Total</span>
+                <span className={`block text-base sm:text-lg font-bold ${textPrimary} whitespace-nowrap`}>
                   {formatCurrency(sales.reduce((a, b) => a + Number(b.value), 0))}
                 </span>
               </div>

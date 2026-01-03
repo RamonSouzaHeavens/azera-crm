@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { CheckCircle, Clock, AlertCircle, Calendar, User, ExternalLink } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
+import { useThemeStore } from '../../stores/themeStore'
 
 // Tipos
 interface Sale {
@@ -34,6 +35,7 @@ const COLUMNS = [
 
 export default function SalesKanban({ sales, onStatusChange }: SalesKanbanProps) {
   const navigate = useNavigate()
+  const { isDark } = useThemeStore()
   const [enabled, setEnabled] = useState(false)
 
   useEffect(() => {
@@ -64,13 +66,29 @@ export default function SalesKanban({ sales, onStatusChange }: SalesKanbanProps)
     paid: sales.filter(s => s.status === 'paid'),
   }
 
+  // Theme-aware styles
+  const columnBg = isDark
+    ? 'bg-slate-900/50 border-slate-700'
+    : 'bg-gray-50 border-gray-200'
+  const cardBg = isDark
+    ? 'bg-slate-800/60 border-slate-700 hover:border-slate-600'
+    : 'bg-white border-gray-200 hover:border-gray-300'
+  const cardDragging = isDark
+    ? 'ring-offset-slate-900'
+    : 'ring-offset-white'
+  const textPrimary = isDark ? 'text-white' : 'text-gray-900'
+  const textSecondary = isDark ? 'text-slate-400' : 'text-gray-600'
+  const textMuted = isDark ? 'text-slate-500' : 'text-gray-500'
+  const badgeBg = isDark ? 'bg-white/10' : 'bg-gray-100'
+  const totalBg = isDark ? 'bg-white/5 border-white/5' : 'bg-gray-100 border-gray-200'
+
   if (!enabled) {
     return null
   }
 
   return (
     <DragDropContext onDragEnd={onDragEnd}>
-      {/* Container com altura fixa e scroll horizontal - IGUAL ao Leads.tsx */}
+      {/* Container com altura fixa e scroll horizontal */}
       <div className="relative h-[calc(100vh-280px)] overflow-x-auto overflow-y-hidden pb-4 px-6 py-6 scrollbar-thin">
         <div className="flex gap-4 min-w-max h-full">
           {COLUMNS.map(col => {
@@ -83,18 +101,18 @@ export default function SalesKanban({ sales, onStatusChange }: SalesKanbanProps)
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className="flex-shrink-0 w-80 rounded-xl bg-slate-900/50 border border-slate-700 p-4 h-full max-h-full flex flex-col shadow-sm hover:shadow-md transition-shadow"
+                    className={`flex-shrink-0 w-80 rounded-xl ${columnBg} border p-4 h-full max-h-full flex flex-col shadow-sm hover:shadow-md transition-shadow`}
                   >
                     {/* Header da Coluna */}
                     <div className="flex items-center justify-between mb-4">
-                      <div className="text-sm font-bold text-white flex items-center gap-2">
+                      <div className={`text-sm font-bold ${textPrimary} flex items-center gap-2`}>
                         <span className="w-3 h-3 rounded-full" style={{ background: col.color }} />
                         {col.title}
-                        <span className="text-[12px] font-semibold text-slate-400 bg-white/10 px-2 py-0.5 rounded-lg">
+                        <span className={`text-[12px] font-semibold ${textSecondary} ${badgeBg} px-2 py-0.5 rounded-lg`}>
                           ({colSales.length})
                         </span>
                       </div>
-                      <span className="text-xs font-semibold text-slate-300 bg-white/5 px-2 py-1 rounded-md border border-white/5">
+                      <span className={`text-xs font-semibold ${textSecondary} ${totalBg} px-2 py-1 rounded-md border`}>
                         {formatCurrency(totalValue)}
                       </span>
                     </div>
@@ -108,26 +126,26 @@ export default function SalesKanban({ sales, onStatusChange }: SalesKanbanProps)
                               ref={pp.innerRef}
                               {...pp.draggableProps}
                               {...pp.dragHandleProps}
-                              className={`rounded-lg bg-slate-800/60 border border-slate-700 p-4 cursor-grab active:cursor-grabbing transition-all ${snapshot.isDragging ? 'ring-2 ring-cyan-500/60 ring-offset-2 ring-offset-slate-900 scale-[1.02] shadow-md' : 'hover:border-slate-600 hover:shadow-sm'}`}
+                              className={`rounded-lg ${cardBg} border p-4 cursor-grab active:cursor-grabbing transition-all ${snapshot.isDragging ? `ring-2 ring-cyan-500/60 ring-offset-2 ${cardDragging} scale-[1.02] shadow-md` : 'hover:shadow-sm'}`}
                             >
                               <div className="flex items-start justify-between gap-2 mb-2">
                                 <div className="flex-1">
-                                  <div className="text-sm font-bold text-white leading-tight line-clamp-2">{sale.title}</div>
+                                  <div className={`text-sm font-bold ${textPrimary} leading-tight line-clamp-2`}>{sale.title}</div>
                                 </div>
                               </div>
 
-                              <div className="text-lg font-bold text-cyan-400 mb-2">
+                              <div className="text-lg font-bold text-cyan-500 mb-2">
                                 {formatCurrency(sale.value)}
                               </div>
 
-                              <div className="flex items-center justify-between text-xs text-slate-400">
+                              <div className={`flex items-center justify-between text-xs ${textMuted}`}>
                                 <div className="flex items-center gap-1.5">
                                   <Calendar className="w-3.5 h-3.5" />
                                   {formatDate(sale.due_date)}
                                 </div>
                                 {sale.lead && (
                                   <div
-                                    className="flex items-center gap-1.5 hover:text-cyan-400 cursor-pointer transition"
+                                    className="flex items-center gap-1.5 hover:text-cyan-500 cursor-pointer transition"
                                     onClick={() => navigate(`/app/clientes/${sale.lead_id}`)}
                                   >
                                     <User className="w-3.5 h-3.5" />

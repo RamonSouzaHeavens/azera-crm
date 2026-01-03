@@ -769,7 +769,7 @@ export default function Leads() {
 
 
   const Header = (
-    <div className="sticky top-0 z-20 backdrop-blur-sm border-b border-slate-200 dark:border-white/5">
+    <div className="sticky top-0 z-20 bg-white dark:bg-slate-950 backdrop-blur-sm border-b border-slate-200 dark:border-white/5">
       <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-white/10">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           {/* Título com ícone grande - estilo Tarefas */}
@@ -1012,7 +1012,9 @@ export default function Leads() {
         {/* Checkbox de seleção */}
         {selectionMode && (
           <button
+            type="button"
             onClick={(e) => {
+              e.preventDefault()
               e.stopPropagation()
               toggleLeadSelection(l.id)
             }}
@@ -1028,6 +1030,7 @@ export default function Leads() {
 
         {/* Info Principal - Layout horizontal otimizado */}
         <button
+          type="button"
           onClick={() => openLead(l)}
           className="flex items-start gap-6 flex-1 min-w-0 text-left focus:outline-none"
         >

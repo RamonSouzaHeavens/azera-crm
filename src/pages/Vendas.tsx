@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  DollarSign, Plus, Search, Filter, X, Calendar,
+  DollarSign, Plus, Search, Filter, X,
   Repeat, LayoutGrid, List as ListIcon, PieChart
 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -45,37 +45,31 @@ interface Filters {
   leadId?: string
   dateFrom?: string
   dateTo?: string
-  month?: string // formato: YYYY-MM
 }
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 }
 
-// Gera lista de meses (últimos 12 + próximos 12)
+// Gera lista de meses do ano atual
 const generateMonthOptions = () => {
   const options: { value: string; label: string }[] = []
   const today = new Date()
+  const currentYear = today.getFullYear()
+  const currentMonth = today.getMonth()
 
-  // Últimos 12 meses
-  for (let i = 12; i >= 1; i--) {
-    const date = new Date(today.getFullYear(), today.getMonth() - i, 1)
-    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+  // Todos os 12 meses do ano atual
+  for (let month = 0; month < 12; month++) {
+    const date = new Date(currentYear, month, 1)
+    const value = `${currentYear}-${String(month + 1).padStart(2, '0')}`
     const label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-    options.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) })
-  }
-
-  // Mês atual
-  const currentValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`
-  const currentLabel = today.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-  options.push({ value: currentValue, label: `${currentLabel.charAt(0).toUpperCase() + currentLabel.slice(1)} (Atual)` })
-
-  // Próximos 12 meses
-  for (let i = 1; i <= 12; i++) {
-    const date = new Date(today.getFullYear(), today.getMonth() + i, 1)
-    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-    const label = date.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
-    options.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) })
+    const isCurrentMonth = month === currentMonth
+    options.push({
+      value,
+      label: isCurrentMonth
+        ? `${label.charAt(0).toUpperCase() + label.slice(1)} (Atual)`
+        : label.charAt(0).toUpperCase() + label.slice(1)
+    })
   }
 
   return options
@@ -145,21 +139,12 @@ export default function Vendas() {
         query = query.eq('lead_id', filters.leadId)
       }
 
-      // Filtro de mês específico (sobrescreve dateFrom/dateTo)
-      if (filters.month) {
-        const [year, month] = filters.month.split('-')
-        const startDate = `${year}-${month}-01`
-        const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate()
-        const endDate = `${year}-${month}-${lastDay}`
-        query = query.gte('due_date', startDate).lte('due_date', endDate + 'T23:59:59')
-      } else {
-        // Filtros de data manual (apenas se não houver filtro de mês)
-        if (filters.dateFrom) {
-          query = query.gte('due_date', filters.dateFrom)
-        }
-        if (filters.dateTo) {
-          query = query.lte('due_date', filters.dateTo + 'T23:59:59')
-        }
+      // Filtros de data
+      if (filters.dateFrom) {
+        query = query.gte('due_date', filters.dateFrom)
+      }
+      if (filters.dateTo) {
+        query = query.lte('due_date', filters.dateTo + 'T23:59:59')
       }
 
       if (filters.q) {
@@ -372,33 +357,8 @@ export default function Vendas() {
               className="overflow-hidden"
             >
               <div className={`p-4 rounded-2xl border space-y-4 ${isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'}`}>
-                {/* Filtro Rápido de Mês */}
-                <div>
-                  <label className={`text-xs font-medium mb-2 block flex items-center gap-2 ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>
-                    <Calendar className="w-4 h-4" />
-                    Filtro Rápido por Mês
-                  </label>
-                  <select
-                    value={filters.month || ''}
-                    onChange={e => setFilters({ ...filters, month: e.target.value || undefined, dateFrom: undefined, dateTo: undefined })}
-                    className={`w-full p-2.5 rounded-lg border text-sm focus:ring-2 focus:ring-amber-500/50 ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
-                    style={isDark ? { backgroundColor: '#1e293b', color: '#ffffff', borderColor: '#475569' } : {}}
-                  >
-                    <option value="">Todos os meses</option>
-                    {generateMonthOptions().map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                  {filters.month && (
-                    <p className="text-xs text-amber-400 mt-2 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 bg-amber-400 rounded-full"></span>
-                      Mostrando vendas de {generateMonthOptions().find(o => o.value === filters.month)?.label}
-                    </p>
-                  )}
-                </div>
-
-                {/* Outros Filtros */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Filtros em Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                   <div>
                     <label className={`text-xs font-medium mb-1 block ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>Status</label>
                     <select
@@ -433,9 +393,8 @@ export default function Vendas() {
                     <input
                       type="date"
                       value={filters.dateFrom || ''}
-                      onChange={e => setFilters({ ...filters, dateFrom: e.target.value, month: undefined })}
-                      disabled={!!filters.month}
-                      className={`w-full p-2 rounded-lg border text-sm disabled:opacity-50 disabled:cursor-not-allowed ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                      onChange={e => setFilters({ ...filters, dateFrom: e.target.value })}
+                      className={`w-full p-2 rounded-lg border text-sm ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
                     />
                   </div>
 
@@ -444,10 +403,32 @@ export default function Vendas() {
                     <input
                       type="date"
                       value={filters.dateTo || ''}
-                      onChange={e => setFilters({ ...filters, dateTo: e.target.value, month: undefined })}
-                      disabled={!!filters.month}
-                      className={`w-full p-2 rounded-lg border text-sm disabled:opacity-50 disabled:cursor-not-allowed ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                      onChange={e => setFilters({ ...filters, dateTo: e.target.value })}
+                      className={`w-full p-2 rounded-lg border text-sm ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
                     />
+                  </div>
+
+                  <div>
+                    <label className={`text-xs font-medium mb-1 block ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>Mês</label>
+                    <select
+                      value=""
+                      onChange={e => {
+                        if (e.target.value) {
+                          const [year, month] = e.target.value.split('-').map(Number)
+                          const lastDay = new Date(year, month, 0).getDate()
+                          const dateFrom = `${year}-${String(month).padStart(2, '0')}-01`
+                          const dateTo = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+                          setFilters({ ...filters, dateFrom, dateTo })
+                        }
+                      }}
+                      className={`w-full p-2 rounded-lg border text-sm ${isDark ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                      style={isDark ? { backgroundColor: '#1e293b', color: '#ffffff', borderColor: '#475569' } : {}}
+                    >
+                      <option value="">Selecionar mês...</option>
+                      {generateMonthOptions().map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -458,7 +439,7 @@ export default function Vendas() {
                   >
                     Limpar Filtros
                   </button>
-                  {filters.month && (
+                  {(filters.dateFrom || filters.dateTo) && (
                     <div className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>
                       Total previsto: <span className="text-amber-400 font-semibold">
                         {formatCurrency(sales.reduce((sum, s) => sum + Number(s.value), 0))}
