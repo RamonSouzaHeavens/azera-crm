@@ -628,7 +628,17 @@ export default function Leads() {
   // =======================
   // Selection & Bulk Delete
   // =======================
-  const toggleLeadSelection = (leadId: string) => {
+  const toggleLeadSelection = useCallback((leadId: string, event?: React.MouseEvent) => {
+    // Prevenir scroll indesejado
+    if (event) {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+
+    // Salvar posição de scroll atual
+    const scrollContainer = document.querySelector('.flex-1.overflow-y-auto')
+    const scrollTop = scrollContainer?.scrollTop || 0
+
     setSelectedLeads(prev => {
       const newSet = new Set(prev)
       if (newSet.has(leadId)) {
@@ -638,7 +648,14 @@ export default function Leads() {
       }
       return newSet
     })
-  }
+
+    // Restaurar posição de scroll após a atualização do estado
+    requestAnimationFrame(() => {
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollTop
+      }
+    })
+  }, [])
 
   const toggleSelectAll = () => {
     if (selectedLeads.size === leads.length) {
@@ -769,7 +786,7 @@ export default function Leads() {
 
 
   const Header = (
-    <div className="sticky top-0 z-20 bg-white dark:bg-slate-950 backdrop-blur-sm border-b border-slate-200 dark:border-white/5">
+    <div className="sticky top-0 z-20 bg-white dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200 dark:border-white/5">
       <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-white/10">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           {/* Título com ícone grande - estilo Tarefas */}
@@ -1014,9 +1031,7 @@ export default function Leads() {
           <button
             type="button"
             onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              toggleLeadSelection(l.id)
+              toggleLeadSelection(l.id, e)
             }}
             className="flex-shrink-0 p-1 -ml-1"
           >

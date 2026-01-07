@@ -155,7 +155,17 @@ export default function TarefaNova() {
     setLoading(true)
 
     try {
-      // Criar tarefa
+      // Converter checklist para o formato JSON (compatível com Tarefas.tsx)
+      const checklistJson = checklist.length > 0
+        ? checklist.map((item, index) => ({
+          id: item.id,
+          texto: item.titulo,
+          done: item.concluido,
+          ordem: index
+        }))
+        : []
+
+      // Criar tarefa (incluindo checklist no campo JSON para compatibilidade)
       const novaTarefa = {
         tenant_id: tenant.id,
         titulo: titulo.trim(),
@@ -165,7 +175,8 @@ export default function TarefaNova() {
         data_vencimento: dataVencimento || null,
         responsavel_id: responsavelId || null,
         cliente_id: clienteId || null,
-        produto_id: produtoId || null
+        produto_id: produtoId || null,
+        checklist: JSON.stringify(checklistJson)
       }
 
       const { data: tarefa, error: tarefaError } = await supabase
@@ -559,11 +570,10 @@ export default function TarefaNova() {
                                 <div
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
-                                  className={`flex items-center gap-2 p-2.5 rounded-xl transition-all group ${
-                                    snapshot.isDragging
+                                  className={`flex items-center gap-2 p-2.5 rounded-xl transition-all group ${snapshot.isDragging
                                       ? 'bg-cyan-500/20 ring-2 ring-cyan-500/50 shadow-lg'
                                       : 'bg-white/5 hover:bg-white/10'
-                                  }`}
+                                    }`}
                                 >
                                   <div
                                     {...provided.dragHandleProps}
@@ -586,9 +596,8 @@ export default function TarefaNova() {
                                     type="text"
                                     value={item.titulo}
                                     onChange={(e) => handleEditChecklistItem(item.id, e.target.value)}
-                                    className={`flex-1 bg-transparent border-none text-sm p-1 focus:ring-0 focus:outline-none ${
-                                      item.concluido ? 'line-through text-slate-500' : 'text-white'
-                                    }`}
+                                    className={`flex-1 bg-transparent border-none text-sm p-1 focus:ring-0 focus:outline-none ${item.concluido ? 'line-through text-slate-500' : 'text-white'
+                                      }`}
                                   />
                                   <button
                                     type="button"
