@@ -147,8 +147,8 @@ async function fetchDashboardData(
     supabase.from('clientes').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('status', 'fechado').gte('created_at', currentStart.toISOString()).lt('created_at', nextStart.toISOString()),
     supabase.from('clientes').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('status', 'fechado').gte('created_at', prevStart.toISOString()).lt('created_at', currentStart.toISOString()),
     supabase.from('clientes').select('valor_potencial').eq('tenant_id', tenantId).in('status', ['lead', 'negociacao']),
-    // Conversas não lidas
-    supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).gt('unread_count', 0),
+    // Conversas não lidas (ignorar conversas deletadas)
+    supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).gt('unread_count', 0).is('deleted_at', null),
     // Tarefas de hoje (Filtered by User)
     userId
       ? supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('responsavel_id', userId).eq('data_vencimento', now.toISOString().split('T')[0]).neq('status', 'concluida')
@@ -346,8 +346,8 @@ async function fetchVendedorDashboardData(
     supabase.from('clientes').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('atribuido_para', userId).eq('status', 'fechado').gte('created_at', prevStart.toISOString()).lt('created_at', currentStart.toISOString()),
     // Receita prevista dos leads do vendedor
     supabase.from('clientes').select('valor_potencial').eq('tenant_id', tenantId).eq('atribuido_para', userId).in('status', ['lead', 'negociacao']),
-    // Conversas não lidas atribuídas ao vendedor
-    supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('assigned_to', userId).gt('unread_count', 0),
+    // Conversas não lidas atribuídas ao vendedor (ignorar conversas deletadas)
+    supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('assigned_to', userId).gt('unread_count', 0).is('deleted_at', null),
     // Tarefas de hoje do vendedor
     supabase.from('tarefas').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('responsavel_id', userId).eq('data_vencimento', now.toISOString().split('T')[0]).neq('status', 'concluida'),
     // Tarefas atrasadas do vendedor
