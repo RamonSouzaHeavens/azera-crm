@@ -635,9 +635,10 @@ export default function Leads() {
       event.stopPropagation()
     }
 
-    // Salvar posição de scroll atual
-    const scrollContainer = document.querySelector('.flex-1.overflow-y-auto')
-    const scrollTop = scrollContainer?.scrollTop || 0
+    // Salvar posição de scroll atual - usando múltiplos seletores para garantir
+    const scrollContainer = document.getElementById('leads-scroll-container') ||
+      document.querySelector('[class*="overflow-y-auto"]')
+    const scrollTop = scrollContainer?.scrollTop || window.scrollY
 
     setSelectedLeads(prev => {
       const newSet = new Set(prev)
@@ -653,6 +654,8 @@ export default function Leads() {
     requestAnimationFrame(() => {
       if (scrollContainer) {
         scrollContainer.scrollTop = scrollTop
+      } else {
+        window.scrollTo(0, scrollTop)
       }
     })
   }, [])
@@ -1187,7 +1190,7 @@ export default function Leads() {
         <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:120px_120px]" />
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-6 px-6 relative z-10">
+      <div id="leads-scroll-container" className="flex-1 overflow-y-auto pb-6 px-6 relative z-10">
         {/* HUD glow grid background + overlay */}
         <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(circle_at_20%_20%,rgba(14,165,233,0.08),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(139,92,246,0.06),transparent_40%),radial-gradient(circle_at_50%_100%,rgba(16,185,129,0.06),transparent_45%)]" />
 

@@ -24,8 +24,8 @@ interface SalesKanbanProps {
 type SortOption = 'date_desc' | 'date_asc' | 'value_desc' | 'value_asc' | 'name_asc' | 'name_desc'
 
 const SORT_OPTIONS: { value: SortOption; label: string; icon: typeof ArrowUpDown }[] = [
-  { value: 'date_desc', label: 'Mais recente', icon: ArrowDown },
-  { value: 'date_asc', label: 'Mais antigo', icon: ArrowUp },
+  { value: 'date_asc', label: 'Próximo a vencer', icon: ArrowUp },
+  { value: 'date_desc', label: 'Distante a vencer', icon: ArrowDown },
   { value: 'value_desc', label: 'Maior valor', icon: ArrowDown },
   { value: 'value_asc', label: 'Menor valor', icon: ArrowUp },
   { value: 'name_asc', label: 'Nome A-Z', icon: ArrowUp },
@@ -48,7 +48,7 @@ export default function SalesKanban({ sales, onStatusChange }: SalesKanbanProps)
   const navigate = useNavigate()
   const { isDark } = useThemeStore()
   const [enabled, setEnabled] = useState(false)
-  const [sortOption, setSortOption] = useState<SortOption>('date_desc')
+  const [sortOption, setSortOption] = useState<SortOption>('date_asc')
   const [showSortMenu, setShowSortMenu] = useState(false)
 
   useEffect(() => {
