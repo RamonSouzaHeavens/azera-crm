@@ -126,77 +126,111 @@ export default function SuperAdmin() {
   const loadData = async () => {
     setLoading(true)
     try {
-      // Buscar subscriptions
+      // Usar funções RPC que bypassam RLS para o super admin
+      // Buscar subscriptions via RPC
       const { data: subscriptions, error: subError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .order('created_at', { ascending: false })
+        .rpc('get_all_subscriptions')
 
-      if (subError) console.error('Erro ao buscar subscriptions:', subError)
+      if (subError) {
+        console.error('Erro ao buscar subscriptions via RPC:', subError)
+        // Fallback para query normal se a função RPC não existir
+        if (subError.message?.includes('function') || subError.code === '42883') {
+          console.warn('Função RPC não existe. Execute o SQL em sql/super_admin_functions.sql no Supabase.')
+        }
+      }
 
-      // Buscar tenants
+      // Debug: Log das subscriptions encontradas
+      console.log('=== SUPER ADMIN DEBUG ===')
+      console.log('Subscriptions encontradas:', subscriptions?.length)
+      subscriptions?.forEach((s: any) => {
+        console.log(`  - User: ${s.user_id?.slice(0, 8)}... | Status: ${s.status} | ID: ${s.id?.slice(0, 8)}...`)
+      })
+
+      // Buscar tenants via RPC
       const { data: tenants, error: tenantError } = await supabase
-        .from('tenants')
-        .select('*')
-        .order('created_at', { ascending: false })
+        .rpc('get_all_tenants')
 
-      if (tenantError) console.error('Erro ao buscar tenants:', tenantError)
+      if (tenantError) {
+        console.error('Erro ao buscar tenants via RPC:', tenantError)
+      }
 
-      // Buscar membros de equipe (tem nome e email)
-      const { data: members, error: membersError } = await supabase
-        .from('team_members')
-        .select('id, user_id, email, nome, role, tenant_id, created_at')
-        .order('created_at', { ascending: false })
+      // Buscar perfis de usuários via RPC
+      const { data: profiles, error: profilesError } = await supabase
+        .rpc('get_all_profiles')
 
-      if (membersError) console.error('Erro ao buscar members:', membersError)
+      if (profilesError) {
+        console.error('Erro ao buscar profiles via RPC:', profilesError)
+      }
+
+      // Buscar memberships via RPC
+      const { data: memberships, error: membershipsError } = await supabase
+        .rpc('get_all_memberships')
+
+      if (membershipsError) {
+        console.error('Erro ao buscar memberships via RPC:', membershipsError)
+      }
+
+      // Buscar emails do auth.users através de uma função RPC ou usar subscriptions/perfis
+      // Como não temos acesso direto ao auth.users, vamos buscar emails das subscriptions se disponível
 
       // Criar mapa de tenants
       const tenantMap = new Map<string, Tenant>()
       tenants?.forEach(t => tenantMap.set(t.id, t))
 
-      // Montar lista de usuários únicos
+      // Criar mapa de memberships por user_id
+      const membershipMap = new Map<string, { tenant_id: string; role: string; active: boolean }>()
+      memberships?.forEach(m => {
+        if (m.user_id && !membershipMap.has(m.user_id)) {
+          membershipMap.set(m.user_id, {
+            tenant_id: m.tenant_id,
+            role: m.role,
+            active: m.active
+          })
+        }
+      })
+
+      // Montar lista de usuários únicos a partir dos profiles
       const userMap = new Map<string, UserWithDetails>()
 
-      // Adicionar de members (prioridade pois tem nome)
-      members?.forEach(member => {
-        if (member.user_id) {
-          const tenant = member.tenant_id ? tenantMap.get(member.tenant_id) : null
-          userMap.set(member.user_id, {
-            id: member.user_id,
-            email: member.email || '',
-            nome: member.nome || member.email?.split('@')[0] || 'Usuário',
-            role: member.role,
-            tenant_id: member.tenant_id,
-            tenant_name: tenant?.name || '',
-            created_at: member.created_at,
-            subscription: subscriptions?.find(s => s.user_id === member.user_id) || null
-          })
+      // Adicionar todos os perfis
+      profiles?.forEach(profile => {
+        const membership = membershipMap.get(profile.id)
+        const tenantId = membership?.tenant_id || profile.default_tenant_id
+        const tenant = tenantId ? tenantMap.get(tenantId) : null
+
+        userMap.set(profile.id, {
+          id: profile.id,
+          email: '', // Será preenchido se tiver subscription
+          nome: profile.display_name || profile.full_name || 'Usuário',
+          role: membership?.role || 'user',
+          tenant_id: tenantId || undefined,
+          tenant_name: tenant?.name || '',
+          created_at: profile.created_at,
+          subscription: subscriptions?.find(s => s.user_id === profile.id) || null
+        })
+
+        // Debug: verificar matching
+        const foundSub = subscriptions?.find(s => s.user_id === profile.id)
+        if (foundSub) {
+          console.log(`✅ Match: ${profile.display_name || profile.full_name} -> ${foundSub.status}`)
         }
       })
 
-      // Adicionar owners de tenants se não existem
-      tenants?.forEach(tenant => {
-        if (tenant.owner_id && !userMap.has(tenant.owner_id)) {
-          userMap.set(tenant.owner_id, {
-            id: tenant.owner_id,
-            email: '',
-            nome: tenant.name + ' (Owner)',
-            role: 'owner',
-            tenant_id: tenant.id,
-            tenant_name: tenant.name,
-            created_at: tenant.created_at,
-            subscription: subscriptions?.find(s => s.user_id === tenant.owner_id) || null
-          })
-        }
-      })
-
-      // Adicionar de subscriptions se não existem
+      // Adicionar de subscriptions se não existem (e pegar email do user_id se for email)
       subscriptions?.forEach(sub => {
         if (!userMap.has(sub.user_id)) {
+          console.log(`⚠️ Subscription orphan: ${sub.user_id.slice(0, 8)}... (${sub.status}) - Não tem profile!`)
+          const membership = membershipMap.get(sub.user_id)
+          const tenantId = membership?.tenant_id || sub.tenant_id
+          const tenant = tenantId ? tenantMap.get(tenantId) : null
+
           userMap.set(sub.user_id, {
             id: sub.user_id,
-            email: sub.user_id,
+            email: '',
             nome: 'Usuário ' + sub.user_id.slice(0, 8),
+            role: membership?.role || 'user',
+            tenant_id: tenantId || undefined,
+            tenant_name: tenant?.name || '',
             created_at: sub.created_at,
             subscription: sub
           })
@@ -204,6 +238,8 @@ export default function SuperAdmin() {
       })
 
       const usersList = Array.from(userMap.values())
+      console.log('Profiles:', profiles?.length, '| Subscriptions:', subscriptions?.length, '| Users finais:', usersList.length)
+      console.log('Usuários com assinatura ativa:', usersList.filter(u => u.subscription?.status === 'active').length)
       setUsers(usersList)
 
       // Calcular estatísticas
