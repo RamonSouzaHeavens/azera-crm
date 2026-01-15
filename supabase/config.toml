@@ -50,3 +50,8 @@ entrypoint = "./functions/google-calendar-oauth/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/google-calendar-callback/index.ts"
+
+[functions.google-calendar-sync]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/google-calendar-sync/index.ts"

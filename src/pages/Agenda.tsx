@@ -911,11 +911,41 @@ export default function Agenda() {
 
     checkGoogleStatus()
 
+    // Sincronizar eventos se conectado
+    if (googleIntegration?.status === 'connected') {
+      const syncEvents = async () => {
+        try {
+          const { supabase } = await import('../lib/supabase')
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session) return
+
+          const response = await fetch(
+            'https://hdmesxrurdrhmcujospv.supabase.co/functions/v1/google-calendar-sync',
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          )
+
+          const data = await response.json()
+          if (data.success) {
+            refetch()
+          }
+        } catch (error) {
+          console.error('Erro ao sincronizar:', error)
+        }
+      }
+      syncEvents()
+    }
+
     // Verificar novamente quando o modal fechar (caso o usuário tenha acabado de conectar)
     if (!isGoogleModalOpen) {
       checkGoogleStatus()
     }
-  }, [isGoogleModalOpen])
+  }, [isGoogleModalOpen, googleIntegration?.status, refetch])
 
   const {
     view,
