@@ -882,71 +882,9 @@ function EventsSidebar({ onSelectEvent }: { onSelectEvent: (eventId: string) => 
 // PÁGINA PRINCIPAL
 // ============================================================================
 
+
+
 export default function Agenda() {
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false)
-  const [googleIntegration, setGoogleIntegration] = useState<GoogleIntegration | null>(null)
-  const [selectedEventData, setSelectedEventData] = useState<CalendarEvent | null>(null)
-
-  // Verificar status do Google Calendar
-  useEffect(() => {
-    const checkGoogleStatus = async () => {
-      try {
-        const { supabase } = await import('../lib/supabase')
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data } = await supabase
-          .from('calendar_integrations')
-          .select('id, google_email, status')
-          .eq('user_id', user.id)
-          .eq('provider', 'google')
-          .single()
-
-        setGoogleIntegration(data || null)
-      } catch (error) {
-        console.error('Erro ao verificar Google:', error)
-      }
-    }
-
-    checkGoogleStatus()
-
-    // Sincronizar eventos se conectado
-    if (googleIntegration?.status === 'connected') {
-      const syncEvents = async () => {
-        try {
-          const { supabase } = await import('../lib/supabase')
-          const { data: { session } } = await supabase.auth.getSession()
-          if (!session) return
-
-          const response = await fetch(
-            'https://hdmesxrurdrhmcujospv.supabase.co/functions/v1/google-calendar-sync',
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-                'Content-Type': 'application/json'
-              }
-            }
-          )
-
-          const data = await response.json()
-          if (data.success) {
-            refetch()
-          }
-        } catch (error) {
-          console.error('Erro ao sincronizar:', error)
-        }
-      }
-      syncEvents()
-    }
-
-    // Verificar novamente quando o modal fechar (caso o usuário tenha acabado de conectar)
-    if (!isGoogleModalOpen) {
-      checkGoogleStatus()
-    }
-  }, [isGoogleModalOpen, googleIntegration?.status, refetch])
-
   const {
     view,
     setView,
@@ -971,6 +909,55 @@ export default function Agenda() {
     isCreating,
     isDeleting
   } = useCalendarEvents({ view, currentDate })
+
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false)
+  const [googleIntegration, setGoogleIntegration] = useState<GoogleIntegration | null>(null)
+  const [selectedEventData, setSelectedEventData] = useState<CalendarEvent | null>(null)
+
+  // Verificar status do Google Calendar
+  useEffect(() => {
+    const checkGoogleStatus = async () => {
+      try {
+        const { supabase } = await import('../lib/supabase')
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data } = await supabase
+          .from('calendar_integrations')
+          .select('id, google_email, status, last_sync_at')
+          .eq('user_id', user.id)
+          .eq('provider', 'google')
+          .single()
+
+        setGoogleIntegration(data || null)
+
+        // Sincronizar se conectado
+        if (data?.status === 'connected') {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session) {
+            fetch('https://hdmesxrurdrhmcujospv.supabase.co/functions/v1/google-calendar-sync', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json'
+              }
+            }).then(res => res.json())
+              .then(d => { if (d.success) refetch() })
+              .catch(e => console.error('Erro sync:', e))
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao verificar Google:', error)
+      }
+    }
+
+    checkGoogleStatus()
+
+
+  }, [isGoogleModalOpen])
+
+
 
   // Buscar dados do evento selecionado
   useEffect(() => {

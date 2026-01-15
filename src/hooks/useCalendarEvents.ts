@@ -111,9 +111,26 @@ export function useCalendarEvents(options: UseCalendarEventsOptions = {}) {
       if (!tenantId) throw new Error('Tenant não encontrado')
       return createCalendarEvent(tenantId, user?.id || null, input)
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
       toast.success('Evento criado com sucesso!')
+
+      // Sincronizar com Google
+      try {
+        const { supabase } = await import('../lib/supabase')
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          fetch('https://hdmesxrurdrhmcujospv.supabase.co/functions/v1/google-calendar-sync', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            }
+          }).catch(e => console.error('Erro sync:', e))
+        }
+      } catch (e) {
+        console.error('Erro ao disparar sync:', e)
+      }
     },
     onError: (error: Error) => {
       console.error('Erro ao criar evento:', error)
@@ -126,9 +143,26 @@ export function useCalendarEvents(options: UseCalendarEventsOptions = {}) {
     mutationFn: async ({ id, ...input }: UpdateEventInput & { id: string }) => {
       return updateCalendarEvent(id, input)
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
       toast.success('Evento atualizado!')
+
+      // Sincronizar com Google
+      try {
+        const { supabase } = await import('../lib/supabase')
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          fetch('https://hdmesxrurdrhmcujospv.supabase.co/functions/v1/google-calendar-sync', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            }
+          }).catch(e => console.error('Erro sync:', e))
+        }
+      } catch (e) {
+        console.error('Erro ao disparar sync:', e)
+      }
     },
     onError: (error: Error) => {
       console.error('Erro ao atualizar evento:', error)
@@ -141,9 +175,26 @@ export function useCalendarEvents(options: UseCalendarEventsOptions = {}) {
     mutationFn: async (eventId: string) => {
       return deleteCalendarEvent(eventId)
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
       toast.success('Evento removido!')
+
+      // Sincronizar com Google
+      try {
+        const { supabase } = await import('../lib/supabase')
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          fetch('https://hdmesxrurdrhmcujospv.supabase.co/functions/v1/google-calendar-sync', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            }
+          }).catch(e => console.error('Erro sync:', e))
+        }
+      } catch (e) {
+        console.error('Erro ao disparar sync:', e)
+      }
     },
     onError: (error: Error) => {
       console.error('Erro ao remover evento:', error)
