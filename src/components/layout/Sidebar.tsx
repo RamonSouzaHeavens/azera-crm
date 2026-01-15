@@ -23,7 +23,8 @@ import {
   Plug,
   Wrench,
   Shield,
-  DollarSign
+  DollarSign,
+  Calendar
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { Button } from '../ui/Button'
@@ -42,6 +43,7 @@ const getNavGroups = (t: (key: string) => string) => {
     { name: t('sidebar.conversations'), href: '/app/conversations', icon: MessageCircle },
     { name: t('sidebar.connectChannels'), href: '/app/connect-channels', icon: Plug },
     { name: t('sidebar.tasks'), href: '/app/tarefas', icon: CheckSquare },
+    { name: 'Agenda', href: '/app/agenda', icon: Calendar },
     { name: t('sidebar.products'), href: '/app/produtos', icon: Package },
     { name: 'Vendas', href: '/app/vendas', icon: DollarSign },
   ]

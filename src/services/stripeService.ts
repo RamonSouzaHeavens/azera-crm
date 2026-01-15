@@ -88,6 +88,7 @@ export async function getSubscriptionStatus(tenantId: string): Promise<Subscript
 
     const isActive = subscription.subscription_status === 'active'
     const isTrialing = subscription.subscription_status === 'trialing'
+    const isCanceled = subscription.subscription_status === 'canceled'
     const currentPeriodEnd = subscription.subscription_current_period_end
       ? new Date(subscription.subscription_current_period_end)
       : null
@@ -97,7 +98,11 @@ export async function getSubscriptionStatus(tenantId: string): Promise<Subscript
       ? Math.ceil((currentPeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
       : 0
 
-    const isExpired = !isActive && !isTrialing && currentPeriodEnd && currentPeriodEnd < now
+    // Assinatura é considerada ativa se:
+    // 1. Status é 'active' ou 'trialing', OU
+    // 2. Status é 'canceled' mas ainda está dentro do período pago
+    const isCanceledButValid = isCanceled && currentPeriodEnd && currentPeriodEnd > now
+    const isExpired = !isActive && !isTrialing && !isCanceledButValid && currentPeriodEnd && currentPeriodEnd < now
 
     return {
       status: subscription.subscription_status || 'none',
@@ -105,7 +110,7 @@ export async function getSubscriptionStatus(tenantId: string): Promise<Subscript
       daysRemaining: Math.max(0, daysRemaining),
       planName: subscription.subscription_plan_name || 'Sem Plano',
       pricePerMonth: subscription.subscription_price_per_month || 0,
-      isActive: isActive || isTrialing,
+      isActive: isActive || isTrialing || isCanceledButValid,
       isExpired: isExpired || false,
       autoRenew: subscription.subscription_auto_renew ?? true
     }

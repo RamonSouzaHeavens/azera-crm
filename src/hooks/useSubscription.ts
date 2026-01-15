@@ -39,18 +39,58 @@ const fetchSubscription = async (userId: string, userEmail?: string): Promise<Su
     } as Subscription
   }
 
-  const { data, error } = await supabase
+  // Buscar TODAS as assinaturas do usuário para selecionar a melhor
+  const { data: allSubscriptions, error } = await supabase
     .from('subscriptions')
     .select('*')
     .eq('user_id', userId)
-    .maybeSingle()
+    .order('created_at', { ascending: false })
 
   if (error && error.code !== 'PGRST116') {
     console.error('Erro ao buscar subscription:', error)
     throw error
   }
 
-  return data ?? null
+  if (!allSubscriptions || allSubscriptions.length === 0) {
+    return null
+  }
+
+  // Se só tem uma, retorna ela
+  if (allSubscriptions.length === 1) {
+    return allSubscriptions[0]
+  }
+
+  // Múltiplas assinaturas - selecionar a melhor
+  const now = new Date()
+
+  // Prioridade 1: Status 'active'
+  const activeSubscription = allSubscriptions.find(s => s.status === 'active')
+  if (activeSubscription) {
+    console.log('[useSubscription] Múltiplas assinaturas - usando a com status active')
+    return activeSubscription
+  }
+
+  // Prioridade 2: Status 'trialing'
+  const trialingSubscription = allSubscriptions.find(s => s.status === 'trialing')
+  if (trialingSubscription) {
+    console.log('[useSubscription] Múltiplas assinaturas - usando a com status trialing')
+    return trialingSubscription
+  }
+
+  // Prioridade 3: Status 'canceled' mas com current_period_end no futuro
+  const validCanceledSubscription = allSubscriptions
+    .filter(s => s.status === 'canceled' && s.current_period_end)
+    .filter(s => new Date(s.current_period_end!) > now)
+    .sort((a, b) => new Date(b.current_period_end!).getTime() - new Date(a.current_period_end!).getTime())[0]
+
+  if (validCanceledSubscription) {
+    console.log('[useSubscription] Múltiplas assinaturas - usando canceled com período válido até:', validCanceledSubscription.current_period_end)
+    return validCanceledSubscription
+  }
+
+  // Fallback: retorna a mais recente
+  console.log('[useSubscription] Múltiplas assinaturas - nenhuma válida, retornando mais recente')
+  return allSubscriptions[0]
 }
 
 export const useSubscription = () => {
@@ -101,7 +141,11 @@ export const useSubscription = () => {
   }, [userId, query])
 
   // Calcular isActive considerando DEV_BYPASS
-  const isActive = DEV_BYPASS_SUBSCRIPTION || isSubscriptionActive(query.data?.status)
+  // Verificar se está ativo considerando status E current_period_end
+  const isActive = DEV_BYPASS_SUBSCRIPTION || isSubscriptionActive(
+    query.data?.status,
+    query.data?.current_period_end
+  )
 
   return {
     subscription: query.data ?? null,

@@ -87,6 +87,19 @@ const PLAN_PRICES: Record<string, number> = {
   'price_anual': 479.90 / 12,     // Mensal equiv
 }
 
+/**
+ * Verifica se uma assinatura está efetivamente ativa
+ * (status active/trialing OU canceled mas dentro do período pago)
+ */
+const isSubscriptionEffectivelyActive = (sub: Subscription | null | undefined): boolean => {
+  if (!sub) return false
+  if (sub.status === 'active' || sub.status === 'trialing') return true
+  if (sub.status === 'canceled' && sub.current_period_end) {
+    return new Date(sub.current_period_end) > new Date()
+  }
+  return false
+}
+
 export default function SuperAdmin() {
   const { user } = useAuthStore()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -239,14 +252,15 @@ export default function SuperAdmin() {
 
       const usersList = Array.from(userMap.values())
       console.log('Profiles:', profiles?.length, '| Subscriptions:', subscriptions?.length, '| Users finais:', usersList.length)
-      console.log('Usuários com assinatura ativa:', usersList.filter(u => u.subscription?.status === 'active').length)
+      console.log('Usuários com assinatura ativa:', usersList.filter(u => isSubscriptionEffectivelyActive(u.subscription)).length)
       setUsers(usersList)
 
       // Calcular estatísticas
       const now = new Date()
       const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-      const activeCount = subscriptions?.filter(s => s.status === 'active').length || 0
+      // Contagem: assinaturas efetivamente ativas (active, trialing OU canceled com período válido)
+      const activeCount = subscriptions?.filter(s => isSubscriptionEffectivelyActive(s)).length || 0
       const canceledCount = subscriptions?.filter(s => s.status === 'canceled').length || 0
       const trialingCount = subscriptions?.filter(s => s.status === 'trialing').length || 0
       const subsThisMonth = subscriptions?.filter(s =>
@@ -256,9 +270,9 @@ export default function SuperAdmin() {
         new Date(u.created_at) >= firstOfMonth
       ).length
 
-      // Calcular MRR
+      // Calcular MRR (incluindo canceled com período válido)
       let mrr = 0
-      subscriptions?.filter(s => s.status === 'active').forEach(sub => {
+      subscriptions?.filter(s => isSubscriptionEffectivelyActive(s)).forEach((sub: Subscription) => {
         // Tentar identificar o plano pelo price_id
         if (sub.stripe_price_id) {
           const planPrice = PLAN_PRICES[sub.stripe_price_id] || 49.90 // Default mensal
@@ -370,7 +384,7 @@ export default function SuperAdmin() {
       (u.tenant_name?.toLowerCase().includes(searchTerm.toLowerCase()))
 
     if (filterStatus === 'all') return matchesSearch
-    if (filterStatus === 'active') return matchesSearch && u.subscription?.status === 'active'
+    if (filterStatus === 'active') return matchesSearch && isSubscriptionEffectivelyActive(u.subscription)
     if (filterStatus === 'canceled') return matchesSearch && u.subscription?.status === 'canceled'
     if (filterStatus === 'none') return matchesSearch && !u.subscription
 
@@ -497,13 +511,13 @@ export default function SuperAdmin() {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400">Status</span>
-                  {selectedUser.subscription?.status === 'active' ? (
+                  {isSubscriptionEffectivelyActive(selectedUser.subscription) ? (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs">
                       <Crown className="w-3 h-3" /> Ativo
                     </span>
                   ) : selectedUser.subscription?.status === 'canceled' ? (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-rose-500/20 text-rose-400 rounded-full text-xs">
-                      <Ban className="w-3 h-3" /> Cancelado
+                      <Ban className="w-3 h-3" /> Cancelado (Expirado)
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-500/20 text-slate-400 rounded-full text-xs">
@@ -527,7 +541,7 @@ export default function SuperAdmin() {
             </div>
 
             <div className="flex gap-3">
-              {selectedUser.subscription?.status !== 'active' ? (
+              {!isSubscriptionEffectivelyActive(selectedUser.subscription) ? (
                 <button
                   onClick={() => {
                     updateSubscriptionStatus(selectedUser.id, 'active')
@@ -913,7 +927,7 @@ export default function SuperAdmin() {
                         <span className="text-sm text-slate-300">{u.tenant_name || '-'}</span>
                       </td>
                       <td className="px-4 py-4">
-                        {u.subscription?.status === 'active' ? (
+                        {isSubscriptionEffectivelyActive(u.subscription) ? (
                           <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-xs font-medium">
                             <Crown className="w-3 h-3" />
                             Ativo
@@ -921,7 +935,7 @@ export default function SuperAdmin() {
                         ) : u.subscription?.status === 'canceled' ? (
                           <span className="inline-flex items-center gap-1 px-2 py-1 bg-rose-500/10 text-rose-400 rounded-full text-xs font-medium">
                             <Ban className="w-3 h-3" />
-                            Cancelado
+                            Expirado
                           </span>
                         ) : u.subscription?.status === 'trialing' ? (
                           <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-500/10 text-amber-400 rounded-full text-xs font-medium">
@@ -943,7 +957,7 @@ export default function SuperAdmin() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-end gap-2">
-                          {u.subscription?.status !== 'active' ? (
+                          {!isSubscriptionEffectivelyActive(u.subscription) ? (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()

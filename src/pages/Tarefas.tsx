@@ -775,6 +775,16 @@ export default function Tarefas() {
       </div>
 
       {/* =====================
+          Overlay: Fechar ao clicar fora
+          ===================== */}
+      {openTaskId && (
+        <div
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-30 transition-opacity"
+          onClick={closeTask}
+        />
+      )}
+
+      {/* =====================
           Drawer: Detalhes
           ===================== */}
       <div className={`fixed inset-y-0 right-0 w-full sm:w-[500px] bg-white dark:bg-[#0C1326] shadow-2xl transform transition-transform duration-300 z-40 border-l border-slate-200 dark:border-white/10 ${openTaskId ? 'translate-x-0' : 'translate-x-full'}`}>

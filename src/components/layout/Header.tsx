@@ -148,7 +148,11 @@ export const Header = ({ onShowTutorial, onShowPreset }: { onShowTutorial?: () =
   const { subscription, isActive } = useSubscription()
   const { t } = useTranslation()
 
-  const isRealSubscription = subscription?.stripe_subscription_id?.startsWith('sub_') ?? false
+  // Assinaturas reais são as do Stripe (sub_) OU manuais (manual_)
+  const isRealSubscription = (
+    subscription?.stripe_subscription_id?.startsWith('sub_') ||
+    subscription?.stripe_subscription_id?.startsWith('manual_')
+  ) ?? false
 
   const daysRemaining = (isRealSubscription && subscription?.current_period_end)
     ? Math.ceil((new Date(subscription.current_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
