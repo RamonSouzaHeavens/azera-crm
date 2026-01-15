@@ -885,7 +885,37 @@ function EventsSidebar({ onSelectEvent }: { onSelectEvent: (eventId: string) => 
 export default function Agenda() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false)
+  const [googleIntegration, setGoogleIntegration] = useState<GoogleIntegration | null>(null)
   const [selectedEventData, setSelectedEventData] = useState<CalendarEvent | null>(null)
+
+  // Verificar status do Google Calendar
+  useEffect(() => {
+    const checkGoogleStatus = async () => {
+      try {
+        const { supabase } = await import('../lib/supabase')
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data } = await supabase
+          .from('calendar_integrations')
+          .select('id, google_email, status')
+          .eq('user_id', user.id)
+          .eq('provider', 'google')
+          .single()
+
+        setGoogleIntegration(data || null)
+      } catch (error) {
+        console.error('Erro ao verificar Google:', error)
+      }
+    }
+
+    checkGoogleStatus()
+
+    // Verificar novamente quando o modal fechar (caso o usuário tenha acabado de conectar)
+    if (!isGoogleModalOpen) {
+      checkGoogleStatus()
+    }
+  }, [isGoogleModalOpen])
 
   const {
     view,
@@ -1118,21 +1148,43 @@ export default function Agenda() {
               </div>
               <div>
                 <h4 className="font-medium text-white">Google Calendar</h4>
-                <p className="text-xs text-slate-400">Sincronize seus eventos</p>
+                <p className="text-xs text-slate-400">
+                  {googleIntegration ? 'Sincronização Ativa' : 'Sincronize seus eventos'}
+                </p>
               </div>
             </div>
-            <p className="text-sm text-slate-300 mb-3">
-              Conecte sua conta Google para sincronizar eventos automaticamente.
-            </p>
-            <button
-              onClick={() => setIsGoogleModalOpen(true)}
-              className="w-full py-2 text-sm bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-xl transition flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
-              Conectar Google
-            </button>
+
+            {googleIntegration ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-xs text-green-300 font-medium truncate">
+                    {googleIntegration.google_email}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setIsGoogleModalOpen(true)}
+                  className="w-full py-2 text-sm bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition flex items-center justify-center gap-2"
+                >
+                  Configurar
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-slate-300 mb-3">
+                  Conecte sua conta Google para sincronizar eventos automaticamente.
+                </p>
+                <button
+                  onClick={() => setIsGoogleModalOpen(true)}
+                  className="w-full py-2 text-sm bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-xl transition flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                  Conectar Google
+                </button>
+              </>
+            )}
           </div>
 
           {/* Card de integração WhatsApp */}
