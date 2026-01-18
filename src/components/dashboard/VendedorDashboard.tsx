@@ -78,7 +78,7 @@ function startOfWeek(d: Date): Date {
 // --- Image Carousel Component ---
 const carouselImages = [CardsImage1, CardsImage2, CardsImage3]
 
-const ImageCarousel = () => {
+const ImageCarousel = ({ reduceMotion }: { reduceMotion: boolean | null }) => {
   const [currentIndex, setCurrentIndex] = useState(0)
 
   useEffect(() => {
@@ -113,7 +113,7 @@ const ImageCarousel = () => {
               className={`transition-all duration-500 rounded-full ${idx === currentIndex
                 ? 'w-8 h-2.5 bg-white shadow-lg'
                 : 'w-2.5 h-2.5 bg-white/50 hover:bg-white/80'
-              }`}
+                }`}
               aria-label={`Go to slide ${idx + 1}`}
             />
           ))}
@@ -317,11 +317,11 @@ export default function VendedorDashboard() {
   }
 
   return (
-    <div className="min-h-full bg-background p-6 overflow-hidden">
+    <div className="min-h-full bg-background overflow-hidden">
       <LaunchOfferModal />
       <div className="max-w-[1600px] mx-auto">
         <motion.div
-          className="space-y-6"
+          className="space-y-6 py-4 sm:py-6"
           layout
           variants={container}
           initial="hidden"
@@ -334,37 +334,39 @@ export default function VendedorDashboard() {
             <div className="space-y-6">
 
               {/* Welcome Banner */}
-              <motion.div className="relative overflow-hidden rounded-2xl p-8" variants={item}>
-                <div className="relative z-10">
-                  <h1 className="text-4xl font-bold font-outfit text-text mb-2">
-                    {greeting}, {userName}.
-                  </h1>
-                  <p className="text-base text-text/80 mb-3">{moodLine}</p>
-                  <div className="flex flex-wrap gap-4 text-sm text-text opacity-80">
-                    <span className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      {stats?.tarefasHoje || 0} tarefas hoje
-                    </span>
-                    <span className="w-1 h-1 rounded-full bg-text opacity-30 self-center"></span>
-                    <span className="flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4" />
-                      {stats?.conversasNaoLidas || 0} conversas pendentes
-                    </span>
-                    {stats && stats.tarefasAtrasadas > 0 && (
-                      <>
-                        <span className="w-1 h-1 rounded-full bg-text opacity-30 self-center"></span>
-                        <span className="flex items-center gap-2 text-red-500">
-                          <Clock className="w-4 h-4" />
-                          {stats.tarefasAtrasadas} atrasadas
-                        </span>
-                      </>
-                    )}
+              <div className="px-4 sm:px-6">
+                <motion.div className="relative overflow-hidden rounded-2xl p-8" variants={item}>
+                  <div className="relative z-10">
+                    <h1 className="text-4xl font-bold font-outfit text-text mb-2">
+                      {greeting}, {userName}.
+                    </h1>
+                    <p className="text-base text-text/80 mb-3">{moodLine}</p>
+                    <div className="flex flex-wrap gap-4 text-sm text-text opacity-80">
+                      <span className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        {stats?.tarefasHoje || 0} tarefas hoje
+                      </span>
+                      <span className="w-1 h-1 rounded-full bg-text opacity-30 self-center"></span>
+                      <span className="flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4" />
+                        {stats?.conversasNaoLidas || 0} conversas pendentes
+                      </span>
+                      {stats && stats.tarefasAtrasadas > 0 && (
+                        <>
+                          <span className="w-1 h-1 rounded-full bg-text opacity-30 self-center"></span>
+                          <span className="flex items-center gap-2 text-red-500">
+                            <Clock className="w-4 h-4" />
+                            {stats.tarefasAtrasadas} atrasadas
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </motion.div>
+                </motion.div>
+              </div>
 
               {/* ===== SEÇÃO 1: MEU DESEMPENHO (3 cards) ===== */}
-              <motion.div className="grid grid-cols-1 sm:grid-cols-3 gap-4" variants={container}>
+              <motion.div className="grid grid-cols-1 sm:grid-cols-3 gap-4 px-4 sm:px-6" variants={container}>
 
                 {/* Card: Taxa de Conversão */}
                 <motion.div
@@ -427,7 +429,7 @@ export default function VendedorDashboard() {
               </motion.div>
 
               {/* ===== SEÇÃO 2: GRID 3 COLUNAS ===== */}
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 px-4 sm:px-6">
 
                 {/* Minhas Tarefas - 2/4 */}
                 <motion.div
@@ -624,8 +626,10 @@ export default function VendedorDashboard() {
             </div>
 
             {/* Right Sidebar */}
-            <div className="space-y-6">
-              <ImageCarousel reduceMotion={reduceMotion} />
+            <div className="space-y-6 px-4 sm:px-6 xl:px-0 xl:pr-6">
+              <div className="hidden xl:block">
+                <ImageCarousel reduceMotion={reduceMotion} />
+              </div>
             </div>
           </div>
         </motion.div>

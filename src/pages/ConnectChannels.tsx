@@ -17,7 +17,7 @@ export default function ConnectChannelsPage() {
   const [formData, setFormData] = useState({
     instanceId: '',
     token: '',
-    serverUrl: 'https://heavens.uazapi.com',
+    serverUrl: '',
   });
   const [saving, setSaving] = useState(false);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState<'whatsapp' | null>(null);
@@ -39,7 +39,7 @@ export default function ConnectChannelsPage() {
     setSaving(false);
     if (success) {
       setIsEditing(false);
-      setFormData({ instanceId: '', token: '', serverUrl: 'https://heavens.uazapi.com' });
+      setFormData({ instanceId: '', token: '', serverUrl: '' });
     }
   };
 
@@ -143,7 +143,7 @@ export default function ConnectChannelsPage() {
                                 setFormData({
                                   instanceId: whatsappIntegration?.credentials?.instance_id || '',
                                   token: whatsappIntegration?.credentials?.secret_key || '',
-                                  serverUrl: whatsappIntegration?.credentials?.base_url || 'https://heavens.uazapi.com',
+                                  serverUrl: whatsappIntegration?.credentials?.base_url || '',
                                 });
                               }}
                               className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-cyan-600 hover:bg-cyan-700 dark:bg-gradient-to-r dark:from-cyan-500 dark:to-cyan-600 text-white rounded-lg font-semibold transition-all shadow-sm"
@@ -189,7 +189,7 @@ export default function ConnectChannelsPage() {
                                 type="text"
                                 value={formData.serverUrl}
                                 onChange={(e) => setFormData({ ...formData, serverUrl: e.target.value })}
-                                placeholder="https://heavens.uazapi.com"
+                                placeholder="https://sua-instancia.uazapi.com"
                                 className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/50 transition-all text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400"
                               />
                             </div>
@@ -199,7 +199,7 @@ export default function ConnectChannelsPage() {
                               <button
                                 onClick={() => {
                                   setIsEditing(false);
-                                  setFormData({ instanceId: '', token: '', serverUrl: 'https://heavens.uazapi.com' });
+                                  setFormData({ instanceId: '', token: '', serverUrl: '' });
                                 }}
                                 className="flex-1 px-4 py-3 bg-white hover:bg-gray-50 dark:bg-slate-700 dark:hover:bg-slate-600 text-gray-700 dark:text-white border border-gray-200 dark:border-transparent rounded-lg font-semibold transition-all"
                               >
@@ -374,7 +374,42 @@ export default function ConnectChannelsPage() {
             </div>
           </div>
         </div>
+
+        {/* Modal de Confirmação de Desconexão */}
+        {showDisconnectConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-8 shadow-2xl border border-gray-200 dark:border-white/10 transform animate-in zoom-in-95 duration-200">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-500/20 rounded-full flex items-center justify-center text-red-600 dark:text-red-400 mb-6 mx-auto">
+                <AlertCircle className="w-8 h-8" />
+              </div>
+
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-2">
+                Desconectar {showDisconnectConfirm === 'whatsapp' ? 'WhatsApp' : 'Instagram'}?
+              </h3>
+
+              <p className="text-gray-600 dark:text-slate-400 text-center mb-8 leading-relaxed">
+                Você parará de receber mensagens e notificações através deste canal. Esta ação pode ser revertida a qualquer momento reconectando as credenciais.
+              </p>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setShowDisconnectConfirm(null)}
+                  className="flex-1 px-4 py-3 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-700 dark:text-white rounded-xl font-semibold transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDisconnect}
+                  className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-semibold shadow-lg shadow-red-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                >
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </PremiumGate>
+
     </RequireRole>
   );
 }

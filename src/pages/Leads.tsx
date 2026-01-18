@@ -789,112 +789,95 @@ export default function Leads() {
 
 
   const Header = (
-    <div className="sticky top-0 z-20 bg-white dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200 dark:border-white/5">
-      <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-white/10">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          {/* Título com ícone grande - estilo Tarefas */}
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white flex items-center justify-center shadow-lg shadow-cyan-500/20">
-              <KanbanIcon className="w-7 h-7" />
+    <div className="sticky top-0 z-20 backdrop-blur-sm border-b border-slate-200 dark:border-white/5">
+      <div className="px-2 py-3 sm:p-6">
+        <div className="flex flex-col gap-2 sm:gap-4">
+          {/* Linha 1: Título + Botão Novo Lead */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex w-14 h-14 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white items-center justify-center shadow-lg shadow-cyan-500/20">
+                <KanbanIcon className="w-7 h-7" />
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-4xl font-bold font-outfit text-slate-900 dark:text-white">{t('leads.title')}</h1>
+                <p className="hidden sm:block text-base mt-1 text-slate-600 dark:text-slate-400">{t('leads.subtitle', 'Gerencie seus leads e oportunidades')}</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-4xl font-bold font-outfit text-slate-900 dark:text-white">{t('leads.title')}</h1>
-              <p className="text-base mt-1 text-slate-600 dark:text-slate-400">{t('leads.subtitle', 'Gerencie seus leads e oportunidades')}</p>
-            </div>
+            <button onClick={addNewLead} className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white hover:scale-105 active:scale-95 rounded-xl text-sm shadow-md transition">
+              <Plus className="w-4 h-4" /> <span className="hidden sm:inline">{t('leads.newLead')}</span>
+            </button>
           </div>
 
-          {/* Busca */}
-          <div className="flex-1 max-w-md relative">
+          {/* Linha 2: Busca */}
+          <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={t('leads.searchPlaceholder')}
-              className="w-full pl-10 pr-3 py-2 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+              className="w-full pl-10 pr-3 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-900 dark:text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
             />
           </div>
 
-          {/* Ações */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-xl border transition ${viewMode === 'list' ? 'ring-2 ring-emerald-500/40 bg-white dark:bg-white/5 border-slate-200 dark:border-white/10' : 'border-slate-200 dark:border-white/5 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10'}`}
-              aria-label={t('leads.list')}
-            >
-              <List className="w-5 h-5 text-gray-600 dark:text-gray-200" />
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-xl border transition ${viewMode === 'grid' ? 'ring-2 ring-emerald-500/40 bg-white dark:bg-white/5 border-slate-200 dark:border-white/10' : 'border-slate-200 dark:border-white/5 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10'}`}
-              aria-label={t('leads.grid')}
-            >
-              <Grid3X3 className="w-5 h-5 text-gray-600 dark:text-gray-200" />
-            </button>
-            <button
-              onClick={() => setViewMode('kanban')}
-              className={`p-2 rounded-xl border transition ${viewMode === 'kanban' ? 'ring-2 ring-cyan-500/40 bg-white dark:bg-white/5 border-slate-200 dark:border-white/10' : 'border-slate-200 dark:border-white/5 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10'}`}
-              aria-label={t('leads.kanban')}
-            >
-              <KanbanIcon className="w-5 h-5 text-gray-600 dark:text-gray-200" />
-            </button>
-            <button
-              onClick={() => setFiltersOpen(true)}
-              className="p-2 rounded-xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition"
-              aria-label={t('common.filter')}
-            >
-              <Filter className="w-5 h-5 text-gray-600 dark:text-gray-200" />
-            </button>
-            <button
-              onClick={() => setShowPipelineSettings(true)}
-              className="p-2 rounded-xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition"
-              aria-label={t('leads.configurePipeline')}
-              title={t('leads.configurePipeline')}
-            >
-              <Settings className="w-5 h-5 text-gray-600 dark:text-gray-200" />
-            </button>
-
-            {/* Selection Mode Button */}
-            <button
-              onClick={() => {
-                setSelectionMode(!selectionMode)
-                if (selectionMode) {
-                  setSelectedLeads(new Set())
-                }
-              }}
-              className={`p-2 rounded-xl border transition ${selectionMode
-                ? 'ring-2 ring-rose-500/40 bg-rose-50 dark:bg-rose-500/10 border-rose-500/30'
-                : 'border-slate-200 dark:border-white/5 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10'
-                }`}
-              title={selectionMode ? t('leads.exitSelectionMode', 'Sair do modo seleção') : t('leads.enterSelectionMode', 'Modo seleção')}
-            >
-              <CheckSquare className={`w-5 h-5 ${selectionMode ? 'text-rose-500' : 'text-gray-600 dark:text-gray-200'}`} />
-            </button>
-
-            {/* Export Button */}
-            <button
-              onClick={() => setShowExportModal(true)}
-              className="p-2 rounded-xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition"
-              title={t('leads.export', 'Exportar')}
-            >
-              <Download className="w-5 h-5 text-gray-600 dark:text-gray-200" />
-            </button>
-
-            {/* Import Button */}
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="p-2 rounded-xl border border-slate-200 dark:border-white/5 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition"
-              title={t('leads.import', 'Importar')}
-            >
-              <Upload className="w-5 h-5 text-gray-600 dark:text-gray-200" />
-            </button>
-
-            <button onClick={addNewLead} className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white border border-slate-200 dark:border-white/10 hover:scale-105 active:scale-95 rounded-xl text-sm shadow-md transition">
-              <Plus className="w-4 h-4" /> <span className="hidden sm:inline">{t('leads.newLead')}</span>
-            </button>
-            {/* Lead limit indicator for free users */}
+          {/* Linha 3: Ações - todas visíveis, compactas */}
+          <div className="flex items-center justify-between gap-2 overflow-x-auto scrollbar-hide">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-lg transition ${viewMode === 'list' ? 'bg-cyan-500/20 text-cyan-400' : 'text-gray-400 hover:bg-white/5'}`}
+              >
+                <List className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-lg transition ${viewMode === 'grid' ? 'bg-cyan-500/20 text-cyan-400' : 'text-gray-400 hover:bg-white/5'}`}
+              >
+                <Grid3X3 className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={`hidden sm:block p-2 rounded-lg transition ${viewMode === 'kanban' ? 'bg-cyan-500/20 text-cyan-400' : 'text-gray-400 hover:bg-white/5'}`}
+              >
+                <KanbanIcon className="w-5 h-5" />
+              </button>
+              <div className="w-px h-5 bg-white/10 mx-1" />
+              <button
+                onClick={() => setFiltersOpen(true)}
+                className="p-2 rounded-lg text-gray-400 hover:bg-white/5 transition"
+              >
+                <Filter className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowPipelineSettings(true)}
+                className="p-2 rounded-lg text-gray-400 hover:bg-white/5 transition"
+              >
+                <Settings className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => {
+                  setSelectionMode(!selectionMode)
+                  if (selectionMode) setSelectedLeads(new Set())
+                }}
+                className={`p-2 rounded-lg transition ${selectionMode ? 'bg-rose-500/20 text-rose-400' : 'text-gray-400 hover:bg-white/5'}`}
+              >
+                <CheckSquare className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowExportModal(true)}
+                className="p-2 rounded-lg text-gray-400 hover:bg-white/5 transition"
+              >
+                <Download className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="p-2 rounded-lg text-gray-400 hover:bg-white/5 transition"
+              >
+                <Upload className="w-5 h-5" />
+              </button>
+            </div>
             {!hasActiveSubscription && (
-              <span className={`text-xs px-2 py-1 rounded-full ${leads.length >= LIMITS.FREE_MAX_LEADS ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}`}>
-                {leads.length}/{LIMITS.FREE_MAX_LEADS} leads
+              <span className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${leads.length >= LIMITS.FREE_MAX_LEADS ? 'bg-red-900/30 text-red-400' : 'bg-slate-800 text-slate-400'}`}>
+                {leads.length}/{LIMITS.FREE_MAX_LEADS}
               </span>
             )}
           </div>
@@ -1023,20 +1006,22 @@ export default function Leads() {
 
   const LeadRow = ({ l }: { l: Cliente }) => (
     <div
-      className={`w-full text-left rounded-2xl bg-white dark:bg-white/5 border hover:bg-slate-50 dark:hover:bg-white/10 transition p-4 shadow-md hover:shadow-lg focus:outline-none ${selectionMode && selectedLeads.has(l.id)
+      className={`w-full text-left rounded-xl bg-white dark:bg-white/5 border hover:bg-slate-50 dark:hover:bg-white/10 transition p-4 shadow-sm hover:shadow-md cursor-pointer ${selectionMode && selectedLeads.has(l.id)
         ? 'border-rose-400 dark:border-rose-500 ring-2 ring-rose-500/30'
         : 'border-slate-200 dark:border-white/10'
         }`}
+      onClick={() => !selectionMode && openLead(l)}
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start gap-3">
         {/* Checkbox de seleção */}
         {selectionMode && (
           <button
             type="button"
             onClick={(e) => {
+              e.stopPropagation()
               toggleLeadSelection(l.id, e)
             }}
-            className="flex-shrink-0 p-1 -ml-1"
+            className="flex-shrink-0 mt-1"
           >
             {selectedLeads.has(l.id) ? (
               <CheckSquare className="w-5 h-5 text-rose-500" />
@@ -1046,134 +1031,37 @@ export default function Leads() {
           </button>
         )}
 
-        {/* Info Principal - Layout horizontal otimizado */}
-        <button
-          type="button"
-          onClick={() => openLead(l)}
-          className="flex items-start gap-6 flex-1 min-w-0 text-left focus:outline-none"
-        >
-          {/* Nome, Status, Email e Contato */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <h3 className="text-base font-semibold text-slate-900 dark:text-white tracking-wide truncate">{l.nome}</h3>
-                <StatusPill s={l.status} />
-              </div>
-              {/* Email e Contato ao lado do título */}
-              <div className="hidden sm:flex items-center gap-4">
-                {l.email && (
-                  <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                    <Mail className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                    <span className="truncate max-w-[150px]">{l.email}</span>
-                  </div>
-                )}
-                {l.telefone && (
-                  <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                    <Phone className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                    <span className="truncate max-w-[120px]">{l.telefone}</span>
-                  </div>
-                )}
-              </div>
+        {/* Conteúdo Principal */}
+        <div className="flex-1 min-w-0">
+          {/* Linha 1: Nome + Status + Valor */}
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <h3 className="font-semibold text-slate-900 dark:text-white truncate">{l.nome}</h3>
+              <StatusPill s={l.status} />
             </div>
-            {l.campanhaNome && (
-              <div className="text-[12px] text-gray-400 truncate mt-1">{t('leads.campaign')}: {l.campanhaNome}</div>
+            {typeof l.valor_potencial === 'number' && l.valor_potencial > 0 && (
+              <span className="text-sm font-bold text-cyan-500 flex-shrink-0">
+                {brl(l.valor_potencial)}
+              </span>
             )}
           </div>
 
-          {/* Última Nota */}
-          <div className="hidden md:flex flex-col min-w-[200px] max-w-[250px]">
-            {truncate(l.ultimaNota, 80) ? (
-              <>
-                <div className="text-[11px] text-gray-400 mb-1">{t('leads.lastNote')}</div>
-                <div className="text-[13px] text-gray-300 line-clamp-2">
-                  {truncate(l.ultimaNota, 120)}
-                </div>
-              </>
-            ) : (
-              <div className="text-[13px] text-gray-500 italic">{t('leads.noNotes')}</div>
+          {/* Linha 2: Contatos */}
+          <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
+            {l.telefone && (
+              <span className="flex items-center gap-1">
+                <Phone className="w-3.5 h-3.5" />
+                {l.telefone}
+              </span>
+            )}
+            {l.email && (
+              <span className="flex items-center gap-1 truncate">
+                <Mail className="w-3.5 h-3.5" />
+                <span className="truncate">{l.email}</span>
+              </span>
             )}
           </div>
-
-          {/* Valor Potencial */}
-          <div className="hidden lg:flex flex-col text-right min-w-[120px]">
-            <div className="text-[11px] text-slate-500 dark:text-gray-400 mb-1">{t('leads.potentialValue')}</div>
-            <div className="text-slate-700 dark:text-white font-semibold">
-              {typeof l.valor_potencial === 'number' ? brl(l.valor_potencial) : '—'}
-            </div>
-          </div>
-
-          {/* Data de Criação */}
-          <div className="hidden lg:flex flex-col text-right min-w-[100px]">
-            <div className="text-[11px] text-slate-500 dark:text-gray-400 mb-1">{t('leads.createdAt')}</div>
-            <div className="text-slate-700 dark:text-white text-sm">
-              {l.created_at ? new Date(l.created_at).toLocaleDateString('pt-BR') : '—'}
-            </div>
-          </div>
-
-          {/* Tarefas Abertas */}
-          <div className="hidden lg:flex flex-col text-right min-w-[100px]">
-            <div className="text-[11px] text-slate-500 dark:text-gray-400 mb-1">{t('leads.openTasks')}</div>
-            <div className="text-slate-700 dark:text-white font-semibold">
-              {l.tarefasAbertas || 0}
-            </div>
-          </div>
-        </button>
-
-        {/* Ações */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-
         </div>
-      </div>
-
-      {/* Informações responsivas para tablets e mobile */}
-      <div className="sm:hidden mt-2 space-y-2">
-        {/* Email e telefone em mobile */}
-        <div className="grid grid-cols-1 gap-2 text-sm">
-          {l.email && (
-            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-              <Mail className="w-3 h-3 text-gray-500 flex-shrink-0" />
-              <span className="truncate">{l.email}</span>
-            </div>
-          )}
-          {l.telefone && (
-            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-              <Phone className="w-3 h-3 text-gray-500 flex-shrink-0" />
-              <span className="truncate">{l.telefone}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Valor, data e tarefas em mobile */}
-        <div className="grid grid-cols-3 gap-2 text-sm pt-2 border-t border-white/5">
-          <div className="text-gray-300">
-            <span className="text-[11px] text-gray-400">{t('common.value')}</span>
-            <div className="text-white font-semibold">
-              {typeof l.valor_potencial === 'number' ? brl(l.valor_potencial) : '—'}
-            </div>
-          </div>
-          <div className="text-gray-300">
-            <span className="text-[11px] text-gray-400">{t('common.created')}</span>
-            <div className="text-white">
-              {l.created_at ? new Date(l.created_at).toLocaleDateString('pt-BR') : '—'}
-            </div>
-          </div>
-          <div className="text-gray-300">
-            <span className="text-[11px] text-gray-400">{t('leads.openTasks')}</span>
-            <div className="text-white font-semibold">
-              {l.tarefasAbertas || 0}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Nota para tablets */}
-      <div className="md:hidden mt-3">
-        {truncate(l.ultimaNota, 120) && (
-          <div className="text-[13px] text-gray-300 line-clamp-2 border-t border-white/5 pt-3">
-            <span className="text-[11px] text-gray-400 block mb-1">{t('leads.lastNote')}</span>
-            {truncate(l.ultimaNota, 150)}
-          </div>
-        )}
       </div>
     </div>
   )
@@ -1227,7 +1115,7 @@ export default function Leads() {
 
         {/* LIST MODE (row-based for better scalability) */}
         {viewMode === 'list' && (
-          <div className="p-6 space-y-3">
+          <div className="p-4 sm:p-6 space-y-2">
             {loading && (
               Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="h-16 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 animate-pulse" />

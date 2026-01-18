@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import ParticleBackground from '../components/landing/ParticleBackground';
 import heroDashboardImg from '../images/herodashboard.png';
+import heroPrintImg from '../images/heroprint.jpeg';
 import logoHorizontal from '../images/identidade visual/Azera Logo Horizontal.png';
 import mulherSecao2Img from '../images/mulherdasecao2.png';
 
@@ -190,7 +191,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'Vocês oferecem período de teste?',
-    answer: '7 dias grátis em qualquer plano. Teste todas as funcionalidades sem compromisso.'
+    answer: 'Teste grátis agora em qualquer plano. Teste todas as funcionalidades sem compromisso.'
   }
 ];
 
@@ -214,110 +215,194 @@ const Header = () => (
       <a href="#contato" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">Contato</a>
     </nav>
 
-    <a href="/login" className="group relative px-6 py-3 rounded-full overflow-hidden bg-white text-black font-medium text-sm transition-all hover:scale-105 hidden sm:block">
+    {/* Botão Login - Visível sempre (mobile no canto direito, desktop com estilo completo) */}
+    <a href="/login" className="group relative px-4 py-2 md:px-6 md:py-3 rounded-full overflow-hidden bg-white text-black font-medium text-xs md:text-sm transition-all hover:scale-105">
       <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-blue-500 to-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      <span className="relative group-hover:text-white transition-colors">Login / Cadastro</span>
+      <span className="relative group-hover:text-white transition-colors">Login</span>
     </a>
   </header>
 );
 
 /** Seção 1 - Hero - Promessa principal + CTA */
 const HeroSection = () => (
-  <main className="relative z-10 container mx-auto px-6 md:px-12 min-h-screen flex flex-col justify-center pt-32 pb-12 border-b border-white/5">
-    {/* Background 3D de Partículas - preso apenas na Hero */}
-    <ParticleBackground className="absolute inset-0 w-full h-full overflow-hidden" />
+  <main className="relative z-10 container mx-auto px-6 md:px-12 min-h-screen flex flex-col justify-center pt-24 lg:pt-32 pb-12 border-b border-white/5 overflow-hidden">
+    {/* Background 3D de Partículas - APENAS DESKTOP */}
+    <div className="hidden lg:block absolute inset-0 w-full h-full overflow-hidden">
+      <ParticleBackground className="absolute inset-0 w-full h-full" />
+    </div>
 
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full items-center relative z-10">
+    {/* ============ MOBILE HERO ============ */}
+    <div className="lg:hidden flex flex-col items-center text-center relative z-10">
+
+      {/* Título Principal */}
+      <h1 className="text-3xl sm:text-4xl font-outfit font-semibold leading-[1.15] mb-4">
+        <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent">Inteligência Artificial</span>
+        <br />
+        <span className="text-white font-light">para empresários e</span>
+        <br />
+        <span className="text-white font-light">profissionais de alto nível</span>
+      </h1>
+
+      {/* Subtítulo */}
+      <p className="text-gray-400 text-base leading-relaxed max-w-xs mb-8">
+        Um CRM completo que integra com WhatsApp e põe sua empresa na palma da mão.
+      </p>
+
+      {/* CTA Principal - Estilo outline com seta */}
+      <a
+        href="/login"
+        className="flex items-center gap-3 border border-white/10 hover:border-white/20 px-5 py-3 rounded-full transition-all group mb-10"
+      >
+        <span className="text-white font-medium text-sm">Comece sem custos</span>
+        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 via-cyan-500 to-purple-500 flex items-center justify-center group-hover:scale-105 transition-transform shadow-lg shadow-cyan-500/30">
+          <ArrowRight className="w-5 h-5 text-white" />
+        </div>
+      </a>
+
+      {/* Mockup do App - Container com corte na parte inferior */}
+      <div className="relative w-full max-w-xs overflow-hidden rounded-t-3xl -mb-20">
+        {/* Glow atrás do mockup */}
+        <div className="absolute inset-0 bg-gradient-to-t from-blue-500/30 via-cyan-500/20 to-transparent blur-2xl" />
+
+        {/* Elemento flutuante - Nova mensagem */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="absolute -left-2 top-12 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl px-3 py-2 shadow-lg z-20"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+              <MessageSquare className="w-3 h-3 text-white" />
+            </div>
+            <div>
+              <div className="text-[10px] text-gray-400">WhatsApp</div>
+              <div className="text-xs text-white font-medium">Nova mensagem</div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Elemento flutuante - Leads */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.7 }}
+          className="absolute -right-2 top-24 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl px-3 py-2 shadow-lg z-20"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+              <TrendingUp className="w-3 h-3 text-white" />
+            </div>
+            <div>
+              <div className="text-[10px] text-gray-400">Hoje</div>
+              <div className="text-xs text-white font-medium">+5 leads</div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Imagem do App - cortada na parte inferior */}
+        <motion.img
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          src={heroPrintImg}
+          alt="Azera CRM App"
+          className="relative z-10 w-full rounded-t-3xl shadow-2xl border border-white/10 border-b-0"
+        />
+      </div>
+    </div>
+
+    {/* ============ DESKTOP HERO (original) ============ */}
+    <div className="hidden lg:grid grid-cols-12 gap-12 h-full items-center relative z-10 py-20">
 
       {/* Coluna Esquerda: Headline + Benefícios */}
-      <div className="lg:col-span-5 lg:col-start-1 flex flex-col justify-center z-20 order-2 lg:order-1">
+      <div className="col-span-9 flex flex-col justify-center z-20">
 
-        {/* C        <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-500/10 border border-blue-500/30 rounded-full text-blue-400 text-xs font-semibold mb-6 w-fit">
-          <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-          CRM + WhatsApp + IA em um só lugar
-        </div> */}
+        {/* Título - Desktop - Versão Imponente */}
+        <div className="mb-10">
+          <h1 className="text-[120px] lg:text-[140px] font-heading font-black leading-[0.8] tracking-tighter">
+            <span className="block text-white drop-shadow-2xl">Inteligência</span>
+            <span className="block bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-500 bg-clip-text text-transparent py-4">Artificial</span>
+          </h1>
 
+          <h2 className="text-4xl xl:text-5xl text-white/40 font-light mt-8 leading-tight max-w-3xl">
+            para empresários e profissionais de <span className="text-white/80 font-medium tracking-tight">alto nível</span>
+          </h2>
+        </div>
 
-        <h1 className="text-5xl md:text-8xl font-outfit font-extralight leading-[1.1] mb-8">
-          Se organizar <br />
-          nunca foi <br /> tão
-          <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent"> simples</span>
-        </h1>
+        {/* Subtítulo Desktop */}
+        <p className="text-gray-400 text-xl leading-relaxed mb-10 max-w-xl">
+          Um CRM completo que integra com WhatsApp e põe sua empresa na palma da mão.
+        </p>
 
         {/* Botão + Texto ao lado */}
-        <div className="flex items-center gap-6 mb-12">
+        <div className="flex items-center gap-8 mb-20">
           <a
             href="/login"
-            className="flex items-center gap-4 border border-white/10 hover:border-white/20 pl-6 pr-2 py-2 rounded-full transition-all group"
+            className="flex items-center gap-6 border border-white/10 hover:border-white/20 pl-8 pr-3 py-3 rounded-full transition-all group bg-white/5 backdrop-blur-md"
           >
-            <span className="text-white font-medium">Comece sem custos</span>
+            <span className="text-white text-lg font-medium">Teste grátis agora</span>
 
-            {/* MUDANÇA PRINCIPAL AQUI:
-               1. Troquei w-14 por w-24 (agora é largo, estilo pílula).
-               2. O SVG agora tem espaço para ser desenhado longo.
-            */}
-            <div className="w-24 h-14 rounded-full bg-gradient-to-r from-blue-500 via-cyan-500 to-purple-500 flex items-center justify-center group-hover:scale-105 transition-transform shadow-lg shadow-cyan-500/30">
-
+            <div className="w-28 h-16 rounded-full bg-gradient-to-r from-blue-500 via-cyan-500 to-purple-500 flex items-center justify-center group-hover:scale-105 transition-transform shadow-xl shadow-cyan-500/40">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                // Aumentei o viewBox horizontalmente para 52 unidades para caber a linha longa
                 viewBox="0 0 52 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="2.5"
+                strokeWidth="3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                // A classe w-16 força o SVG a ocupar boa parte da largura da "pílula"
-                className="w-16 h-6 text-white"
+                className="w-20 h-8 text-white"
               >
-                {/* Linha horizontal indo de X=2 até X=50 (bem comprida) */}
                 <path d="M2 12H50" />
-                {/* Ponta da seta ajustada para o final da linha (X=50) */}
                 <path d="M43 5l7 7-7 7" />
               </svg>
-
             </div>
           </a>
 
-          <p className="text-gray-400 text-sm max-w-[200px] leading-relaxed hidden sm:block">
-            Centralize Whatsapp, leads, tarefas e produtos em um só lugar e feche negócios com <span className="text-white font-medium">previsibilidade.</span>
-          </p>
+          <div className="flex flex-col">
+            <p className="text-gray-400 text-sm max-w-[220px] leading-snug">
+              Sem cartão de crédito.
+            </p>
+            <p className="text-white font-medium text-sm">Cancele quando quiser.</p>
+          </div>
         </div>
 
-        <div className="flex gap-6 mt-auto">
-          {/* Card 1 */}
-          <div className="bg-white/5 border border-white/10 backdrop-blur-sm p-6 rounded-[2.5rem] w-64 h-48 hover:border-blue-500/30 transition-colors flex flex-col justify-between group">
+        {/* Cards 360 e IA */}
+        <div className="flex gap-8">
+          {/* Card 1 - 360 Visão Total */}
+          <div className="bg-white/5 border border-white/10 backdrop-blur-md p-8 rounded-[3rem] w-80 h-56 hover:border-blue-500/30 transition-all hover:bg-white/10 flex flex-col justify-between group">
             <div className="flex flex-col items-end">
-              <div className="text-5xl font-extralight bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent leading-none">360º</div>
-              <div className="text-[10px] text-gray-400 uppercase tracking-[0.2em] mt-1 font-medium">Visão Total</div>
+              <div className="text-6xl font-black bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent leading-none tracking-tighter">360º</div>
+              <div className="text-[12px] text-gray-400 uppercase tracking-[0.3em] mt-2 font-bold">Visão Total</div>
             </div>
-            <p className="text-[12px] text-gray-500 leading-snug max-w-[140px] font-light">
-              Leads, mensagens e tarefas em uma única timeline.
+            <p className="text-[14px] text-gray-400 leading-relaxed max-w-[160px] font-medium">
+              Leads, mensagens e tarefas em uma única linha do tempo inteligente.
             </p>
           </div>
 
-          {/* Card 2 */}
-          <div className="bg-white/5 border border-white/10 backdrop-blur-sm p-6 rounded-[2.5rem] w-64 h-48 hover:border-purple-500/30 transition-colors flex flex-col justify-between group">
+          {/* Card 2 - IA Aplicada */}
+          <div className="bg-white/5 border border-white/10 backdrop-blur-md p-8 rounded-[3rem] w-80 h-56 hover:border-purple-500/30 transition-all hover:bg-white/10 flex flex-col justify-between group">
             <div className="flex flex-col items-end">
-              <div className="text-5xl font-extralight bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent leading-none">IA</div>
-              <div className="text-[10px] text-gray-400 uppercase tracking-[0.2em] mt-1 font-medium">Aplicada</div>
+              <div className="text-6xl font-black bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent leading-none tracking-tighter">IA</div>
+              <div className="text-[12px] text-gray-400 uppercase tracking-[0.3em] mt-2 font-bold">Aplicada</div>
             </div>
-            <p className="text-[12px] text-gray-500 leading-snug max-w-[140px] font-light">
-              Qualifique leads e personalize abordagens automaticamente.
+            <p className="text-[14px] text-gray-400 leading-relaxed max-w-[160px] font-medium">
+              Qualifique leads e personalize abordagens estrategicamente com IA.
             </p>
           </div>
         </div>
       </div>
 
       {/* Coluna Direita: Social Proof */}
-      <div className="lg:col-span-3 lg:col-start-10 h-full flex flex-col justify-between items-end relative z-20 order-3">
-        <div className="mb-12 text-right hidden lg:block">
+      <div className="col-span-3 col-start-10 h-full flex flex-col justify-between items-end relative z-20">
+        <div className="mb-12 text-right">
           <p className="text-gray-400 text-sm max-w-[200px] leading-relaxed ml-auto">
             Empresas que usam CRM têm <span className="text-emerald-400 font-semibold">+29% em vendas</span> e maior produtividade.
           </p>
         </div>
 
-        {/* Benefícios do produto */}
+        {/* Cards empilhados */}
         <div className="flex flex-col gap-4 w-full max-w-[260px]">
           <div className="bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-sm">
             <div className="flex items-center gap-3">
@@ -354,7 +439,7 @@ const HeroSection = () => (
           </div>
         </div>
 
-        <div className="mt-12 flex gap-3 self-end lg:absolute lg:bottom-0 lg:right-0">
+        <div className="mt-12 flex gap-3 self-end absolute bottom-0 right-0">
           <a href="#" className="w-10 h-10 border border-white/10 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:border-blue-500 hover:bg-blue-500/10 transition-all">
             <Instagram className="w-4 h-4" />
           </a>

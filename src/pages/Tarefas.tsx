@@ -689,9 +689,9 @@ export default function Tarefas() {
           ) : (
             <DragDropContext onDragEnd={handleDragEnd}>
               <div className="h-full overflow-x-auto overflow-y-hidden p-6">
-                <div className="flex gap-6 h-full min-w-max">
+                <div className="flex gap-6 h-full w-full">
                   {taskStages.map(stage => (
-                    <div key={stage.key} className="w-80 flex flex-col h-full rounded-2xl bg-transparent border border-slate-200 dark:border-white/5">
+                    <div key={stage.key} className="flex-1 min-w-[280px] flex flex-col h-full rounded-2xl bg-transparent border border-slate-200 dark:border-white/5">
                       {/* Header da Coluna */}
                       <div className="p-4 flex items-center justify-between border-b border-slate-200 dark:border-white/5 bg-transparent rounded-t-2xl backdrop-blur-sm">
                         <div className="flex items-center gap-2 font-semibold text-slate-700 dark:text-slate-200">
@@ -727,9 +727,20 @@ export default function Tarefas() {
                                     style={provided.draggableProps.style}
                                   >
                                     <div className="flex justify-between items-start mb-2">
-                                      <span className={`text-[10px] px-2 py-0.5 rounded ${PRIORITY_MAP[t.prioridade].pill}`}>
-                                        {t18n(PRIORITY_MAP[t.prioridade].labelKey)}
-                                      </span>
+                                      <div className="flex items-center gap-2">
+                                        <span className={`text-[10px] px-2 py-0.5 rounded ${PRIORITY_MAP[t.prioridade].pill}`}>
+                                          {t18n(PRIORITY_MAP[t.prioridade].labelKey)}
+                                        </span>
+                                        {t.responsavel?.display_name || t.responsavel_nome ? (
+                                          <div className="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center text-[8px] text-white font-bold" title={t.responsavel?.display_name || t.responsavel_nome || ''}>
+                                            {(t.responsavel?.display_name || t.responsavel_nome || '?')[0].toUpperCase()}
+                                          </div>
+                                        ) : (
+                                          <div className="w-5 h-5 rounded-full border border-dashed border-slate-300 dark:border-white/20 flex items-center justify-center">
+                                            <Users className="w-3 h-3 text-slate-400" />
+                                          </div>
+                                        )}
+                                      </div>
                                       {t.data_vencimento && (
                                         <span className="text-[10px] flex items-center gap-1 text-slate-400">
                                           <CalendarDays className="w-3 h-3" />
@@ -739,24 +750,13 @@ export default function Tarefas() {
                                     </div>
                                     <h4 className="text-sm font-medium text-slate-800 dark:text-slate-100 mb-1 line-clamp-2">{t.titulo}</h4>
 
-                                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-white/5">
-                                      <div className="flex items-center gap-2">
-                                        {t.responsavel?.display_name || t.responsavel_nome ? (
-                                          <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] text-white font-bold" title={t.responsavel?.display_name || t.responsavel_nome || ''}>
-                                            {(t.responsavel?.display_name || t.responsavel_nome || '?')[0].toUpperCase()}
-                                          </div>
-                                        ) : (
-                                          <div className="w-6 h-6 rounded-full border border-dashed border-slate-300 dark:border-white/20 flex items-center justify-center">
-                                            <Users className="w-3 h-3 text-slate-400" />
-                                          </div>
-                                        )}
-                                      </div>
-                                      {t.tempo_gasto_minutos ? (
+                                    {t.tempo_gasto_minutos > 0 && (
+                                      <div className="flex items-center justify-end mt-2 pt-2 border-t border-slate-100 dark:border-white/5">
                                         <div className="flex items-center gap-1 text-xs text-emerald-500">
                                           <Timer className="w-3 h-3" /> {t.tempo_gasto_minutos}m
                                         </div>
-                                      ) : null}
-                                    </div>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </Draggable>

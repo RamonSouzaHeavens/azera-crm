@@ -188,11 +188,11 @@ export default function SuperAdmin() {
 
       // Criar mapa de tenants
       const tenantMap = new Map<string, Tenant>()
-      tenants?.forEach(t => tenantMap.set(t.id, t))
+      tenants?.forEach((t: Tenant) => tenantMap.set(t.id, t))
 
       // Criar mapa de memberships por user_id
       const membershipMap = new Map<string, { tenant_id: string; role: string; active: boolean }>()
-      memberships?.forEach(m => {
+      memberships?.forEach((m: any) => {
         if (m.user_id && !membershipMap.has(m.user_id)) {
           membershipMap.set(m.user_id, {
             tenant_id: m.tenant_id,
@@ -206,31 +206,31 @@ export default function SuperAdmin() {
       const userMap = new Map<string, UserWithDetails>()
 
       // Adicionar todos os perfis
-      profiles?.forEach(profile => {
+      profiles?.forEach((profile: any) => {
         const membership = membershipMap.get(profile.id)
         const tenantId = membership?.tenant_id || profile.default_tenant_id
         const tenant = tenantId ? tenantMap.get(tenantId) : null
 
         userMap.set(profile.id, {
           id: profile.id,
-          email: '', // Será preenchido se tiver subscription
+          email: profile.email || '',
           nome: profile.display_name || profile.full_name || 'Usuário',
           role: membership?.role || 'user',
           tenant_id: tenantId || undefined,
           tenant_name: tenant?.name || '',
           created_at: profile.created_at,
-          subscription: subscriptions?.find(s => s.user_id === profile.id) || null
+          subscription: subscriptions?.find((s: Subscription) => s.user_id === profile.id) || null
         })
 
         // Debug: verificar matching
-        const foundSub = subscriptions?.find(s => s.user_id === profile.id)
+        const foundSub = subscriptions?.find((s: Subscription) => s.user_id === profile.id)
         if (foundSub) {
           console.log(`✅ Match: ${profile.display_name || profile.full_name} -> ${foundSub.status}`)
         }
       })
 
       // Adicionar de subscriptions se não existem (e pegar email do user_id se for email)
-      subscriptions?.forEach(sub => {
+      subscriptions?.forEach((sub: Subscription) => {
         if (!userMap.has(sub.user_id)) {
           console.log(`⚠️ Subscription orphan: ${sub.user_id.slice(0, 8)}... (${sub.status}) - Não tem profile!`)
           const membership = membershipMap.get(sub.user_id)
@@ -260,10 +260,10 @@ export default function SuperAdmin() {
       const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
       // Contagem: assinaturas efetivamente ativas (active, trialing OU canceled com período válido)
-      const activeCount = subscriptions?.filter(s => isSubscriptionEffectivelyActive(s)).length || 0
-      const canceledCount = subscriptions?.filter(s => s.status === 'canceled').length || 0
-      const trialingCount = subscriptions?.filter(s => s.status === 'trialing').length || 0
-      const subsThisMonth = subscriptions?.filter(s =>
+      const activeCount = subscriptions?.filter((s: Subscription) => isSubscriptionEffectivelyActive(s)).length || 0
+      const canceledCount = subscriptions?.filter((s: Subscription) => s.status === 'canceled').length || 0
+      const trialingCount = subscriptions?.filter((s: Subscription) => s.status === 'trialing').length || 0
+      const subsThisMonth = subscriptions?.filter((s: Subscription) =>
         new Date(s.created_at) >= firstOfMonth
       ).length || 0
       const usersThisMonth = usersList.filter(u =>
@@ -305,7 +305,7 @@ export default function SuperAdmin() {
           return created >= monthDate && created < nextMonthDate
         }).length
 
-        const subsInMonth = subscriptions?.filter(s => {
+        const subsInMonth = subscriptions?.filter((s: Subscription) => {
           const created = new Date(s.created_at)
           return created >= monthDate && created < nextMonthDate && s.status === 'active'
         }).length || 0
@@ -331,39 +331,19 @@ export default function SuperAdmin() {
   const updateSubscriptionStatus = async (userId: string, newStatus: 'active' | 'canceled') => {
     setUpdatingSubscription(userId)
     try {
-      const { data: existing } = await supabase
-        .from('subscriptions')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle()
+      const { error } = await supabase
+        .rpc('admin_update_subscription', {
+          target_user_id: userId,
+          new_status: newStatus
+        })
 
-      if (existing) {
-        const { error } = await supabase
-          .from('subscriptions')
-          .update({
-            status: newStatus,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', userId)
-
-        if (error) throw error
-      } else {
-        const { error } = await supabase
-          .from('subscriptions')
-          .insert({
-            user_id: userId,
-            status: newStatus,
-            current_period_end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-          })
-
-        if (error) throw error
-      }
+      if (error) throw error
 
       toast.success(`Assinatura ${newStatus === 'active' ? 'ativada' : 'cancelada'} com sucesso!`)
       loadData()
     } catch (error) {
       console.error('Erro ao atualizar assinatura:', error)
-      toast.error('Erro ao atualizar assinatura')
+      toast.error('Erro ao atualizar assinatura: ' + (error instanceof Error ? error.message : 'Erro desconhecido'))
     } finally {
       setUpdatingSubscription(null)
     }
@@ -919,7 +899,8 @@ export default function SuperAdmin() {
                           </div>
                           <div>
                             <p className="text-sm font-medium text-white">{u.nome}</p>
-                            <p className="text-xs text-slate-500 font-mono">{u.id.slice(0, 20)}...</p>
+                            <p className="text-xs text-slate-400">{u.email}</p>
+                            <p className="text-[10px] text-slate-600 font-mono">{u.id}</p>
                           </div>
                         </div>
                       </td>

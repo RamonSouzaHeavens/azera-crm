@@ -19,15 +19,21 @@ import {
   Trash2,
   MessageCircle
 } from 'lucide-react'
-import { useCalendarEvents, useCalendarViewState, useUpcomingEvents } from '../hooks/useCalendarEvents'
-import type { CalendarEvent, CreateEventInput } from '../types/calendar'
-import { formatEventDate } from '../services/agendaService'
-import { EVENT_COLORS } from '../types/calendar'
-import toast from 'react-hot-toast'
 
-// ============================================================================
-// COMPONENTES AUXILIARES
-// ============================================================================
+// Hooks
+import { useCalendarEvents, useCalendarViewState, useUpcomingEvents } from '../hooks/useCalendarEvents'
+
+// Types
+import type { CalendarEvent, CreateEventInput, GoogleIntegration } from '../types/calendar'
+import { EVENT_COLORS } from '../types/calendar'
+
+// Services & Libs
+import { formatEventDate } from '../services/agendaService'
+import { supabase } from '../lib/supabase'
+
+import { GoogleCalendarModal } from '../components/calendar/GoogleCalendarModal'
+import { WhatsAppAgendaModal } from '../components/calendar/WhatsAppAgendaModal'
+
 
 // Card de Evento
 function EventCard({
@@ -43,7 +49,7 @@ function EventCard({
     return (
       <button
         onClick={onClick}
-        className="w-full text-left px-2 py-1 rounded text-xs font-medium truncate transition-all hover:scale-105"
+        className="w-full text-left px-2 py-1 rounded text-xs font-medium truncate transition-colors hover:brightness-110"
         style={{ backgroundColor: event.color + '20', color: event.color }}
       >
         {event.all_day ? '' : new Date(event.start_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' '}
@@ -109,7 +115,7 @@ function EventModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-slate-800 border border-white/10 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-slate-800 border border-white/10 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-slate-400 hover:text-white transition"
@@ -119,11 +125,11 @@ function EventModal({
 
         <div className="flex items-start gap-4 mb-6">
           <div
-            className="w-4 h-4 rounded-full mt-1 flex-shrink-0"
+            className="w-4 h-4 rounded-full mt-1 flex-shrink-0 shadow-[0_0_10px_rgba(0,0,0,0.5)]"
             style={{ backgroundColor: event.color }}
           />
           <div>
-            <h2 className="text-xl font-bold text-white">{event.title}</h2>
+            <h2 className="text-xl font-bold text-white font-outfit">{event.title}</h2>
             <p className="text-sm text-slate-400 mt-1">
               {formatEventDate(event.start_date, event.end_date, event.all_day)}
             </p>
@@ -131,47 +137,47 @@ function EventModal({
         </div>
 
         {event.description && (
-          <div className="mb-4 p-3 rounded-xl bg-white/5 border border-white/10">
-            <p className="text-sm text-slate-300">{event.description}</p>
+          <div className="mb-4 p-4 rounded-xl bg-white/5 border border-white/10">
+            <p className="text-sm text-slate-300 leading-relaxed">{event.description}</p>
           </div>
         )}
 
         {event.location && (
-          <div className="flex items-center gap-2 mb-4 text-sm text-slate-300">
-            <MapPin className="w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-2 mb-4 p-3 rounded-lg bg-white/5 text-sm text-slate-300">
+            <MapPin className="w-4 h-4 text-cyan-400" />
             {event.location}
           </div>
         )}
 
         {event.source_message && (
-          <div className="mb-4 p-3 rounded-xl bg-purple-500/10 border border-purple-500/30">
-            <p className="text-xs text-purple-300 mb-1 flex items-center gap-1">
+          <div className="mb-4 p-4 rounded-xl bg-purple-500/10 border border-purple-500/30">
+            <p className="text-xs text-purple-400 mb-2 flex items-center gap-1 font-semibold uppercase tracking-wider">
               <MessageCircle className="w-3 h-3" />
               Criado via WhatsApp
             </p>
-            <p className="text-sm text-slate-300 italic">"{event.source_message}"</p>
+            <p className="text-sm text-slate-200 italic leading-relaxed">"{event.source_message}"</p>
           </div>
         )}
 
         {event.tarefa && (
-          <div className="mb-4 p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
-            <p className="text-xs text-cyan-300 mb-1">Vinculado à tarefa</p>
+          <div className="mb-4 p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
+            <p className="text-xs text-cyan-400 mb-1 font-semibold uppercase tracking-wider">Vinculado à tarefa</p>
             <p className="text-sm text-white font-medium">{event.tarefa.titulo}</p>
           </div>
         )}
 
-        <div className="flex gap-3 mt-6">
+        <div className="flex gap-3 mt-8">
           <button
             onClick={onDelete}
             disabled={isDeleting}
-            className="flex-1 py-2.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 rounded-xl font-medium transition flex items-center justify-center gap-2"
+            className="flex-1 py-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl font-semibold transition flex items-center justify-center gap-2 border border-rose-500/20"
           >
             <Trash2 className="w-4 h-4" />
             {isDeleting ? 'Removendo...' : 'Remover'}
           </button>
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition flex items-center justify-center gap-2"
+            className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-semibold transition flex items-center justify-center gap-2 border border-white/10"
           >
             Fechar
           </button>
@@ -204,6 +210,13 @@ function CreateEventModal({
   const [allDay, setAllDay] = useState(false)
   const [color, setColor] = useState('#3B82F6')
 
+  // Sincronizar data quando selectedDate mudar
+  useEffect(() => {
+    if (selectedDate) {
+      setDate(selectedDate.toISOString().split('T')[0])
+    }
+  }, [selectedDate])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
@@ -234,56 +247,64 @@ function CreateEventModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-slate-800 border border-white/10 rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-[#0f172a] border border-white/10 rounded-2xl p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white transition"
+          className="absolute top-6 right-6 text-slate-400 hover:text-white transition"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <Plus className="w-5 h-5 text-cyan-400" />
+        <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-3 font-outfit">
+          <div className="p-2 rounded-lg bg-cyan-500/20 text-cyan-400">
+            <Plus className="w-6 h-6" />
+          </div>
           Novo Evento
         </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
-              Título *
+            <label className="block text-sm font-semibold text-slate-300 mb-2 uppercase tracking-wider text-xs">
+              Título do Evento *
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: Reunião com cliente"
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              placeholder="Ex: Reunião de Alinhamento"
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all"
               required
+              autoFocus
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
+              <label className="block text-sm font-semibold text-slate-300 mb-2 uppercase tracking-wider text-xs">
                 Data *
               </label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all font-mono"
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                <input
-                  type="checkbox"
-                  checked={allDay}
-                  onChange={(e) => setAllDay(e.target.checked)}
-                  className="mr-2"
-                />
-                Dia inteiro
+            <div className="flex items-end pb-3">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={allDay}
+                    onChange={(e) => setAllDay(e.target.checked)}
+                    className="sr-only"
+                  />
+                  <div className={`w-10 h-5 rounded-full transition-colors ${allDay ? 'bg-cyan-500' : 'bg-slate-700'}`}>
+                    <div className={`absolute top-1 left-1 w-3 h-3 rounded-full bg-white transition-transform ${allDay ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </div>
+                </div>
+                <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">Dia inteiro</span>
               </label>
             </div>
           </div>
@@ -291,88 +312,102 @@ function CreateEventModal({
           {!allDay && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                <label className="block text-sm font-semibold text-slate-300 mb-2 uppercase tracking-wider text-xs">
                   Início
                 </label>
                 <input
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all font-mono"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                <label className="block text-sm font-semibold text-slate-300 mb-2 uppercase tracking-wider text-xs">
                   Término
                 </label>
                 <input
                   type="time"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all font-mono"
                 />
               </div>
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-semibold text-slate-300 mb-2 uppercase tracking-wider text-xs">
               Local
             </label>
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Ex: Escritório, Zoom, etc"
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-            />
+            <div className="relative">
+              <MapPin className="absolute left-4 top-3.5 w-4 h-4 text-slate-500" />
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Escritório, Zoom, Google Meet..."
+                className="w-full pl-11 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all"
+              />
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label className="block text-sm font-semibold text-slate-300 mb-2 uppercase tracking-wider text-xs">
               Descrição
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Detalhes do evento..."
+              placeholder="Detalhes importantes para este evento..."
               rows={3}
-              className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 resize-none"
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 resize-none transition-all leading-relaxed"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Cor
+            <label className="block text-sm font-semibold text-slate-300 mb-3 uppercase tracking-wider text-xs">
+              Cor de Destaque
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-3">
               {EVENT_COLORS.map((c) => (
                 <button
                   key={c.value}
                   type="button"
                   onClick={() => setColor(c.value)}
-                  className={`w-8 h-8 rounded-full transition-all ${color === c.value ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-800 scale-110' : 'hover:scale-105'}`}
+                  className={`w-10 h-10 rounded-xl transition-all relative ${color === c.value ? 'ring-2 ring-white ring-offset-4 ring-offset-[#0f172a] scale-110 shadow-lg' : 'hover:scale-105 opacity-60 hover:opacity-100'}`}
                   style={{ backgroundColor: c.value }}
                   title={c.label}
-                />
+                >
+                  {color === c.value && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-2 h-2 rounded-full bg-white shadow-sm" />
+                    </div>
+                  )}
+                </button>
               ))}
             </div>
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-4 pt-6">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition"
+              className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold transition-all border border-white/5"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isCreating || !title.trim()}
-              className="flex-1 py-2.5 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-xl font-medium transition hover:shadow-lg hover:shadow-cyan-500/30 disabled:opacity-50"
+              className="flex-[2] py-4 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-xl font-bold transition-all hover:shadow-xl hover:shadow-cyan-500/30 active:scale-[0.98] disabled:opacity-50"
             >
-              {isCreating ? 'Criando...' : 'Criar Evento'}
+              {isCreating ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Criando...
+                </div>
+              ) : 'Criar Evento'}
             </button>
           </div>
         </form>
@@ -382,582 +417,64 @@ function CreateEventModal({
 }
 
 // ============================================================================
-// MODAL: Integração Google Calendar
-// ============================================================================
-
-interface GoogleIntegration {
-  id: string
-  google_email: string
-  status: string
-  last_sync_at: string | null
-}
-
-function GoogleCalendarModal({
-  isOpen,
-  onClose
-}: {
-  isOpen: boolean
-  onClose: () => void
-}) {
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [isDisconnecting, setIsDisconnecting] = useState(false)
-  const [integration, setIntegration] = useState<GoogleIntegration | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  // Verificar status da integração ao abrir o modal
-  useEffect(() => {
-    if (!isOpen) return
-
-    const checkIntegration = async () => {
-      setIsLoading(true)
-      try {
-        const { supabase } = await import('../lib/supabase')
-        const { data: { user } } = await supabase.auth.getUser()
-
-        if (!user) {
-          setIntegration(null)
-          return
-        }
-
-        const { data } = await supabase
-          .from('calendar_integrations')
-          .select('id, google_email, status, last_sync_at')
-          .eq('user_id', user.id)
-          .eq('provider', 'google')
-          .single()
-
-        setIntegration(data || null)
-      } catch (error) {
-        console.error('Erro ao verificar integração:', error)
-        setIntegration(null)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    checkIntegration()
-  }, [isOpen])
-
-  const handleConnect = async () => {
-    setIsConnecting(true)
-    try {
-      // Obter token do usuário logado
-      const { data: { session } } = await import('../lib/supabase').then(m => m.supabase.auth.getSession())
-
-      if (!session?.access_token) {
-        toast.error('Você precisa estar logado para conectar')
-        return
-      }
-
-      // Chamar Edge Function para obter URL de OAuth
-      const response = await fetch(
-        'https://hdmesxrurdrhmcujospv.supabase.co/functions/v1/google-calendar-oauth',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      )
-
-      const data = await response.json()
-
-      if (data.authUrl) {
-        // Redirecionar para Google OAuth
-        window.location.href = data.authUrl
-      } else {
-        toast.error(data.error || 'Erro ao iniciar conexão')
-      }
-    } catch (error) {
-      console.error('Erro ao conectar:', error)
-      toast.error('Erro ao conectar com Google')
-    } finally {
-      setIsConnecting(false)
-    }
-  }
-
-  const handleDisconnect = async () => {
-    if (!window.confirm('Tem certeza que deseja desconectar sua conta Google?')) return
-
-    setIsDisconnecting(true)
-    try {
-      const { supabase } = await import('../lib/supabase')
-      const { data: { user } } = await supabase.auth.getUser()
-
-      if (!user) return
-
-      const { error } = await supabase
-        .from('calendar_integrations')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('provider', 'google')
-
-      if (error) throw error
-
-      setIntegration(null)
-      toast.success('Conta Google desconectada!')
-    } catch (error) {
-      console.error('Erro ao desconectar:', error)
-      toast.error('Erro ao desconectar')
-    } finally {
-      setIsDisconnecting(false)
-    }
-  }
-
-  if (!isOpen) return null
-
-  const isConnected = integration?.status === 'connected'
-
-  // URL do vídeo tutorial (substitua pelo seu vídeo)
-  const videoUrl = "" // Deixar vazio até ter o vídeo
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-slate-800 border border-white/10 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="p-6 border-b border-white/10 bg-gradient-to-r from-blue-500/10 to-green-500/10">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-slate-400 hover:text-white transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
-
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center shadow-lg">
-              <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19.5 3h-15A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5v-15A1.5 1.5 0 0019.5 3zM12 17a5 5 0 110-10 5 5 0 010 10z" />
-                <path d="M12 8v4l3 1.5" />
-              </svg>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-white">Conectar Google Calendar</h2>
-              <p className="text-slate-400">Sincronize seus eventos automaticamente</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Conteúdo */}
-        <div className="p-6 space-y-6">
-          {/* Espaço para Vídeo Tutorial */}
-          <div className="rounded-xl overflow-hidden bg-slate-900/50 border border-white/10">
-            {videoUrl ? (
-              <div className="aspect-video">
-                <iframe
-                  src={videoUrl}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-            ) : (
-              <div className="aspect-video flex flex-col items-center justify-center text-slate-500">
-                <svg className="w-16 h-16 mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-sm">Vídeo tutorial em breve</p>
-              </div>
-            )}
-          </div>
-
-          {/* Passos */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-cyan-500 text-white text-xs flex items-center justify-center">?</span>
-              Como funciona?
-            </h3>
-
-            <div className="space-y-3">
-              <div className="flex gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-sm shrink-0">
-                  1
-                </div>
-                <div>
-                  <h4 className="font-medium text-white">Clique em "Conectar com Google"</h4>
-                  <p className="text-sm text-slate-400">Você será redirecionado para a página de login do Google</p>
-                </div>
-              </div>
-
-              <div className="flex gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="w-8 h-8 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center font-bold text-sm shrink-0">
-                  2
-                </div>
-                <div>
-                  <h4 className="font-medium text-white">Autorize o acesso ao seu calendário</h4>
-                  <p className="text-sm text-slate-400">Permita que o Azera leia e crie eventos no seu Google Calendar</p>
-                </div>
-              </div>
-
-              <div className="flex gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-sm shrink-0">
-                  3
-                </div>
-                <div>
-                  <h4 className="font-medium text-white">Pronto! Seus eventos serão sincronizados</h4>
-                  <p className="text-sm text-slate-400">Eventos criados aqui aparecerão no Google e vice-versa</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Aviso importante - Cadastro prévio */}
-          <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 shrink-0 rounded-full bg-cyan-500/20 flex items-center justify-center">
-                <svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <h4 className="font-medium text-cyan-300">📱 Cadastro Prévio Necessário</h4>
-                <p className="text-sm text-cyan-200/80 mt-1">
-                  Para conectar seu Google Calendar, primeiro precisamos adicionar seu email
-                  na lista de acesso. <strong>Envie uma mensagem no WhatsApp</strong> com o email
-                  da sua conta Google que deseja conectar.
-                </p>
-                <a
-                  href="https://wa.me/5531991318312?text=Olá!%20Quero%20conectar%20meu%20Google%20Calendar%20no%20Azera.%20Meu%20email%20é:%20"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg text-sm font-medium transition"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                  </svg>
-                  Enviar meu email via WhatsApp
-                </a>
-              </div>
-            </div>
-          </div>
-
-          {/* Status de conexão */}
-          <div className={`p-4 rounded-xl border ${isConnected ? 'bg-green-500/10 border-green-500/30' : 'bg-slate-700/50 border-white/10'}`}>
-            {isLoading ? (
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-slate-500 animate-pulse" />
-                <span className="text-sm text-slate-400">Verificando...</span>
-              </div>
-            ) : isConnected ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-green-500" />
-                  <div>
-                    <span className="text-sm text-green-400 font-medium">Conectado</span>
-                    <p className="text-xs text-slate-400">{integration?.google_email}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleDisconnect}
-                  disabled={isDisconnecting}
-                  className="text-xs text-red-400 hover:text-red-300 transition"
-                >
-                  {isDisconnecting ? 'Desconectando...' : 'Desconectar'}
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-slate-500 animate-pulse" />
-                  <span className="text-sm text-slate-400">Não conectado</span>
-                </div>
-                <span className="text-xs text-slate-500">Clique abaixo para conectar</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-6 border-t border-white/10 flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition"
-          >
-            {isConnected ? 'Fechar' : 'Cancelar'}
-          </button>
-          {!isConnected && (
-            <button
-              onClick={handleConnect}
-              disabled={isConnecting}
-              className="flex-1 py-3 bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-            >
-              {isConnecting ? (
-                <>
-                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Conectando...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                  </svg>
-                  Conectar com Google
-                </>
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ============================================================================
-// CALENDÁRIO MENSAL
-// ============================================================================
-
-function MonthCalendar({
-  currentDate,
-  eventsByDate,
-  onSelectDate,
-  onSelectEvent,
-  selectedDate
-}: {
-  currentDate: Date
-  eventsByDate: Record<string, CalendarEvent[]>
-  onSelectDate: (date: Date) => void
-  onSelectEvent: (eventId: string) => void
-  selectedDate: Date | null
-}) {
-  const year = currentDate.getFullYear()
-  const month = currentDate.getMonth()
-
-  // Dias da semana
-  const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-
-  // Calcular dias do mês
-  const firstDayOfMonth = new Date(year, month, 1)
-  const lastDayOfMonth = new Date(year, month + 1, 0)
-  const daysInMonth = lastDayOfMonth.getDate()
-  const startingDay = firstDayOfMonth.getDay()
-
-  // Dias do mês anterior
-  const prevMonthLastDay = new Date(year, month, 0).getDate()
-
-  // Gerar array de dias
-  const days: Array<{ date: Date; isCurrentMonth: boolean }> = []
-
-  // Dias do mês anterior
-  for (let i = startingDay - 1; i >= 0; i--) {
-    days.push({
-      date: new Date(year, month - 1, prevMonthLastDay - i),
-      isCurrentMonth: false
-    })
-  }
-
-  // Dias do mês atual
-  for (let i = 1; i <= daysInMonth; i++) {
-    days.push({
-      date: new Date(year, month, i),
-      isCurrentMonth: true
-    })
-  }
-
-  // Dias do próximo mês
-  const remainingDays = 42 - days.length
-  for (let i = 1; i <= remainingDays; i++) {
-    days.push({
-      date: new Date(year, month + 1, i),
-      isCurrentMonth: false
-    })
-  }
-
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  return (
-    <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden">
-      {/* Header dos dias da semana */}
-      <div className="grid grid-cols-7 border-b border-white/10">
-        {weekDays.map((day) => (
-          <div
-            key={day}
-            className="py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider"
-          >
-            {day}
-          </div>
-        ))}
-      </div>
-
-      {/* Grid de dias */}
-      <div className="grid grid-cols-7">
-        {days.map(({ date, isCurrentMonth }, index) => {
-          const dateKey = date.toISOString().split('T')[0]
-          const dayEvents = eventsByDate[dateKey] || []
-          const isToday = date.getTime() === today.getTime()
-          const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString()
-
-          return (
-            <button
-              key={index}
-              onClick={() => onSelectDate(date)}
-              className={`
-                relative min-h-[100px] p-2 border-b border-r border-white/5 text-left transition-all
-                ${isCurrentMonth ? 'bg-transparent hover:bg-white/5' : 'bg-white/[0.02] opacity-50'}
-                ${isSelected ? 'bg-cyan-500/10 ring-1 ring-cyan-500/50' : ''}
-              `}
-            >
-              <span
-                className={`
-                  inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-medium
-                  ${isToday ? 'bg-cyan-500 text-white' : 'text-slate-300'}
-                `}
-              >
-                {date.getDate()}
-              </span>
-
-              {/* Eventos do dia */}
-              <div className="mt-1 space-y-1">
-                {dayEvents.slice(0, 3).map((event) => (
-                  <EventCard
-                    key={event.id}
-                    event={event}
-                    compact
-                    onClick={() => onSelectEvent(event.id)}
-                  />
-                ))}
-                {dayEvents.length > 3 && (
-                  <span className="text-xs text-slate-400 pl-2">
-                    +{dayEvents.length - 3} mais
-                  </span>
-                )}
-              </div>
-            </button>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ============================================================================
-// SIDEBAR COM PRÓXIMOS EVENTOS
-// ============================================================================
-
-function EventsSidebar({ onSelectEvent }: { onSelectEvent: (eventId: string) => void }) {
-  const { events, isLoading } = useUpcomingEvents(10)
-
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 bg-white/5 rounded-xl animate-pulse" />
-        ))}
-      </div>
-    )
-  }
-
-  if (events.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <CalendarIcon className="w-12 h-12 mx-auto text-slate-500 mb-3" />
-        <p className="text-slate-400">Nenhum evento próximo</p>
-        <p className="text-sm text-slate-500">Crie um evento para começar</p>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-3">
-      {events.map((event) => (
-        <EventCard
-          key={event.id}
-          event={event}
-          onClick={() => onSelectEvent(event.id)}
-        />
-      ))}
-    </div>
-  )
-}
-
-// ============================================================================
 // PÁGINA PRINCIPAL
 // ============================================================================
-
-
 
 export default function Agenda() {
   const {
     view,
     setView,
     currentDate,
-    selectedDate,
     goToToday,
     goToPrevious,
     goToNext,
+    getViewTitle,
+    selectedDate,
     selectDate,
-    selectEvent,
     selectedEventId,
-    getViewTitle
+    selectEvent
   } = useCalendarViewState()
 
   const {
     events,
-    eventsByDate,
     isLoading,
-    refetch,
     createEvent,
     deleteEvent,
     isCreating,
-    isDeleting
+    isDeleting,
+    refetch
   } = useCalendarEvents({ view, currentDate })
+
+  const { events: upcomingEvents } = useUpcomingEvents(10)
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false)
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
   const [googleIntegration, setGoogleIntegration] = useState<GoogleIntegration | null>(null)
   const [selectedEventData, setSelectedEventData] = useState<CalendarEvent | null>(null)
 
   // Verificar status do Google Calendar
-  useEffect(() => {
-    const checkGoogleStatus = async () => {
-      try {
-        const { supabase } = await import('../lib/supabase')
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+  const checkGoogleStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
 
-        const { data } = await supabase
-          .from('calendar_integrations')
-          .select('id, google_email, status, last_sync_at')
-          .eq('user_id', user.id)
-          .eq('provider', 'google')
-          .single()
+      const { data } = await supabase
+        .from('calendar_integrations')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('provider', 'google')
+        .single()
 
-        setGoogleIntegration(data || null)
-
-        // Sincronizar se conectado
-        if (data?.status === 'connected') {
-          const { data: { session } } = await supabase.auth.getSession()
-          if (session) {
-            fetch('https://hdmesxrurdrhmcujospv.supabase.co/functions/v1/google-calendar-sync', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-                'Content-Type': 'application/json'
-              }
-            }).then(res => res.json())
-              .then(d => { if (d.success) refetch() })
-              .catch(e => console.error('Erro sync:', e))
-          }
-        }
-      } catch (error) {
-        console.error('Erro ao verificar Google:', error)
-      }
+      setGoogleIntegration(data)
+    } catch (e) {
+      console.error('Erro ao verificar Google:', e)
     }
+  }
 
+  useEffect(() => {
     checkGoogleStatus()
-
-
-  }, [isGoogleModalOpen])
-
-
+  }, [])
 
   // Buscar dados do evento selecionado
   useEffect(() => {
@@ -985,10 +502,22 @@ export default function Agenda() {
     }
   }
 
+  useEffect(() => {
+    // Esconder scrollbar do layout pai durante o uso da Agenda
+    const main = document.querySelector('main')
+    if (main) {
+      const originalOverflow = main.style.overflow
+      main.style.overflow = 'hidden'
+      return () => {
+        main.style.overflow = originalOverflow
+      }
+    }
+  }, [])
+
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="h-full bg-background p-6 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6 shrink-0">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center shadow-lg shadow-cyan-500/30">
             <CalendarIcon className="w-6 h-6 text-white" />
@@ -1056,185 +585,183 @@ export default function Agenda() {
           <button
             onClick={() => refetch()}
             disabled={isLoading}
-            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 border border-white/10 rounded-xl hover:brightness-110 text-white transition disabled:opacity-50 min-w-[140px] shadow-lg shadow-black/20"
+            title="Sincronizar"
           >
-            <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <span className="font-medium">Sincronizar</span>
+          </button>
+
+          {/* WhatsApp Agenda */}
+          <button
+            onClick={() => setIsWhatsAppModalOpen(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-purple-800 border border-purple-500/30 rounded-xl text-white hover:brightness-110 transition min-w-[140px] shadow-lg shadow-purple-500/20"
+            title="Configurar Agenda via WhatsApp"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span className="font-medium">WhatsApp</span>
           </button>
 
           {/* Botão Criar */}
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-medium rounded-xl shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all hover:scale-105"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-medium rounded-xl shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all hover:scale-105 min-w-[160px]"
           >
-            <Plus className="w-5 h-5" />
-            <span className="hidden sm:inline">Novo Evento</span>
+            <Plus className="w-4 h-4" />
+            <span className="font-medium">Novo Evento</span>
           </button>
         </div>
       </div>
 
-      {/* Layout Principal */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Calendário */}
-        <div className="lg:col-span-3">
+      {/* Grid Principal */}
+      <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Lado Esquerdo: Calendário */}
+        <div className="lg:col-span-3 flex flex-col overflow-hidden bg-white/5 rounded-2xl border border-white/10">
           {isLoading ? (
-            <div className="h-[600px] bg-white/5 rounded-2xl animate-pulse flex items-center justify-center">
-              <RefreshCw className="w-8 h-8 text-slate-500 animate-spin" />
+            <div className="flex-1 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+                <p className="text-slate-400 animate-pulse font-medium tracking-wide uppercase text-xs">Carregando Agenda...</p>
+              </div>
             </div>
           ) : view === 'month' ? (
-            <MonthCalendar
-              currentDate={currentDate}
-              eventsByDate={eventsByDate}
-              onSelectDate={selectDate}
-              onSelectEvent={handleSelectEvent}
-              selectedDate={selectedDate}
-            />
-          ) : view === 'list' ? (
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Próximos Eventos</h3>
-              {events.length === 0 ? (
-                <div className="text-center py-12">
-                  <CalendarIcon className="w-16 h-16 mx-auto text-slate-500 mb-4" />
-                  <p className="text-slate-400">Nenhum evento encontrado</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {events.map((event) => (
-                    <EventCard
-                      key={event.id}
-                      event={event}
-                      onClick={() => handleSelectEvent(event.id)}
-                    />
-                  ))}
-                </div>
-              )}
+            <div className="flex-1 p-4">
+              <MonthlyCalendar
+                currentDate={currentDate}
+                events={events}
+                onSelectDate={(date) => {
+                  selectDate(date)
+                  setIsCreateModalOpen(true)
+                }}
+                onSelectEvent={handleSelectEvent}
+              />
+            </div>
+          ) : view === 'week' ? (
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+              <WeeklyView
+                currentDate={currentDate}
+                events={events}
+                onSelectEvent={handleSelectEvent}
+              />
             </div>
           ) : (
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 text-center">
-              <p className="text-slate-400">Visualização semanal em breve...</p>
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+              <div className="max-w-4xl mx-auto space-y-8">
+                {Object.entries(
+                  events.reduce((acc, event) => {
+                    const date = new Date(event.start_date).toLocaleDateString('pt-BR', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    })
+                    if (!acc[date]) acc[date] = []
+                    acc[date].push(event)
+                    return acc
+                  }, {} as Record<string, CalendarEvent[]>)
+                ).map(([date, dayEvents]) => (
+                  <div key={date} className="space-y-4">
+                    <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest pl-2 border-l-2 border-cyan-500/30">{date}</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {dayEvents.map(event => (
+                        <EventCard
+                          key={event.id}
+                          event={event}
+                          onClick={() => handleSelectEvent(event.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {events.length === 0 && (
+                  <div className="h-64 flex flex-col items-center justify-center text-slate-500 bg-white/5 rounded-2xl border border-dashed border-white/10">
+                    <CalendarIcon className="w-12 h-12 mb-4 opacity-20" />
+                    <p>Nenhum evento encontrado para este período.</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Mini calendário / Info do dia selecionado */}
-          {selectedDate && (
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4">
-              <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
-                {selectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
-              </h3>
-              {eventsByDate[selectedDate.toISOString().split('T')[0]]?.length ? (
-                <div className="space-y-2">
-                  {eventsByDate[selectedDate.toISOString().split('T')[0]].map((event) => (
-                    <EventCard
-                      key={event.id}
-                      event={event}
-                      compact
-                      onClick={() => handleSelectEvent(event.id)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-slate-500 text-sm">Nenhum evento</p>
-              )}
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="w-full mt-3 py-2 text-sm text-cyan-400 hover:text-cyan-300 flex items-center justify-center gap-1 transition"
-              >
-                <Plus className="w-4 h-4" />
-                Adicionar evento
-              </button>
-            </div>
-          )}
-
-          {/* Próximos eventos */}
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-4">
-            <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
-              Próximos Eventos
+        {/* Lado Direito: Próximos Eventos & Integrações */}
+        <div className="flex flex-col gap-6 overflow-hidden">
+          {/* Próximos Compromissos */}
+          <div className="bg-white/5 rounded-2xl border border-white/10 p-5 flex flex-col overflow-hidden max-h-[60%]">
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2 shrink-0">
+              <Clock className="w-5 h-5 text-cyan-400" />
+              Próximos Compromissos
             </h3>
-            <EventsSidebar onSelectEvent={handleSelectEvent} />
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3">
+              {upcomingEvents.map(event => (
+                <div
+                  key={event.id}
+                  onClick={() => handleSelectEvent(event.id)}
+                  className="p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-1 h-10 rounded-full shrink-0 shadow-lg" style={{ backgroundColor: event.color }} />
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-bold text-white truncate group-hover:text-cyan-400 transition-colors uppercase tracking-tight">{event.title}</h4>
+                      <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-600" />
+                        {formatEventDate(event.start_date)}
+                      </p>
+                      {event.location && (
+                        <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 truncate">
+                          <MapPin className="w-3 h-3" />
+                          {event.location}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {upcomingEvents.length === 0 && (
+                <div className="py-8 text-center bg-white/5 rounded-xl border border-dashed border-white/10">
+                  <p className="text-xs text-slate-500 italic">Tudo limpo por aqui!</p>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Card de integração Google Calendar */}
-          <div className="bg-gradient-to-br from-blue-500/10 to-green-500/10 backdrop-blur-xl border border-blue-500/20 rounded-2xl p-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 0C5.383 0 0 5.383 0 12s5.383 12 12 12 12-5.383 12-12S18.617 0 12 0zm0 3.6c1.38 0 2.7.36 3.84 1.02L12 8.52 8.16 4.62A8.4 8.4 0 0112 3.6zM6.78 5.94L10.62 9.78 4.62 15.78A8.4 8.4 0 013.6 12c0-2.28.9-4.38 2.4-5.94l.78-.12zm-2.16 11.1l6-6L12 12.42l-1.38 1.38-6 6A8.4 8.4 0 014.62 17.04zM12 20.4a8.4 8.4 0 01-5.16-1.74l6-6L14.22 11.28l4.02 4.02A8.4 8.4 0 0112 20.4zm7.02-4.14l-5.64-5.64L14.76 9.24l4.62 4.62a8.4 8.4 0 01-.36 2.4z" />
+          {/* Integração Google */}
+          <div className="bg-gradient-to-br from-blue-500/10 to-green-500/10 rounded-2xl border border-blue-500/20 p-5 shrink-0 shadow-lg shadow-blue-500/5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 rounded-xl bg-white flex items-center justify-center shadow-md">
+                <svg className="w-6 h-6" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                 </svg>
               </div>
-              <div>
-                <h4 className="font-medium text-white">Google Calendar</h4>
-                <p className="text-xs text-slate-400">
-                  {googleIntegration ? 'Sincronização Ativa' : 'Sincronize seus eventos'}
+              <div className="min-w-0">
+                <h4 className="text-sm font-bold text-white font-outfit truncate">Google Calendar</h4>
+                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">
+                  {googleIntegration ? 'Sincronizado' : 'Não Conectado'}
                 </p>
               </div>
             </div>
 
-            {googleIntegration ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-xs text-green-300 font-medium truncate">
-                    {googleIntegration.google_email}
-                  </span>
-                </div>
-                <button
-                  onClick={() => setIsGoogleModalOpen(true)}
-                  className="w-full py-2 text-sm bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl transition flex items-center justify-center gap-2"
-                >
-                  Configurar
-                </button>
+            {googleIntegration && (
+              <div className="mb-4 text-xs font-medium text-slate-300 bg-white/5 p-2 rounded-lg border border-white/10 truncate">
+                {googleIntegration.google_email}
               </div>
-            ) : (
-              <>
-                <p className="text-sm text-slate-300 mb-3">
-                  Conecte sua conta Google para sincronizar eventos automaticamente.
-                </p>
-                <button
-                  onClick={() => setIsGoogleModalOpen(true)}
-                  className="w-full py-2 text-sm bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-xl transition flex items-center justify-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                  </svg>
-                  Conectar Google
-                </button>
-              </>
             )}
-          </div>
 
-          {/* Card de integração WhatsApp */}
-          <div className="bg-gradient-to-br from-purple-500/10 to-cyan-500/10 backdrop-blur-xl border border-purple-500/20 rounded-2xl p-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                <MessageCircle className="w-5 h-5 text-purple-400" />
-              </div>
-              <div>
-                <h4 className="font-medium text-white">Agenda via WhatsApp</h4>
-                <p className="text-xs text-slate-400">Crie eventos por mensagem</p>
-              </div>
-            </div>
-            <p className="text-sm text-slate-300 mb-3">
-              Envie: <span className="text-purple-300 italic">"Azera, me lembra de ir ao médico dia 20 às 14h"</span>
-            </p>
-            <button className="w-full py-2 text-sm bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-xl transition flex items-center justify-center gap-2">
-              <Settings className="w-4 h-4" />
-              Configurar
+            <button
+              onClick={() => setIsGoogleModalOpen(true)}
+              className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-800 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-blue-500/20 hover:scale-105 flex items-center justify-center gap-2 group"
+            >
+              <Settings className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform duration-500" />
+              Configurar Integração
             </button>
           </div>
         </div>
       </div>
 
       {/* Modais */}
-      <CreateEventModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreate={createEvent}
-        selectedDate={selectedDate}
-        isCreating={isCreating}
-      />
-
       <EventModal
         event={selectedEventData}
         isOpen={!!selectedEventId}
@@ -1243,10 +770,260 @@ export default function Agenda() {
         isDeleting={isDeleting}
       />
 
-      <GoogleCalendarModal
-        isOpen={isGoogleModalOpen}
-        onClose={() => setIsGoogleModalOpen(false)}
-      />
+      {isCreateModalOpen && (
+        <CreateEventModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onCreate={createEvent}
+          selectedDate={selectedDate}
+          isCreating={isCreating}
+        />
+      )}
+
+      {isGoogleModalOpen && (
+        <GoogleCalendarModal
+          isOpen={isGoogleModalOpen}
+          onClose={() => {
+            setIsGoogleModalOpen(false)
+            checkGoogleStatus()
+            refetch()
+          }}
+        />
+      )}
+
+      {isWhatsAppModalOpen && (
+        <WhatsAppAgendaModal
+          isOpen={isWhatsAppModalOpen}
+          onClose={() => setIsWhatsAppModalOpen(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+// ============================================================================
+// COMPONENTES AUXILIARES DE VIEW
+// ============================================================================
+
+function MonthlyCalendar({
+  currentDate,
+  events,
+  onSelectDate,
+  onSelectEvent
+}: {
+  currentDate: Date
+  events: CalendarEvent[]
+  onSelectDate: (date: Date) => void
+  onSelectEvent: (eventId: string) => void
+}) {
+  const years = currentDate.getFullYear()
+  const month = currentDate.getMonth()
+
+  const firstDayOfMonth = new Date(years, month, 1)
+  const lastDayOfMonth = new Date(years, month + 1, 0)
+  const startingDayOfWeek = firstDayOfMonth.getDay()
+  const totalDays = lastDayOfMonth.getDate()
+
+  const prevMonthLastDay = new Date(years, month, 0).getDate()
+  const days: { date: Date; isCurrentMonth: boolean; isToday: boolean }[] = []
+
+  // Dias do mês anterior
+  for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+    days.push({
+      date: new Date(years, month - 1, prevMonthLastDay - i),
+      isCurrentMonth: false,
+      isToday: false
+    })
+  }
+
+  // Dias do mês atual
+  const today = new Date()
+  for (let i = 1; i <= totalDays; i++) {
+    const date = new Date(years, month, i)
+    days.push({
+      date,
+      isCurrentMonth: true,
+      isToday: date.toDateString() === today.toDateString()
+    })
+  }
+
+  // Dias do próximo mês
+  const remainingDays = 42 - days.length
+  for (let i = 1; i <= remainingDays; i++) {
+    days.push({
+      date: new Date(years, month + 1, i),
+      isCurrentMonth: false,
+      isToday: false
+    })
+  }
+
+  const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="grid grid-cols-7 mb-2">
+        {weekDays.map(day => (
+          <div key={day} className="py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-widest">
+            {day}
+          </div>
+        ))}
+      </div>
+      <div className="flex-1 grid grid-cols-7 grid-rows-6 gap-px bg-white/5 border border-white/5 rounded-xl overflow-hidden shadow-2xl">
+        {days.map((day, idx) => {
+          const dateStr = day.date.toISOString().split('T')[0]
+          const dayEvents = events.filter(e => e.start_date.startsWith(dateStr))
+
+          return (
+            <div
+              key={idx}
+              className={`min-h-0 relative flex flex-col p-2 transition-all hover:bg-white/5 group ${day.isCurrentMonth ? 'bg-[#0f172a]/50' : 'bg-black/20 opacity-40'}`}
+              onClick={() => onSelectDate(day.date)}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full transition-all ${day.isToday ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/30' : 'text-slate-400 group-hover:text-white'}`}>
+                  {day.date.getDate()}
+                </span>
+                {dayEvents.length > 0 && (
+                  <div className="bg-cyan-500/20 px-1.5 py-0.5 rounded text-[8px] font-bold text-cyan-400 uppercase">
+                    {dayEvents.length} {dayEvents.length === 1 ? 'Evento' : 'Eventos'}
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1">
+                {dayEvents.slice(0, 3).map(event => (
+                  <button
+                    key={event.id}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onSelectEvent(event.id)
+                    }}
+                    className="w-full text-left px-2 py-1 rounded text-[10px] font-bold truncate transition-all hover:brightness-125 border-l-2 flex items-center gap-1"
+                    style={{
+                      backgroundColor: event.color + '15',
+                      color: event.color,
+                      borderColor: event.color
+                    }}
+                  >
+                    {!event.all_day && (
+                      <span className="opacity-50 shrink-0">
+                        {new Date(event.start_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                    <span className="truncate uppercase tracking-tight">{event.title}</span>
+                  </button>
+                ))}
+                {dayEvents.length > 3 && (
+                  <div className="text-[9px] text-slate-500 font-bold pl-1 uppercase">
+                    + {dayEvents.length - 3} mais
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function WeeklyView({
+  currentDate,
+  events,
+  onSelectEvent
+}: {
+  currentDate: Date
+  events: CalendarEvent[]
+  onSelectEvent: (eventId: string) => void
+}) {
+  const startOfWeek = new Date(currentDate)
+  startOfWeek.setDate(currentDate.getDate() - currentDate.getDay())
+
+  const daysArr = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(startOfWeek)
+    d.setDate(startOfWeek.getDate() + i)
+    return d
+  })
+
+  // Horas do dia (8h às 20h)
+  const hours = Array.from({ length: 14 }, (_, i) => i + 7)
+
+  return (
+    <div className="flex flex-col h-full bg-[#0f172a]/50 rounded-xl border border-white/5 overflow-hidden">
+      {/* Header com dias da semana */}
+      <div className="grid grid-cols-[80px_1fr] border-b border-white/10 shrink-0">
+        <div className="p-4 border-r border-white/10" />
+        <div className="grid grid-cols-7">
+          {daysArr.map((day, idx) => (
+            <div key={idx} className={`p-4 text-center border-r border-white/5 last:border-r-0 ${day.toDateString() === new Date().toDateString() ? 'bg-cyan-500/5' : ''}`}>
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                {day.toLocaleDateString('pt-BR', { weekday: 'short' })}
+              </div>
+              <div className={`text-lg font-bold w-10 h-10 flex items-center justify-center rounded-xl mx-auto ${day.toDateString() === new Date().toDateString() ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/30' : 'text-white'}`}>
+                {day.getDate()}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Grid de Horários */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="grid grid-cols-[80px_1fr] relative">
+          {/* Coluna de Horas */}
+          <div className="shrink-0 border-r border-white/10">
+            {hours.map(hour => (
+              <div key={hour} className="h-20 p-2 text-right text-[10px] font-bold text-slate-500 border-b border-white/5 flex flex-col justify-start">
+                {hour}:00
+              </div>
+            ))}
+          </div>
+
+          {/* Grid de Eventos */}
+          <div className="grid grid-cols-7 relative">
+            {daysArr.map((day, dayIdx) => {
+              const dayStr = day.toISOString().split('T')[0]
+              const dayEvents = events.filter(e => e.start_date.startsWith(dayStr) && !e.all_day)
+
+              return (
+                <div key={dayIdx} className="relative border-r border-white/5 last:border-r-0">
+                  {hours.map(hour => (
+                    <div key={hour} className="h-20 border-b border-white/5" />
+                  ))}
+                  {dayEvents.map(event => {
+                    const startDate = new Date(event.start_date)
+                    const startHour = startDate.getHours()
+                    const startMin = startDate.getMinutes()
+                    const top = (startHour - 7) * 80 + (startMin / 60) * 80
+
+                    // Duração estimada (1h se não houver end_date)
+                    const end = event.end_date ? new Date(event.end_date) : new Date(startDate.getTime() + 60 * 60 * 1000)
+                    const durationMs = end.getTime() - startDate.getTime()
+                    const height = (durationMs / (1000 * 60 * 60)) * 80
+
+                    return (
+                      <div
+                        key={event.id}
+                        onClick={() => onSelectEvent(event.id)}
+                        className="absolute left-1 right-1 rounded-lg p-2 text-[10px] leading-tight cursor-pointer hover:brightness-125 transition-all border-l-2 shadow-lg z-10 overflow-hidden"
+                        style={{
+                          top: `${top}px`,
+                          height: `${height}px`,
+                          backgroundColor: event.color + '20',
+                          color: event.color,
+                          borderColor: event.color
+                        }}
+                      >
+                        <div className="font-bold uppercase tracking-tight truncate">{event.title}</div>
+                        <div className="opacity-70 font-mono">{startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

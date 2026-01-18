@@ -88,6 +88,7 @@ export interface CalendarIntegration {
   user_id: string
 
   provider: CalendarProvider
+  google_email?: string // Email da conta Google vinculada
 
   // Tokens (não expostos no frontend normalmente)
   access_token?: string
@@ -108,6 +109,14 @@ export interface CalendarIntegration {
   created_at: string
   updated_at: string
 }
+
+// Alias para compatibilidade com o frontend
+export interface GoogleIntegration extends Partial<CalendarIntegration> {
+  google_email: string
+  status: IntegrationStatus
+  last_sync_at: string | null
+}
+
 
 // ============================================================================
 // FORMULÁRIOS E INPUTS

@@ -221,15 +221,33 @@ export function useCalendarEvents(options: UseCalendarEventsOptions = {}) {
 // HOOK: useUpcomingEvents
 // ============================================================================
 
-export function useUpcomingEvents(limit: number = 5) {
+export function useUpcomingEvents(limit: number = 5, days?: number) {
   const { tenant } = useAuthStore()
   const tenantId = tenant?.id
 
   const { data: events = [], isLoading, refetch } = useQuery({
-    queryKey: ['upcoming-events', tenantId, limit],
+    queryKey: ['upcoming-events', tenantId, limit, days],
     queryFn: async () => {
       if (!tenantId) return []
-      return getUpcomingEvents(tenantId, limit)
+      const allEvents = await getUpcomingEvents(tenantId, 100) // Busca mais eventos para filtrar
+
+      // Se não tem filtro de dias, retorna todos (com limite)
+      if (!days) {
+        return allEvents.slice(0, limit)
+      }
+
+      // Filtra por dias
+      const now = new Date()
+      const endDate = new Date()
+      endDate.setDate(now.getDate() + days)
+      endDate.setHours(23, 59, 59, 999)
+
+      const filtered = allEvents.filter(event => {
+        const eventDate = new Date(event.start_date)
+        return eventDate <= endDate
+      })
+
+      return filtered.slice(0, limit)
     },
     enabled: !!tenantId,
     staleTime: 1000 * 60 * 2, // 2 minutos

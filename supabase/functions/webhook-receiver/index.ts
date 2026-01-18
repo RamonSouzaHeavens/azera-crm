@@ -7,8 +7,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  console.log('[WEBHOOK] START - Method:', req.method)
-
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -22,331 +20,38 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Not configured' }), { status: 500, headers: corsHeaders })
     }
 
-    // 1. Handle Meta Webhook Verification (GET request)
+    // Handle Meta Webhook Verification (GET request)
     if (req.method === 'GET') {
       const url = new URL(req.url)
       const mode = url.searchParams.get('hub.mode')
       const token = url.searchParams.get('hub.verify_token')
       const challenge = url.searchParams.get('hub.challenge')
-
-      console.log('[WEBHOOK] Verification request received')
-      console.log('[WEBHOOK] Mode:', mode)
-      console.log('[WEBHOOK] Token received:', token)
-      console.log('[WEBHOOK] Challenge:', challenge)
-      console.log('[WEBHOOK] Expected token: azera-crm-token')
-
-      // Token de verificação aceito
       const VERIFY_TOKEN = 'azera-crm-token'
 
       if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-        console.log('[WEBHOOK] ✅ Verification SUCCESS! Returning challenge.')
         return new Response(challenge || '', {
           status: 200,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'text/plain'
-          }
+          headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
         })
       } else {
-        console.error('[WEBHOOK] ❌ Verification FAILED!')
-        console.error('[WEBHOOK] Expected mode: subscribe, got:', mode)
-        console.error('[WEBHOOK] Expected token: azera-crm-token, got:', token)
-        return new Response('Forbidden', {
-          status: 403,
-          headers: corsHeaders
-        })
+        return new Response('Forbidden', { status: 403, headers: corsHeaders })
       }
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
     const rawBody = await req.text()
-    console.log('[WEBHOOK] Payload received, length:', rawBody.length)
 
     let payload: any
     try {
       payload = JSON.parse(rawBody)
     } catch (e) {
-      console.error('[WEBHOOK] Invalid JSON')
       return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 200, headers: corsHeaders })
-    }
-
-    // -------------------------------------------------------------------------
-    // HANDLE INSTAGRAM WEBHOOKS FROM META
-    // -------------------------------------------------------------------------
-    if (payload.object === 'instagram' && false) { // DISABLED INSTAGRAM INTEGRATION
-      console.log('[WEBHOOK] Processing Instagram payload')
-
-      const entries = payload.entry || []
-      for (const entry of entries) {
-        const instagramAccountId = entry.id
-        const messaging = entry.messaging || []
-
-        console.log('[WEBHOOK] Looking for integration with IG Account ID:', instagramAccountId)
-
-        // Find integration to get Access Token & Tenant
-        // Try by instagram_business_account_id first
-        let integration = null
-        let intError = null
-
-        const { data: int1, error: err1 } = await supabase
-          .from('integrations')
-          .select('*')
-          .contains('credentials', { instagram_business_account_id: instagramAccountId })
-          .eq('channel', 'instagram')
-          .eq('status', 'active')
-          .maybeSingle()
-
-        if (int1) {
-          integration = int1
-        } else {
-          // Try by page_id as fallback
-          const { data: int2, error: err2 } = await supabase
-            .from('integrations')
-            .select('*')
-            .contains('credentials', { page_id: instagramAccountId })
-            .eq('channel', 'instagram')
-            .eq('status', 'active')
-            .maybeSingle()
-
-          if (int2) {
-            integration = int2
-          } else {
-            intError = err1 || err2
-          }
-        }
-
-        if (!integration) {
-          console.error('[WEBHOOK] Integration not found for IG Account:', instagramAccountId)
-          console.error('[WEBHOOK] Search error:', intError)
-          continue
-        }
-
-        console.log('[WEBHOOK] Found integration for tenant:', integration.tenant_id)
-
-        const accessToken = integration.credentials.access_token
-        const tenantId = integration.tenant_id
-
-        for (const event of messaging) {
-          if (event.message && !event.message.is_echo) {
-            const senderId = event.sender.id
-            const text = event.message.text || ''
-            const msgId = event.message.mid
-            const attachments = event.message.attachments || []
-
-            console.log(`[WEBHOOK] IG Message from ${senderId}: ${text}`)
-
-            try {
-              // Fetch User Profile from Instagram
-              let contactName = 'Instagram User'
-              let avatarUrl = null
-              let username = null
-
-              if (accessToken) {
-                try {
-                  // Buscar perfil do cliente via Facebook Graph API
-                  // Para pegar avatar de clientes (IGSID), usa-se graph.facebook.com com profile_pic
-                  console.log('[WEBHOOK] Fetching Instagram profile for sender:', senderId)
-
-                  // Endpoint correto para avatar: graph.facebook.com/v18.0 com profile_pic
-                  const profileResp = await fetch(
-                    `https://graph.facebook.com/v18.0/${senderId}?fields=name,profile_pic&access_token=${accessToken}`
-                  )
-                  const profileData = await profileResp.json()
-
-                  console.log('[WEBHOOK] Facebook API response:', JSON.stringify(profileData))
-
-                  if (profileData.error) {
-                    console.log('[WEBHOOK] Facebook API error:', profileData.error.message)
-
-                    // Tentar endpoint do Instagram para username
-                    console.log('[WEBHOOK] Trying Instagram API for username...')
-                    const igResp = await fetch(
-                      `https://graph.instagram.com/${senderId}?fields=username,name&access_token=${accessToken}`
-                    )
-                    const igData = await igResp.json()
-                    console.log('[WEBHOOK] Instagram API response:', JSON.stringify(igData))
-
-                    if (!igData.error) {
-                      if (igData.name) contactName = igData.name
-                      if (igData.username) {
-                        username = igData.username
-                        contactName = `@${igData.username}`
-                      }
-                    }
-                  } else {
-                    if (profileData.name) contactName = profileData.name
-                    if (profileData.profile_pic) {
-                      avatarUrl = profileData.profile_pic
-                      console.log('[WEBHOOK] Got profile_pic!')
-                    }
-
-                    // Também pegar username via Instagram API
-                    try {
-                      const igResp = await fetch(
-                        `https://graph.instagram.com/${senderId}?fields=username&access_token=${accessToken}`
-                      )
-                      const igData = await igResp.json()
-                      if (!igData.error && igData.username) {
-                        username = igData.username
-                        contactName = `@${igData.username}`
-                      }
-                    } catch (e) {
-                      console.log('[WEBHOOK] Could not fetch username')
-                    }
-                  }
-
-                  console.log('[WEBHOOK] Final contact info:', { contactName, username, avatarUrl: avatarUrl ? 'Found' : 'Not found' })
-                } catch (e) {
-                  console.error('[WEBHOOK] Failed to fetch IG profile:', e)
-                }
-              } else {
-                console.log('[WEBHOOK] No access token available for profile fetch')
-              }
-
-              // Find or Create Client
-              let clientId = null
-              const { data: existingClient } = await supabase
-                .from('clientes')
-                .select('id')
-                .eq('tenant_id', tenantId)
-                .eq('telefone', senderId)
-                .maybeSingle()
-
-              if (existingClient) {
-                clientId = existingClient.id
-
-                // Atualizar nome se tivermos um nome melhor que "Instagram User"
-                if (contactName && contactName !== 'Instagram User') {
-                  console.log('[WEBHOOK] Updating client name to:', contactName)
-                  await supabase
-                    .from('clientes')
-                    .update({
-                      nome: contactName,
-                      avatar_url: avatarUrl || undefined // só atualiza se tiver
-                    })
-                    .eq('id', clientId)
-                }
-              } else {
-                const { data: newClient, error: clientError } = await supabase
-                  .from('clientes')
-                  .insert({
-                    tenant_id: tenantId,
-                    nome: contactName,
-                    telefone: senderId,
-                    status: 'lead',
-                    avatar_url: avatarUrl
-                  })
-                  .select()
-                  .single()
-
-                if (clientError) {
-                  console.error('[WEBHOOK] Error creating client:', clientError)
-                  continue
-                }
-                clientId = newClient.id
-              }
-
-              // Find or Create Conversation
-              let conversationId = null
-              const { data: existingConv } = await supabase
-                .from('conversations')
-                .select('id, unread_count')
-                .eq('tenant_id', tenantId)
-                .eq('contact_id', clientId)
-                .eq('channel', 'instagram')
-                .maybeSingle()
-
-              if (existingConv) {
-                conversationId = existingConv.id
-                // Update conversation
-                await supabase
-                  .from('conversations')
-                  .update({
-                    last_message_content: text || '[Mídia]',
-                    last_message_at: new Date().toISOString(),
-                    unread_count: (existingConv.unread_count || 0) + 1,
-                    avatar_url: avatarUrl
-                  })
-                  .eq('id', conversationId)
-              } else {
-                const { data: newConv, error: convError } = await supabase
-                  .from('conversations')
-                  .insert({
-                    tenant_id: tenantId,
-                    contact_id: clientId,
-                    channel: 'instagram',
-                    status: 'open',
-                    unread_count: 1,
-                    total_messages: 1,
-                    last_message_content: text || '[Mídia]',
-                    last_message_at: new Date().toISOString(),
-                    avatar_url: avatarUrl
-                  })
-                  .select()
-                  .single()
-
-                if (convError) {
-                  console.error('[WEBHOOK] Error creating conversation:', convError)
-                  continue
-                }
-                conversationId = newConv.id
-              }
-
-              // Handle attachments
-              let messageType = 'text'
-              let mediaUrl = null
-              let finalContent = text
-
-              if (attachments.length > 0) {
-                const att = attachments[0]
-                if (att.type === 'image') {
-                  messageType = 'image'
-                  mediaUrl = att.payload?.url
-                  finalContent = ''
-                } else if (att.type === 'video') {
-                  messageType = 'video'
-                  mediaUrl = att.payload?.url
-                  finalContent = ''
-                } else if (att.type === 'audio') {
-                  messageType = 'audio'
-                  mediaUrl = att.payload?.url
-                  finalContent = ''
-                }
-              }
-
-              // Insert Message
-              const { error: msgError } = await supabase
-                .from('messages')
-                .insert({
-                  conversation_id: conversationId,
-                  direction: 'inbound',
-                  message_type: messageType,
-                  content: finalContent,
-                  status: 'delivered',
-                  media_url: mediaUrl,
-                  external_message_id: msgId,
-                  created_at: new Date().toISOString()
-                })
-
-              if (msgError) {
-                console.error('[WEBHOOK] Error inserting message:', msgError)
-              } else {
-                console.log('[WEBHOOK] Message saved successfully')
-              }
-
-            } catch (err) {
-              console.error('[WEBHOOK] Processing error:', err)
-            }
-          }
-        }
-      }
-
-      return new Response('EVENT_RECEIVED', { status: 200 })
     }
 
     // -------------------------------------------------------------------------
     // HANDLE WHATSAPP WEBHOOKS (UAZAPI, Z-API, N8N, etc)
     // -------------------------------------------------------------------------
+    // Process payload
 
     // Unwrap N8N/Uazapi wrapper
     let actualPayload = payload
@@ -356,113 +61,154 @@ serve(async (req) => {
       actualPayload = payload.body
     }
 
-    console.log('[WEBHOOK] Processing WhatsApp payload')
-    console.log('[WEBHOOK] EventType:', actualPayload?.EventType)
-    console.log('[WEBHOOK] Has chat:', !!actualPayload?.chat)
-    console.log('[WEBHOOK] Has message:', !!actualPayload?.message)
-
-    // Accept 'messages' event OR any payload with message data (for compatibility)
+    // Accept 'messages' event OR any payload with message data
     const isMessageEvent = actualPayload?.EventType === 'messages' ||
       actualPayload?.EventType === undefined ||
       (actualPayload?.message && actualPayload?.chat)
 
     if (!isMessageEvent) {
-      console.log('[WEBHOOK] Ignoring non-message event:', actualPayload?.EventType)
       return new Response(JSON.stringify({ success: true, ignored: true }), { status: 200, headers: corsHeaders })
     }
 
     const chat = actualPayload?.chat
     const message = actualPayload?.message
     const instanceOwner = actualPayload?.owner
+    const instanceIdFromPayload = actualPayload?.instanceId || actualPayload?.instance_id || actualPayload?.instance
 
     if (!message || !chat) {
-      console.log('[WEBHOOK] Missing message or chat data')
       return new Response(JSON.stringify({ error: 'Missing data' }), { status: 200, headers: corsHeaders })
     }
 
-    // Determine message direction
     const isFromMe = message.fromMe === true
-    const wasSentByApi = message.wasSentByApi === true
-
-    console.log('[WEBHOOK] fromMe:', isFromMe, 'wasSentByApi:', wasSentByApi)
-
-    // Extract data from payload
     const phoneNumber = chat.wa_chatid?.replace('@s.whatsapp.net', '') || chat.phone?.replace(/\D/g, '')
     const contactName = chat.wa_name || chat.wa_contactName || chat.name || message.senderName || 'WhatsApp User'
     const avatarUrl = chat.imagePreview || chat.image || null
-    const messageText = message.text || ''
+    const originalMessageText = message.text || ''
     const messageId = message.id || message.messageid
     const messageType = message.mediaType || message.messageType || 'text'
     const mediaUrl = message.content?.URL || null
 
-    console.log('[WEBHOOK] Phone:', phoneNumber)
-    console.log('[WEBHOOK] Contact:', contactName)
-    console.log('[WEBHOOK] Avatar:', avatarUrl ? 'Found' : 'Not found')
-    console.log('[WEBHOOK] Message:', messageText?.substring(0, 50))
+    // Log essencial para debug
+    console.log(`[WEBHOOK] Message from ${contactName} (${phoneNumber}): ${originalMessageText?.substring(0, 80)}${originalMessageText?.length > 80 ? '...' : ''}`)
+    console.log('[DEBUG STEP 1] Payload parsed')
 
-    // Find integration - try multiple queries to debug
-    console.log('[WEBHOOK] Searching for WhatsApp integration...')
-    console.log('[WEBHOOK] Instance owner from payload:', instanceOwner)
-
-    // First, let's see all integrations
+    // Find integration
     const { data: allIntegrations } = await supabase
       .from('integrations')
-      .select('id, channel, status, is_active, tenant_id, credentials')
-      .eq('channel', 'whatsapp')
+      .select('id, channel, status, is_active, tenant_id, credentials, config')
+      .in('channel', ['whatsapp', 'wpp', 'whatsapp-api', 'uazapi'])
       .eq('is_active', true)
 
-    console.log('[WEBHOOK] Active WhatsApp integrations:', allIntegrations?.length)
+    console.log(`[DEBUG MATCH] Searching integration for InstanceID: '${instanceIdFromPayload}' or Owner: '${instanceOwner}'`)
+    console.log(`[DEBUG MATCH] Found ${allIntegrations?.length || 0} active integrations in DB`)
 
-    // Find integration by matching instance_id in credentials
     let integration = null
 
     if (allIntegrations && allIntegrations.length > 0) {
-      // Try to match by instance_id in credentials
-      for (const int of allIntegrations) {
-        const instanceId = int.credentials?.instance_id
-        console.log('[WEBHOOK] Checking integration:', int.id, 'instance_id:', instanceId)
+      // Try exact match with instanceId
+      if (instanceIdFromPayload) {
+        integration = allIntegrations.find(int => {
+          const dbRef = int.credentials?.instance_id
+          const match = dbRef === instanceIdFromPayload || dbRef?.toString() === instanceIdFromPayload?.toString()
+          if (match) console.log(`[DEBUG MATCH] Matched by ID: ${int.id}`)
+          return match
+        })
+      }
 
-        // Match by instance_id containing the owner phone or exact match
-        if (instanceId && instanceOwner && (
-          instanceId === instanceOwner ||
-          instanceId.includes(instanceOwner) ||
-          instanceOwner.includes(instanceId)
-        )) {
-          integration = int
-          console.log('[WEBHOOK] Matched by instance_id!')
-          break
+      // Try matching instanceOwner (phone number)
+      if (!integration && instanceOwner) {
+        const ownerStr = instanceOwner.toString().replace(/\D/g, '')
+
+        for (const int of allIntegrations) {
+          const dbInstanceId = int.credentials?.instance_id?.toString()
+          const dbInstanceOwner = int.credentials?.instance_owner?.toString()?.replace(/\D/g, '')
+
+          if (
+            (dbInstanceOwner && dbInstanceOwner === ownerStr) ||
+            (dbInstanceId && (
+              dbInstanceId === ownerStr ||
+              dbInstanceId.includes(ownerStr) ||
+              ownerStr.includes(dbInstanceId)
+            ))
+          ) {
+            integration = int
+            console.log(`[DEBUG MATCH] Matched by Owner/Phone: ${int.id}`)
+            break
+          }
         }
-      }
-
-      // If no match by instance_id, just use the first one (for single tenant setups)
-      if (!integration && allIntegrations.length === 1) {
-        integration = allIntegrations[0]
-        console.log('[WEBHOOK] Using single available integration')
-      }
-
-      // If still no match, try using the first one anyway
-      if (!integration) {
-        integration = allIntegrations[0]
-        console.log('[WEBHOOK] Warning: Using first integration as fallback')
       }
     }
 
     if (!integration) {
-      console.error('[WEBHOOK] Integration not found for WhatsApp - check if WhatsApp is connected in the CRM')
-      return new Response(JSON.stringify({ error: 'Integration not found' }), { status: 200, headers: corsHeaders })
+      if (allIntegrations && allIntegrations.length === 1) {
+        integration = allIntegrations[0]
+        console.log(`[DEBUG MATCH] Fallback to single integration: ${integration.id}`)
+      } else {
+        // Log detalhado para entender pQ falhou
+        console.log('[DEBUG ERROR] Integration not found. Available candidates:')
+        allIntegrations?.forEach(i => console.log(`- ID: ${i.id}, Creds: ${JSON.stringify(i.credentials)}`))
+
+        return new Response(JSON.stringify({ error: 'Integration not found' }), { status: 200, headers: corsHeaders })
+      }
     }
+    console.log('[DEBUG STEP 2] Integration found:', integration.id)
 
     const tenantId = integration.tenant_id
-    const autoCreateLeads = integration.config?.auto_create_leads !== false // Default to true
-    console.log('[WEBHOOK] Found integration for tenant:', tenantId)
-    console.log('[WEBHOOK] Auto create leads:', autoCreateLeads)
+    const autoCreateLeads = integration.config?.auto_create_leads !== false
 
     // =========================================================================
-    // CONVERSATIONS ARE INDEPENDENT FROM LEADS
-    // Find conversation by phone number, NOT by contact_id
+    // AUDIO TRANSCRIPTION (UAZAPI)
     // =========================================================================
+    let messageText = originalMessageText
+    const isAudioMessage = messageType === 'ptt' || messageType === 'AudioMessage' || messageType === 'audio'
 
-    // Find existing conversation by phone number
+    if (isAudioMessage && messageId && !isFromMe) {
+      try {
+        const uazapiBaseUrl = integration.credentials?.base_url
+        const uazapiToken = integration.credentials?.secret_key
+        const openaiApiKey = Deno.env.get('VITE_OPENAI_KEY') || Deno.env.get('OPENAI_API_KEY')
+
+        if (uazapiBaseUrl && uazapiToken && openaiApiKey) {
+          console.log('[AUDIO] Transcribing audio message:', messageId)
+
+          const transcriptionResponse = await fetch(`${uazapiBaseUrl}/message/download`, {
+            method: 'POST',
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+              'token': uazapiToken
+            },
+            body: JSON.stringify({
+              id: messageId,
+              generate_mp3: true,
+              transcribe: true,
+              return_link: false,
+              openai_apikey: openaiApiKey
+            })
+          })
+
+          if (transcriptionResponse.ok) {
+            const transcriptionData = await transcriptionResponse.json()
+            const transcribedText = transcriptionData.transcription || transcriptionData.text || transcriptionData.transcript
+
+            if (transcribedText && transcribedText.trim().length > 0) {
+              messageText = transcribedText.trim()
+              console.log('[AUDIO] Transcription successful:', messageText.substring(0, 100))
+            } else {
+              console.log('[AUDIO] No transcription returned from UAZAPI')
+            }
+          } else {
+            console.error('[AUDIO] Transcription failed:', transcriptionResponse.status, await transcriptionResponse.text())
+          }
+        } else {
+          console.log('[AUDIO] Missing credentials for transcription - skipping')
+        }
+      } catch (transcriptionError) {
+        console.error('[AUDIO] Transcription error:', transcriptionError)
+      }
+    }
+
+    // Find or create conversation
     let conversationId = null
     const { data: existingConv } = await supabase
       .from('conversations')
@@ -474,11 +220,10 @@ serve(async (req) => {
 
     if (existingConv) {
       conversationId = existingConv.id
-      // Update conversation with latest message
       await supabase
         .from('conversations')
         .update({
-          contact_name: contactName, // Always update name in case it changed
+          contact_name: contactName,
           last_message_content: messageText || `[${messageType}]`,
           last_message_at: new Date().toISOString(),
           unread_count: (existingConv.unread_count || 0) + 1,
@@ -486,12 +231,11 @@ serve(async (req) => {
         })
         .eq('id', conversationId)
     } else {
-      // Create new conversation (independent from leads)
       const { data: newConv, error: convError } = await supabase
         .from('conversations')
         .insert({
           tenant_id: tenantId,
-          contact_id: null, // No dependency on clientes table
+          contact_id: null,
           contact_name: contactName,
           contact_phone: phoneNumber,
           channel: 'whatsapp',
@@ -510,14 +254,11 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: 'Conversation creation failed' }), { status: 200, headers: corsHeaders })
       }
       conversationId = newConv.id
-      console.log('[WEBHOOK] Created new conversation:', conversationId)
     }
+    console.log('[DEBUG STEP 3] Conversation handled:', conversationId)
 
-    // =========================================================================
-    // LEADS ARE OPTIONAL - Only create if auto_create_leads is enabled
-    // =========================================================================
+    // Create lead if enabled
     if (autoCreateLeads) {
-      // Check if lead already exists
       const { data: existingClient } = await supabase
         .from('clientes')
         .select('id')
@@ -526,7 +267,6 @@ serve(async (req) => {
         .maybeSingle()
 
       if (existingClient) {
-        // Update existing lead
         if (avatarUrl) {
           await supabase
             .from('clientes')
@@ -534,8 +274,7 @@ serve(async (req) => {
             .eq('id', existingClient.id)
         }
       } else {
-        // Create new lead
-        const { error: clientError } = await supabase
+        await supabase
           .from('clientes')
           .insert({
             tenant_id: tenantId,
@@ -544,17 +283,9 @@ serve(async (req) => {
             status: 'lead',
             avatar_url: avatarUrl
           })
-
-        if (clientError) {
-          console.error('[WEBHOOK] Error creating lead (non-blocking):', clientError)
-          // Don't return error - conversation was already created, lead is optional
-        } else {
-          console.log('[WEBHOOK] Lead created automatically')
-        }
       }
-    } else {
-      console.log('[WEBHOOK] Auto create leads disabled - skipping lead creation')
     }
+    console.log('[DEBUG STEP 4] Leads handled')
 
     // Handle message type
     let finalMessageType = 'text'
@@ -594,10 +325,217 @@ serve(async (req) => {
         created_at: new Date().toISOString()
       })
 
-    if (msgError) {
+    if (msgError && msgError.code !== '23505') {
       console.error('[WEBHOOK] Error inserting message:', msgError)
-    } else {
-      console.log('[WEBHOOK] Message saved successfully with avatar:', avatarUrl ? 'Yes' : 'No')
+    }
+    console.log('[DEBUG STEP 5] Message inserted')
+
+    // =========================================================================
+    // WHATSAPP AGENDA LOGIC
+    // =========================================================================
+    const isWhatsAppAgendaActive = integration.config?.whatsapp_agenda_active === true
+    const wasSentByApi = message.wasSentByApi === true
+
+    // Bloquear mensagens de confirmação automática para evitar loop
+    const isConfirmationMessage = messageText.includes('Agendado com sucesso') ||
+      messageText.includes('Evento criado na sua agenda')
+
+    console.log('[AGENDA DEBUG] --------------------------------------------------')
+    console.log('[AGENDA DEBUG] Message:', messageText)
+    console.log('[AGENDA DEBUG] Config:', {
+      isWhatsAppAgendaActive,
+      integrationId: integration.id,
+      credentialId: integration.credentials?.instance_id
+    })
+    console.log('[AGENDA DEBUG] Flags:', {
+      isFromMe,
+      wasSentByApi,
+      isConfirmationMessage,
+      textLen: messageText?.length
+    })
+
+    // Permitir mensagens do usuário (isFromMe), mas bloquear confirmações automáticas
+
+    // Permitir mensagens do usuário (isFromMe), mas bloquear confirmações automáticas
+    if (isWhatsAppAgendaActive && messageText && messageText.length > 5 && !wasSentByApi && !isConfirmationMessage) {
+      const schedulingKeywords = [
+        'agendar', 'agenda', 'agendamento',
+        'marcar', 'marca', 'marcação',
+        'reunião', 'reuniao',
+        'lembrar', 'lembra', 'lembrete', 'me lembra',
+        'compromisso', 'encontro', 'consulta', 'visita',
+        'horário', 'horario', 'disponível', 'disponivel',
+        'amanhã', 'amanha', 'próxima', 'proxima', 'azera'
+      ]
+
+      const messageLower = messageText.toLowerCase()
+      const hasSchedulingKeyword = schedulingKeywords.some(kw => messageLower.includes(kw))
+
+      if (hasSchedulingKeyword) {
+        try {
+          const openaiApiKey = Deno.env.get('VITE_OPENAI_KEY') || Deno.env.get('OPENAI_API_KEY')
+
+          if (openaiApiKey) {
+            // Data de referência no fuso do Brasil (UTC-3)
+            const now = new Date()
+            const brazilOffset = -3 * 60
+            const brazilTime = new Date(now.getTime() + (brazilOffset - now.getTimezoneOffset()) * 60000)
+            const todayBrazil = brazilTime.toISOString().split('T')[0]
+            const dayOfWeek = brazilTime.toLocaleDateString('pt-BR', { weekday: 'long' })
+
+            const extractionPrompt = `Extraia informações de agendamento do seguinte texto em português: "${messageText}".
+
+Retorne APENAS um JSON válido com os seguintes campos:
+- title: string (título curto do evento, max 50 caracteres)
+- date: string (formato YYYY-MM-DD, use a data de referência abaixo se for "amanhã", "segunda", etc)
+- time: string | null (formato HH:mm, null se não especificado)
+- location: string | null (localização se mencionada)
+- description: string (descrição detalhada do evento)
+- duration_minutes: number (duração estimada em minutos, padrão 60)
+
+Data de referência (hoje): ${todayBrazil}
+Dia da semana atual: ${dayOfWeek}`
+
+            const extractionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${openaiApiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [{ role: 'user', content: extractionPrompt }],
+                temperature: 0,
+                response_format: { type: 'json_object' }
+              }),
+            })
+
+            if (extractionResponse.ok) {
+              const extractionData = await extractionResponse.json()
+              const eventData = JSON.parse(extractionData.choices[0].message.content)
+              console.log('[AGENDA] Event:', eventData.title, 'on', eventData.date, 'at', eventData.time)
+
+              // Calcular datas no fuso do Brasil
+              let startDate = new Date(eventData.date + 'T00:00:00-03:00')
+              if (eventData.time) {
+                const [h, m] = eventData.time.split(':')
+                startDate = new Date(eventData.date + 'T' + eventData.time + ':00-03:00')
+              } else {
+                startDate = new Date(eventData.date + 'T09:00:00-03:00')
+              }
+
+              const endDate = new Date(startDate.getTime() + (eventData.duration_minutes || 60) * 60 * 1000)
+
+              // Find a user to assign the event to, ensuring it's visible in the CRM (RLS Fix)
+              const { data: tenantUsers } = await supabase
+                .from('memberships')
+                .select('user_id')
+                .eq('tenant_id', tenantId)
+                .eq('active', true)
+                .limit(1)
+
+              const assignedUserId = tenantUsers && tenantUsers.length > 0 ? tenantUsers[0].user_id : null
+
+              // ============ VERIFICAÇÃO DE DUPLICATA ============
+              // Evita criar evento duplicado se a mesma mensagem já foi processada
+              const { data: existingEvent } = await supabase
+                .from('calendar_events')
+                .select('id')
+                .eq('tenant_id', tenantId)
+                .eq('source_message', messageText)
+                .eq('source', 'whatsapp')
+                .maybeSingle()
+
+              if (existingEvent) {
+                console.log('[AGENDA] Duplicate detected - Event already exists for this message:', existingEvent.id)
+                // Não criar evento novamente, apenas retornar
+              } else {
+                // Criar o evento
+                const { error: eventError } = await supabase
+                  .from('calendar_events')
+                  .insert({
+                    tenant_id: tenantId,
+                    user_id: assignedUserId,
+                    title: eventData.title,
+                    description: eventData.description,
+                    location: eventData.location,
+                    start_date: startDate.toISOString(),
+                    end_date: endDate.toISOString(),
+                    all_day: !eventData.time,
+                    source: 'whatsapp',
+                    source_message: messageText,
+                    color: '#8B5CF6',
+                    status: 'confirmed'
+                  })
+
+                if (eventError) {
+                  console.error('[AGENDA] Error creating event:', eventError)
+                } else {
+                  console.log('[AGENDA] Event created successfully!')
+
+                  // Sincronizar com Google Calendar (se o usuário tiver integração)
+                  try {
+                    console.log('[AGENDA] Triggering Google Calendar sync for user:', assignedUserId)
+                    await fetch(`${supabaseUrl}/functions/v1/google-calendar-sync`, {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${supabaseServiceKey}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({ user_id: assignedUserId })
+                    })
+                  } catch (syncErr) {
+                    console.error('[AGENDA] Google sync error (non-fatal):', syncErr)
+                  }
+
+                  // Enviar confirmação
+                  try {
+                    const dataFormatada = startDate.toLocaleDateString('pt-BR', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    })
+                    const horaFormatada = eventData.time || 'dia inteiro'
+
+                    const confirmationMessage = `✅ *Agendado com sucesso!*\n\n` +
+                      `📌 *${eventData.title}*\n` +
+                      `📅 ${dataFormatada}\n` +
+                      `⏰ ${horaFormatada}\n` +
+                      (eventData.location ? `📍 ${eventData.location}\n` : '') +
+                      `\n_Evento criado na sua agenda do Azera._`
+
+                    const { data: conv } = await supabase
+                      .from('conversations')
+                      .select('id')
+                      .eq('tenant_id', tenantId)
+                      .eq('contact_phone', phoneNumber)
+                      .single()
+
+                    if (conv) {
+                      await fetch(`${supabaseUrl}/functions/v1/send-message`, {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${supabaseServiceKey}`,
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          conversationId: conv.id,
+                          message: confirmationMessage
+                        })
+                      })
+                    }
+                  } catch (sendErr) {
+                    console.error('[AGENDA] Error sending confirmation:', sendErr)
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error('[AGENDA] Error:', e)
+        }
+      }
     }
 
     return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders })

@@ -18,6 +18,11 @@ interface Integration {
     instagram_business_account_id?: string
     page_name?: string
   }
+  config?: {
+    auto_create_leads?: boolean
+    whatsapp_agenda_active?: boolean
+    whatsapp_agenda_trigger?: string
+  }
   created_at: string
 }
 

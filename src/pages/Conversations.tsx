@@ -574,22 +574,20 @@ export default function ConversationsPage() {
     <RequireRole roles={['owner', 'admin', 'manager']}>
       <PremiumGate featureName="Conversas">
         <div className="flex flex-col h-full relative overflow-hidden bg-background text-slate-900 dark:text-slate-200">
-          {/* HUD glow grid background + overlay */}
-          <div className="pointer-events-none absolute inset-0 opacity-40">
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-600/10 blur-3xl" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.15),_transparent_55%)]" />
-            <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:120px_120px]" />
+          {/* Background - mais sutil */}
+          <div className="pointer-events-none absolute inset-0 opacity-20">
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-purple-600/5" />
           </div>
 
-          <div className="flex-1 overflow-hidden flex p-4 gap-4 relative z-10">
+          <div className="flex-1 overflow-hidden flex relative z-10">
 
             {/* =================================================================================
               LEFT COLUMN - LIST
           ================================================================================= */}
-            <div className={`w-full md:w-80 lg:w-96 flex flex-col rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 h-full shadow-sm overflow-hidden ${selectedId ? 'hidden md:flex' : 'flex'}`}>
+            <div className={`w-full md:w-80 lg:w-96 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 h-full overflow-hidden ${selectedId ? 'hidden md:flex' : 'flex'}`}>
 
               {/* Header / Search */}
-              <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+              <div className="p-3 border-b border-gray-100 dark:border-gray-800">
                 <div className="flex items-center justify-between mb-4">
                   <h1 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                     <MessageCircle className="w-5 h-5 text-emerald-600" />
@@ -920,7 +918,7 @@ export default function ConversationsPage() {
             {/* =================================================================================
               MIDDLE COLUMN - CHAT AREA
           ================================================================================= */}
-            <div className={`flex-1 flex flex-col rounded-3xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 relative shadow-sm overflow-hidden ${!selectedId ? 'hidden md:flex items-center justify-center' : 'flex'}`}>
+            <div className={`flex-1 flex flex-col bg-white dark:bg-slate-900 relative overflow-hidden ${!selectedId ? 'hidden md:flex items-center justify-center' : 'flex'}`}>
 
               {!selectedId ? (
                 <div className="text-center p-8 opacity-50">
@@ -933,7 +931,7 @@ export default function ConversationsPage() {
               ) : (
                 <>
                   {/* Chat Header */}
-                  <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-slate-900 z-10">
+                  <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-slate-900 z-10">
                     <div className="flex items-center gap-4">
                       <button
                         onClick={() => setSelectedId(null)}
@@ -958,8 +956,8 @@ export default function ConversationsPage() {
                   </div>
 
                   {/* Messages Area */}
-                  <div className="flex-1 overflow-y-auto p-6 bg-slate-50 dark:bg-slate-900/50">
-                    <div className="max-w-3xl mx-auto space-y-6">
+                  <div className="flex-1 overflow-y-auto px-4 py-3 bg-slate-50 dark:bg-slate-900/50">
+                    <div className="space-y-4">
 
                       {/* Botão Carregar Mais */}
                       {hasMoreMessages && (
@@ -1038,9 +1036,9 @@ export default function ConversationsPage() {
                             {!isOutbound && isSequence && <div className="w-8 flex-shrink-0" />}
 
                             <div
-                              className={`relative max-w-[85%] md:max-w-lg rounded-2xl p-1 shadow-sm border ${isOutbound
-                                ? 'bg-emerald-500 border-emerald-500 text-white rounded-br-none'
-                                : 'bg-white dark:bg-slate-700 border-gray-200 dark:border-gray-600 text-slate-800 dark:text-slate-100 rounded-bl-none'
+                              className={`relative max-w-[80%] rounded-xl px-2 py-1 shadow-sm ${isOutbound
+                                ? 'bg-emerald-500 text-white rounded-br-sm'
+                                : 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-bl-sm'
                                 }`}
                             >
                               {/* Media Render Logic */}
@@ -1107,7 +1105,7 @@ export default function ConversationsPage() {
                   </div>
 
                   {/* Input Area */}
-                  <div className="p-4 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-gray-800">
+                  <div className="px-3 py-2 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-gray-800">
                     {isRecording ? (
                       <div className="flex items-center gap-4 animate-in fade-in duration-200">
                         <div className="flex-1 bg-red-50 dark:bg-red-900/20 rounded-lg p-3 flex items-center gap-3 border border-red-100 dark:border-red-900/30">

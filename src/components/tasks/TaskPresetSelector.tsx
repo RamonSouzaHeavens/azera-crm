@@ -152,51 +152,33 @@ function PresetCard({ preset, onClick }: PresetCardProps) {
     <button
       onClick={onClick}
       className={`
-        group relative rounded-2xl p-5 transition-all duration-300
+        group relative rounded-xl p-3 transition-all duration-200
         border ${preset.borderColor} hover:border-opacity-80
         bg-slate-800/50 hover:bg-slate-800/80
-        hover:scale-[1.02] hover:shadow-xl ${preset.glowColor}
-        text-left w-full backdrop-blur-sm
+        hover:scale-[1.02] text-left w-full
       `}
     >
-      {/* Subtle glow on hover */}
-      <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-
       {/* Content */}
       <div className="relative z-10">
         {/* Emoji e Ícone */}
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-3xl">{preset.emoji}</span>
-          <div className={`w-9 h-9 rounded-xl bg-white/5 border ${preset.borderColor} flex items-center justify-center`}>
-            <Icon className={`w-4 h-4 ${preset.accentColor}`} />
-          </div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xl">{preset.emoji}</span>
+          <Icon className={`w-4 h-4 ${preset.accentColor}`} />
         </div>
 
         {/* Nome */}
-        <h3 className="text-base font-semibold text-white mb-1">
+        <h3 className="text-sm font-semibold text-white mb-0.5">
           {preset.nome}
         </h3>
 
         {/* Descrição */}
-        <p className="text-sm text-slate-400 line-clamp-2">
+        <p className="text-xs text-slate-400 line-clamp-1">
           {preset.descricao}
         </p>
-
-        {/* Indicador de checklist */}
-        {preset.valores.checklist.length > 0 && (
-          <div className={`mt-3 flex items-center gap-2 text-xs ${preset.accentColor} opacity-70`}>
-            <ListChecks className="w-3.5 h-3.5" />
-            <span>{preset.valores.checklist.length} itens no checklist</span>
-          </div>
-        )}
       </div>
     </button>
   )
 }
-
-// ============================================================================
-// COMPONENTE PRINCIPAL: SELETOR DE PRESET
-// ============================================================================
 
 interface TaskPresetSelectorProps {
   onSelect: (preset: TaskPreset) => void
@@ -205,25 +187,36 @@ interface TaskPresetSelectorProps {
 
 export default function TaskPresetSelector({ onSelect, onClose }: TaskPresetSelectorProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-slate-900/95 w-full max-w-3xl rounded-2xl shadow-2xl border border-white/10 overflow-hidden animate-in zoom-in-95 duration-300 backdrop-blur-xl">
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="bg-slate-900 w-full sm:max-w-md max-h-[70vh] rounded-t-2xl sm:rounded-2xl shadow-2xl border border-white/10 overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-300 flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
 
-        {/* Header */}
-        <div className="p-6 border-b border-white/10">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
-              <ListChecks className="w-6 h-6 text-cyan-400" />
+        {/* Header compacto */}
+        <div className="p-3 border-b border-white/10 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ListChecks className="w-5 h-5 text-cyan-400" />
+              <h2 className="text-base font-semibold text-white">Nova Tarefa</h2>
             </div>
-            <div>
-              <h2 className="text-xl font-semibold text-white">Nova Tarefa</h2>
-              <p className="text-sm text-slate-400">Escolha um tipo de tarefa para começar</p>
-            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
 
-        {/* Grid de Presets */}
-        <div className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Grid de Presets - 2 colunas */}
+        <div className="p-3 overflow-y-auto flex-1">
+          <div className="grid grid-cols-2 gap-2">
             {TASK_PRESETS.map(preset => (
               <PresetCard
                 key={preset.id}
@@ -233,17 +226,8 @@ export default function TaskPresetSelector({ onSelect, onClose }: TaskPresetSele
             ))}
           </div>
         </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-white/10 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-slate-400 hover:text-white text-sm font-medium transition-colors"
-          >
-            Cancelar
-          </button>
-        </div>
       </div>
     </div>
   )
 }
+

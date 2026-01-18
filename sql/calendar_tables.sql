@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS calendar_integrations (
 
   -- Provider
   provider TEXT NOT NULL DEFAULT 'google' CHECK (provider IN ('google', 'outlook', 'apple')),
+  google_email TEXT,
 
   -- OAuth Tokens (encriptados pelo Supabase)
   access_token TEXT,

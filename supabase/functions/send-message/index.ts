@@ -53,7 +53,7 @@ serve(async (req) => {
     // 3. Determinar o destinatário
     // Para Instagram: clientes.telefone contém o IGSID
     // Para WhatsApp: clientes.telefone contém o número de telefone
-    const recipientId = conversation.clientes?.telefone?.replace(/\D/g, '') || conversation.contact_number
+    const recipientId = conversation.clientes?.telefone?.replace(/\D/g, '') || conversation.contact_phone?.replace(/\D/g, '')
     console.log('[SEND-MESSAGE] Recipient ID:', recipientId)
 
     // 4. ROTEAMENTO - Escolher o provider correto

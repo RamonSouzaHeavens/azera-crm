@@ -65,13 +65,15 @@ export class ZapiProvider implements MessageProvider {
       }
 
       console.log('[UAZAPI] POST', endpoint)
+      console.log('[UAZAPI] Token length:', this.secretKey?.length, 'Starts with:', this.secretKey?.substring(0, 4) + '...')
       console.log('[UAZAPI] Payload:', JSON.stringify(payload))
 
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'token': this.secretKey
+          'token': this.secretKey,
+          'apikey': this.secretKey
         },
         body: JSON.stringify(payload)
       })
@@ -95,13 +97,15 @@ export class ZapiProvider implements MessageProvider {
       }
 
       console.log('[UAZAPI] POST', endpoint)
+      console.log('[UAZAPI] Token length:', this.secretKey?.length, 'Starts with:', this.secretKey?.substring(0, 4) + '...')
       console.log('[UAZAPI] Payload:', JSON.stringify(payload))
 
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'token': this.secretKey
+          'token': this.secretKey,
+          'apikey': this.secretKey
         },
         body: JSON.stringify(payload)
       })

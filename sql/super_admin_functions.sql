@@ -20,6 +20,7 @@ AS $$
     json_agg(
       json_build_object(
         'id', sub.id,
+        'email', au.email,
         'user_id', sub.user_id,
         'tenant_id', sub.tenant_id,
         'plan_id', sub.plan_id,
@@ -43,6 +44,7 @@ AS $$
     '[]'::json
   )
   FROM subscriptions sub
+  LEFT JOIN auth.users au ON au.id = sub.user_id
   WHERE EXISTS (
     SELECT 1 FROM auth.users au
     WHERE au.id = auth.uid()
@@ -61,6 +63,7 @@ AS $$
     json_agg(
       json_build_object(
         'id', p.id,
+        'email', au.email,
         'display_name', p.display_name,
         'full_name', p.full_name,
         'phone', p.phone,
@@ -77,6 +80,7 @@ AS $$
     '[]'::json
   )
   FROM profiles p
+  LEFT JOIN auth.users au ON au.id = p.id
   WHERE EXISTS (
     SELECT 1 FROM auth.users au
     WHERE au.id = auth.uid()
@@ -151,8 +155,41 @@ AS $$
   );
 $$;
 
+-- Função para atualizar assinatura via Super Admin (bypassa RLS)
+CREATE OR REPLACE FUNCTION admin_update_subscription(target_user_id uuid, new_status text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- Verificar se o chamador é o super admin
+  IF NOT EXISTS (
+    SELECT 1 FROM auth.users au
+    WHERE au.id = auth.uid()
+    AND au.email = 'ramonexecut@gmail.com'
+  ) THEN
+    RAISE EXCEPTION 'Acesso negado: Somente o super admin pode realizar esta ação.';
+  END IF;
+
+  -- Tentar atualizar se existir
+  UPDATE subscriptions
+  SET
+    status = new_status,
+    updated_at = now()
+  WHERE user_id = target_user_id;
+
+  -- Se não atualizou nenhuma linha, inserir nova
+  IF NOT FOUND THEN
+    INSERT INTO subscriptions (user_id, status, current_period_end, created_at, updated_at)
+    VALUES (target_user_id, new_status, (now() + interval '1 year'), now(), now());
+  END IF;
+END;
+$$;
+
 -- Permissões
 GRANT EXECUTE ON FUNCTION get_all_subscriptions() TO authenticated;
 GRANT EXECUTE ON FUNCTION get_all_profiles() TO authenticated;
 GRANT EXECUTE ON FUNCTION get_all_memberships() TO authenticated;
 GRANT EXECUTE ON FUNCTION get_all_tenants() TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_update_subscription(uuid, text) TO authenticated;

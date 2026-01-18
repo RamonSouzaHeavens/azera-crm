@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Sun, Moon, User, Settings, ChevronDown, GraduationCap, Sparkles } from 'lucide-react'
+import { Sun, Moon, User, Settings, ChevronDown, GraduationCap, Sparkles, LogOut } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { createPortal } from 'react-dom'
@@ -169,6 +169,9 @@ export const Header = ({ onShowTutorial, onShowPreset }: { onShowTutorial?: () =
   return (
     <header className="backdrop-blur-sm px-4 md:px-8 py-4 dark:bg-slate-950">
       <div className="flex items-center justify-between gap-3">
+        <Link to="/configuracoes" className="sm:hidden">
+          <Avatar avatarUrl={profile?.avatar_url} size="lg" />
+        </Link>
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {isRealSubscription && (
             <div className="flex items-center gap-2">
@@ -189,6 +192,22 @@ export const Header = ({ onShowTutorial, onShowPreset }: { onShowTutorial?: () =
               )}
             </div>
           )}
+        </div>
+
+        {/* MOBILE: Botões de Linguagem e Logout */}
+        <div className="flex sm:hidden items-center gap-2">
+          <LanguageSelector isDark={isDark} />
+          <Link
+            to="/login"
+            onClick={() => useAuthStore.getState().signOut()}
+            className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl transition-all hover:scale-105 ${isDark
+              ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400'
+              : 'bg-red-50 hover:bg-red-100 text-red-600'
+              }`}
+            aria-label={t('header.logout')}
+          >
+            <LogOut className="w-4 h-4" />
+          </Link>
         </div>
 
         <div className="hidden sm:flex items-center gap-2">
@@ -272,9 +291,6 @@ export const Header = ({ onShowTutorial, onShowPreset }: { onShowTutorial?: () =
           </Link>
         </div>
 
-        <Link to="/configuracoes" className="sm:hidden">
-          <Avatar avatarUrl={profile?.avatar_url} size="lg" />
-        </Link>
       </div>
     </header>
   )

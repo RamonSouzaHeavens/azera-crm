@@ -94,7 +94,7 @@ const hoverLift = (reduceMotion: boolean | null) => (reduceMotion ?? false) ? { 
   scale: 1.02,
   rotateX: -2,
   rotateY: 3,
-  transition: { type: "spring", stiffness: 220, damping: 20, mass: 0.8 }
+  transition: { type: "spring" as const, stiffness: 220, damping: 20, mass: 0.8 }
 }
 
 const slowPulse = {
@@ -498,13 +498,13 @@ const WelcomeBanner = ({ userName, stats }: { userName: string, stats: Stats }) 
 
   return (
     <motion.div
-      className="relative overflow-hidden rounded-2xl p-8"
+      className="relative overflow-hidden rounded-2xl p-0 sm:p-8"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, ease: "easeOut" }}
     >
       <motion.div
-        className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -mr-32 -mt-32"
+        className="hidden sm:block absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -mr-32 -mt-32"
         animate={(shouldReduceMotion ?? false) ? {} : {
           scale: [1, 1.1, 1],
           opacity: [0.5, 0.8, 0.5]
@@ -517,16 +517,16 @@ const WelcomeBanner = ({ userName, stats }: { userName: string, stats: Stats }) 
         transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute inset-0 opacity-40 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08),transparent_25%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.18),transparent_35%)]"
+        className="hidden sm:block absolute inset-0 opacity-40 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08),transparent_25%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.18),transparent_35%)]"
         animate={(shouldReduceMotion ?? false) ? {} : { rotate: [0, 2, 0] }}
         transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
       />
 
       <div className="relative z-10">
-        <h1 className="text-4xl font-bold font-outfit text-text mb-2">
+        <h1 className="text-2xl sm:text-4xl font-bold font-outfit text-text mb-2">
           {greeting()}, {userName}.
         </h1>
-        <p className="text-base text-text/80 mb-3">{moodLine()}</p>
+        <p className="text-sm sm:text-base text-text/80 mb-3">{moodLine()}</p>
         <div className="flex flex-wrap gap-4 text-sm text-text opacity-80">
           <span className="flex items-center gap-2">
             <Calendar className="w-4 h-4" />
@@ -765,6 +765,14 @@ export default function Dashboard() {
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [loading, setLoading] = useState(true)
   const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({})
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  // Refresh data when window gains focus (user comes back to Dashboard)
+  useEffect(() => {
+    const handleFocus = () => setRefreshKey(prev => prev + 1)
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [])
 
   // Apenas owners podem ver o centro financeiro (despesas, receita prevista, etc)
   const podeVerFinanceiro = useMemo(() => {
@@ -798,7 +806,7 @@ export default function Dashboard() {
       })
       .catch(err => console.error('Erro ao carregar dashboard:', err))
       .finally(() => setLoading(false))
-  }, [tenantId, user?.id, isVendedor])
+  }, [tenantId, user?.id, isVendedor, refreshKey])
 
   if (loading) {
     return (
@@ -841,11 +849,11 @@ export default function Dashboard() {
   const metaPercentage = stats.metaMes! > 0 ? (stats.receitaMes! / stats.metaMes!) * 100 : 0
 
   return (
-    <div className="min-h-full bg-background p-6 overflow-hidden">
+    <div className="min-h-full bg-background overflow-y-auto">
       <LaunchOfferModal />
       <div className="max-w-[1600px] mx-auto">
         <motion.div
-          className="space-y-6"
+          className="space-y-6 py-4 sm:py-6"
           layout
           variants={container}
           initial="hidden"
@@ -856,11 +864,16 @@ export default function Dashboard() {
             {/* Left Column - Main Content */}
             <div className="space-y-6">
               {/* Welcome Banner */}
-              <WelcomeBanner userName={userName} stats={stats} />
+              <div className="px-4 sm:px-6">
+                <WelcomeBanner userName={userName} stats={stats} />
+              </div>
 
-              {/* Quick Stats Grid */}
-              <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" variants={container}>
-                <div onClick={() => navigate('/app/clientes')} className="cursor-pointer">
+              {/* Quick Stats Grid - Carousel on Mobile */}
+              <motion.div
+                className="flex md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto md:overflow-x-visible px-4 sm:px-6 pb-4 md:pb-0 snap-x snap-mandatory scrollbar-hide"
+                variants={container}
+              >
+                <div onClick={() => navigate('/app/clientes')} className="cursor-pointer flex-shrink-0 w-[280px] md:w-auto snap-center">
                   <QuickStatCard
                     title="Receita do Mês"
                     value={brl(stats.receitaMes || 0)}
@@ -870,7 +883,7 @@ export default function Dashboard() {
                     trend={{ value: deltas.vendasPct, isPositive: deltas.vendasPct >= 0 }}
                   />
                 </div>
-                <div onClick={() => navigate('/app/tarefas')} className="cursor-pointer">
+                <div onClick={() => navigate('/app/tarefas')} className="cursor-pointer flex-shrink-0 w-[280px] md:w-auto snap-center">
                   <QuickStatCard
                     title="Tarefas de Hoje"
                     value={stats.tarefasHoje || 0}
@@ -879,7 +892,7 @@ export default function Dashboard() {
                     color="bg-blue-500"
                   />
                 </div>
-                <div onClick={() => navigate('/app/conversations')} className="cursor-pointer">
+                <div onClick={() => navigate('/app/conversations')} className="cursor-pointer flex-shrink-0 w-[280px] md:w-auto snap-center">
                   <QuickStatCard
                     title="Mensagens Pendentes"
                     value={stats.conversasNaoLidas || 0}
@@ -888,7 +901,7 @@ export default function Dashboard() {
                     color="bg-purple-500"
                   />
                 </div>
-                <div onClick={() => navigate('/app/clientes')} className="cursor-pointer">
+                <div onClick={() => navigate('/app/clientes')} className="cursor-pointer flex-shrink-0 w-[280px] md:w-auto snap-center">
                   <QuickStatCard
                     title="Leads Ativos"
                     value={stats.leadsAtivos}
@@ -901,10 +914,10 @@ export default function Dashboard() {
               </motion.div>
 
               {/* Pipeline and Activities */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-6 sm:px-6">
                 {/* Pipeline */}
                 <motion.div
-                  className="bg-surface border border-slate-200 dark:border-slate-800 rounded-xl p-6 cursor-pointer hover:border-primary/30 transition-colors"
+                  className="bg-transparent md:bg-surface border-none md:border border-slate-200 dark:border-slate-800 rounded-xl p-0 md:p-6 cursor-pointer hover:border-primary/30 transition-colors"
                   variants={item}
                   whileHover={hoverLift(reduceMotion ?? false)}
                   style={{ transformStyle: 'preserve-3d' }}
@@ -919,7 +932,7 @@ export default function Dashboard() {
 
                 {/* Atividades Recentes */}
                 <motion.div
-                  className="bg-surface border border-slate-200 dark:border-slate-800 rounded-xl p-6"
+                  className="bg-transparent md:bg-surface border-none md:border border-slate-200 dark:border-slate-800 rounded-xl p-0 md:p-6"
                   variants={item}
                   whileHover={(reduceMotion ?? false) ? { scale: 1.01 } : { scale: 1.02, x: 3 }}
                 >
@@ -988,48 +1001,50 @@ export default function Dashboard() {
             </div>
 
             {/* Right Sidebar - Same height as left column */}
-            <div className="space-y-6">
-              {/* Image Carousel */}
-              <ImageCarousel reduceMotion={reduceMotion} />
+            <div className="space-y-6 px-4 sm:px-6 xl:px-0 xl:pr-6">
+              {/* Image Carousel - Hidden on Mobile */}
+              <div className="hidden xl:block">
+                <ImageCarousel reduceMotion={reduceMotion} />
+              </div>
 
               {/* Financial Cards */}
               {podeVerFinanceiro && (
-                <div className="space-y-4">
+                <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
                   <motion.div
-                    className="bg-surface border border-slate-200 dark:border-slate-800 rounded-xl p-6 cursor-pointer hover:border-purple-500/50 transition-colors"
+                    className="bg-transparent md:bg-surface border-none md:border border-slate-200 dark:border-slate-800 rounded-xl p-0 md:p-6 cursor-pointer hover:border-purple-500/50 transition-colors"
                     variants={item}
                     whileHover={hoverLift(reduceMotion ?? false)}
                     style={{ transformStyle: 'preserve-3d' }}
                     onClick={() => navigate('/app/configuracoes?tab=financeiro')}
                   >
-                    <div className="flex items-center gap-3 mb-3">
+                    <div className="flex flex-col md:flex-row items-start md:items-center gap-3 mb-3">
                       <div className="p-2 rounded-lg bg-purple-500/10">
                         <TrendingUp className="w-5 h-5 text-purple-500" />
                       </div>
                       <div className="flex-1">
-                        <div className="text-2xl font-bold font-heading text-text">{brl(stats.receitaPrevista || 0)}</div>
-                        <div className="text-xs text-text opacity-60">Em negociação aberta</div>
+                        <div className="text-xl md:text-2xl font-bold font-heading text-text">{brl(stats.receitaPrevista || 0)}</div>
+                        <div className="text-[10px] md:text-xs text-text opacity-60">Em negociação aberta</div>
                       </div>
                     </div>
                   </motion.div>
 
                   <motion.div
-                    className="bg-surface border border-slate-200 dark:border-slate-800 rounded-xl p-6 cursor-pointer hover:border-pink-500/50 transition-colors group"
+                    className="bg-transparent md:bg-surface border-none md:border border-slate-200 dark:border-slate-800 rounded-xl p-0 md:p-6 cursor-pointer hover:border-pink-500/50 transition-colors group"
                     variants={item}
                     whileHover={hoverLift(reduceMotion ?? false)}
                     style={{ transformStyle: 'preserve-3d' }}
                     onClick={() => navigate('/app/configuracoes?tab=financeiro')}
                   >
-                    <div className="flex items-center gap-3 mb-3">
+                    <div className="flex flex-col md:flex-row items-start md:items-center gap-3 mb-3">
                       <div className="p-2 rounded-lg bg-pink-500/10">
                         <DollarSign className="w-5 h-5 text-pink-500" />
                       </div>
                       <div className="flex-1">
-                        <div className="text-2xl font-bold font-heading text-text">{brl(stats.despesasFixas || 0)}</div>
-                        <div className="text-xs text-text opacity-60">Custo operacional mensal</div>
+                        <div className="text-xl md:text-2xl font-bold font-heading text-text">{brl(stats.despesasFixas || 0)}</div>
+                        <div className="text-[10px] md:text-xs text-text opacity-60">Custo operacional mensal</div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-end text-xs text-pink-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="hidden md:flex items-center justify-end text-xs text-pink-500 opacity-0 group-hover:opacity-100 transition-opacity">
                       <span>Ver despesas</span>
                       <ArrowUp className="w-3 h-3 ml-1 rotate-45" />
                     </div>

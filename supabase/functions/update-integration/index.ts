@@ -67,7 +67,7 @@ serve(async (req) => {
                     credentials: {
                         instance_id: instanceId,
                         secret_key: token,
-                        base_url: baseUrl || 'https://heavens.uazapi.com'
+                        base_url: baseUrl || 'https://api.uazapi.com'
                     },
                     status: 'active',
                     is_active: true,

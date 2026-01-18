@@ -714,7 +714,7 @@ export default function Produtos() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#020617] text-slate-900 dark:text-slate-200">
       {/* Header Fixo */}
-      <div className="sticky top-0 z-40 px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md">
+      <div className="sticky top-0 z-40 px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-white/10 bg-white dark:bg-[#020617] backdrop-blur-md">
         {/* Linha 1: Título + Ordenação */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">

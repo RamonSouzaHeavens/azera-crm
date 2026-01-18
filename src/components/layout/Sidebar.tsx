@@ -24,7 +24,8 @@ import {
   Wrench,
   Shield,
   DollarSign,
-  Calendar
+  Calendar,
+  TrendingUp
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { Button } from '../ui/Button'
@@ -65,6 +66,7 @@ export const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [companyName, setCompanyName] = useState('')
   const [openMobile, setOpenMobile] = useState(false)
+  const [activeMenu, setActiveMenu] = useState<'progress' | 'admin' | 'company' | null>(null)
   const { t } = useTranslation()
   const { groupProgresso, groupAdministracao, groupAutomacoes, groupEmpresa } = getNavGroups(t)
 
@@ -281,7 +283,7 @@ export const Sidebar = () => {
           />
         )}
 
-        {/* GRUPO: AUTOMAÇÕES */}
+        {/* Temporariamente oculto
         {canSeeAutomations && (
           <NavSection
             title={t('sidebar.sections.automations')}
@@ -289,6 +291,7 @@ export const Sidebar = () => {
             items={groupAutomacoes}
           />
         )}
+        */}
 
         {/* GRUPO: EMPRESA */}
         <NavSection
@@ -373,55 +376,114 @@ export const Sidebar = () => {
         </div>
       </motion.aside>
 
-      {/* ===== MOBILE FAB + FLOATING MENU (< md) ===== */}
-      <div className={`md:hidden ${location.pathname.includes('/conversations') ? 'hidden' : ''}`}>
-        <button
-          type="button"
-          onClick={() => setOpenMobile(true)}
-          aria-label={t('sidebar.openMenu')}
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full backdrop-blur-md bg-white/10 hover:bg-white/20 shadow-lg z-[60] p-0 flex items-center justify-center border border-white/10"
-        >
-          <div className="w-full h-full rounded-full bg-gradient-to-br from-cyan-500/30 to-cyan-600/30 flex items-center justify-center">
-            <Menu className="w-6 h-6 text-white" />
-          </div>
-        </button>
+      {/* ===== MOBILE DOWNBAR (< md) ===== */}
+      <div className={`md:hidden ${location.pathname.includes('/conversations') && !location.pathname.endsWith('/conversations') ? 'hidden' : ''}`}>
+        <div className="fixed bottom-0 left-0 right-0 h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 z-[60] px-6 pb-safe flex items-center justify-between shadow-[0_-8px_30px_rgb(0,0,0,0.12)]">
+          <MobileNavItem
+            icon={TrendingUp}
+            isActive={location.pathname === '/app/dashboard' || location.pathname === '/app/ferramentas-pro'}
+            onClick={() => setActiveMenu(activeMenu === 'progress' ? null : 'progress')}
+          />
+          <MobileNavItem
+            icon={Target}
+            isActive={['/app/clientes', '/app/connect-channels', '/app/tarefas', '/app/agenda', '/app/produtos'].includes(location.pathname)}
+            onClick={() => setActiveMenu(activeMenu === 'admin' ? null : 'admin')}
+          />
 
+          {/* Conversas e Vendas - Direct Links */}
+          <Link to="/app/conversations" className="relative group flex flex-col items-center">
+            <div className={`p-3 rounded-2xl transition-all duration-300 ${location.pathname === '/app/conversations' ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+              <MessageCircle className="w-6 h-6" />
+            </div>
+          </Link>
+
+          <Link to="/app/vendas" className="relative group flex flex-col items-center">
+            <div className={`p-3 rounded-2xl transition-all duration-300 ${location.pathname === '/app/vendas' ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+              <DollarSign className="w-6 h-6" />
+            </div>
+          </Link>
+
+          <MobileNavItem
+            icon={Building2}
+            isActive={['/app/equipe-beta', '/app/subscribe', '/app/configuracoes'].includes(location.pathname)}
+            onClick={() => setActiveMenu(activeMenu === 'company' ? null : 'company')}
+          />
+        </div>
+
+        {/* Backdrop for submenus */}
         <AnimatePresence>
-          {openMobile && (
-            <>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setOpenMobile(false)}
-                className="fixed inset-0 bg-black/50 z-[50]"
-              />
+          {activeMenu && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveMenu(null)}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[55]"
+            />
+          )}
+        </AnimatePresence>
 
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="fixed bottom-24 right-6 w-64 max-h-[70vh] overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl z-[60] p-4"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-slate-900 dark:text-white">{t('sidebar.menu')}</h3>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setOpenMobile(false)}
-                    className="p-1"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-
-                <NavList collapsed={false} />
-              </motion.div>
-            </>
+        {/* Submenus */}
+        <AnimatePresence>
+          {activeMenu && (
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              className="fixed bottom-24 left-6 right-6 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl shadow-2xl z-[60]"
+            >
+              <div className="grid grid-cols-2 gap-2">
+                {activeMenu === 'progress' && (
+                  <>
+                    <SubmenuItem icon={LayoutDashboard} name="Dashboard" href="/app/dashboard" onClick={() => setActiveMenu(null)} />
+                    <SubmenuItem icon={Wrench} name="Ferramentas" href="/app/ferramentas-pro" onClick={() => setActiveMenu(null)} />
+                  </>
+                )}
+                {activeMenu === 'admin' && (
+                  <>
+                    <SubmenuItem icon={Target} name="Leads" href="/app/clientes" onClick={() => setActiveMenu(null)} />
+                    <SubmenuItem icon={Plug} name="Canais" href="/app/connect-channels" onClick={() => setActiveMenu(null)} />
+                    <SubmenuItem icon={CheckSquare} name="Tarefas" href="/app/tarefas" onClick={() => setActiveMenu(null)} />
+                    <SubmenuItem icon={Calendar} name="Agenda" href="/app/agenda" onClick={() => setActiveMenu(null)} />
+                    <SubmenuItem icon={Package} name="Produtos" href="/app/produtos" onClick={() => setActiveMenu(null)} />
+                  </>
+                )}
+                {activeMenu === 'company' && (
+                  <>
+                    <SubmenuItem icon={Building2} name="Equipe" href="/app/equipe-beta" onClick={() => setActiveMenu(null)} />
+                    <SubmenuItem icon={CreditCard} name="Faturamento" href="/app/subscribe" onClick={() => setActiveMenu(null)} />
+                    <SubmenuItem icon={Settings} name="Configurações" href="/app/configuracoes" onClick={() => setActiveMenu(null)} />
+                    {isSuperAdmin && (
+                      <SubmenuItem icon={Shield} name="Master" href="/app/super-admin" onClick={() => setActiveMenu(null)} />
+                    )}
+                  </>
+                )}
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
     </>
   )
 }
+
+// Helpers for Mobile Nav
+const MobileNavItem = ({ icon: Icon, isActive, onClick }: { icon: any; isActive: boolean; onClick: () => void }) => (
+  <button onClick={onClick} className="relative group flex flex-col items-center">
+    <div className={`p-3 rounded-2xl transition-all duration-300 ${isActive ? 'bg-primary/10 text-primary' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+      <Icon className="w-6 h-6" />
+      {isActive && <motion.div layoutId="nav-dot" className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary rounded-full" />}
+    </div>
+  </button>
+)
+
+const SubmenuItem = ({ icon: Icon, name, href, onClick }: { icon: any; name: string; href: string; onClick: () => void }) => (
+  <Link
+    to={href}
+    onClick={onClick}
+    className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 hover:bg-primary/10 hover:text-primary transition-all border border-transparent hover:border-primary/20 group"
+  >
+    <Icon className="w-6 h-6 mb-2 text-slate-500 group-hover:text-primary transition-colors" />
+    <span className="text-xs font-semibold text-center">{name}</span>
+  </Link>
+)

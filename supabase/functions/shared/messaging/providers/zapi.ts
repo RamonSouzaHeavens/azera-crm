@@ -72,7 +72,7 @@ export class ZapiProvider extends BaseMessagingProvider {
     this.token = credentials.secret_key || credentials.token
     // Permitir base URL customizada para instâncias self-hosted (ex: heavens.uazapi.com)
     // Pode estar em credentials.base_url ou em config.base_url
-    this.baseHost = (credentials.base_url || config.base_url || 'https://api.z-api.io')
+    this.baseHost = (credentials.base_url || config.base_url || 'https://api.uazapi.com')
     this.channel = channel
 
     this.validateCredentials()

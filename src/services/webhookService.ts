@@ -157,8 +157,7 @@ export async function fetchContactAvatar(conversationId: string) {
     // Usar Z-API / Uazapi
     const instanceId = credentials.instance_id || credentials.instanceId || credentials.instanceName || credentials.instance
     const token = credentials.token || credentials.api_token || credentials.client_token || credentials.secret_key
-    // Tentar pegar a URL base das credenciais ou usar a conhecida
-    const baseUrl = credentials.baseUrl || credentials.apiUrl || 'https://heavens.uazapi.com'
+    const baseUrl = credentials.baseUrl || credentials.apiUrl || 'https://api.uazapi.com' // Permitir base URL customizada para instâncias self-hosted (ex: https://api.uazapi.com)
 
     if (!instanceId || !token) {
       console.error('Z-API credentials missing:', { instanceId: !!instanceId, token: !!token, credentials })
