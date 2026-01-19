@@ -441,9 +441,9 @@ const LeadDetails: React.FC = () => {
   );
 
   return (
-    <div className="min-h-full p-6 bg-background text-slate-900 dark:text-slate-200 flex flex-col">
+    <div className="min-h-full p-2.5 sm:p-6 bg-background text-slate-900 dark:text-slate-200 flex flex-col">
 
-      <main className="relative flex-1 w-full px-3.5 sm:px-4 py-3.5 sm:py-6 overflow-y-auto">
+      <main className="relative flex-1 w-full px-0 sm:px-4 py-2 sm:py-6 overflow-y-auto">
         <div className="w-full sm:max-w-7xl sm:mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{lead.nome}</h1>

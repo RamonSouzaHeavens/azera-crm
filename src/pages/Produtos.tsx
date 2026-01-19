@@ -21,6 +21,7 @@ import {
   Tag,
   Box,
   FileText,
+  CheckSquare,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
@@ -396,14 +397,10 @@ export default function Produtos() {
   // ============================
   function Card({ item }: { item: ProdutoRow }) {
     const isSelected = selectedIds.has(item.id)
-
-    // Garante que pegamos até 6 campos, preenchendo o layout
     const customFields = customFieldsMap[item.id] || []
-    const displayFields = customFields.slice(0, 6)
+    const displayFields = customFields.slice(0, 4)
+    const status = (item.status || 'disponivel') as keyof typeof statusStyle
 
-    const status = item.status || 'disponivel'
-
-    // Helper para formatar valores vazios
     const formatValue = (val: string | number | boolean | null) => {
       if (val === null || val === undefined || val === '') return '—'
       if (typeof val === 'boolean') return val ? 'Sim' : 'Não'
@@ -413,40 +410,33 @@ export default function Produtos() {
     return (
       <div
         className={`
-          group relative flex flex-row
-          w-[530px] h-[300px]
-          rounded-xl bg-white dark:bg-[#151D32]
-          border transition-all duration-200 shadow-sm hover:shadow-lg overflow-hidden cursor-pointer
+          group relative flex flex-col w-full
+          rounded-2xl bg-white dark:bg-white/5
+          border transition-all duration-300 shadow-sm hover:shadow-xl overflow-hidden cursor-pointer
           ${isSelected
-            ? 'border-cyan-400 ring-2 ring-cyan-400/40'
+            ? 'border-cyan-500 ring-2 ring-cyan-500/30'
             : 'border-slate-200 dark:border-white/10 hover:border-cyan-400/50'
           }
         `}
         onClick={() => navigate(`/app/produtos/${item.id}`)}
       >
-
-        {/* =======================
-            CHECKBOX (Seleção)
-        ======================== */}
+        {/* Badge de Seleção */}
         {selectMode && (
           <div className="absolute top-3 left-3 z-30" onClick={(e) => e.stopPropagation()}>
             <input
               type="checkbox"
               checked={isSelected}
               onChange={() => toggleSelection(item.id)}
-              className="w-5 h-5 rounded border-2 border-white/80 shadow-sm bg-slate-200 checked:bg-cyan-500 checked:border-cyan-500 cursor-pointer transition-colors"
+              className="w-5 h-5 rounded-lg border-2 border-white/80 shadow-sm bg-slate-200 checked:bg-cyan-500 checked:border-cyan-500 cursor-pointer transition-all"
             />
           </div>
         )}
 
-        {/* =======================
-            COLUNA ESQUERDA: FOTO
-        ======================== */}
-        <div className="relative w-[210px] h-[300px] flex-shrink-0 bg-slate-100 dark:bg-slate-900 overflow-hidden border-r border-slate-100 dark:border-white/5">
-
+        {/* Imagem de Capa */}
+        <div className="relative w-full aspect-[16/9] sm:aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-slate-900 border-b border-slate-100 dark:border-white/5">
           {/* Status Badge */}
-          <div className="absolute top-3 right-3 sm:left-3 sm:right-auto z-20">
-            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md border shadow-sm backdrop-blur-md uppercase tracking-wider ${statusStyle[status]}`}>
+          <div className="absolute top-3 right-3 z-20">
+            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border shadow-lg backdrop-blur-md uppercase tracking-wider ${statusStyle[status]}`}>
               {statusLabels[status] || 'DISPONÍVEL'}
             </span>
           </div>
@@ -459,109 +449,85 @@ export default function Produtos() {
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-600 bg-slate-50 dark:bg-slate-800/50">
-              <ImageIcon className="w-12 h-12 opacity-20 mb-2" />
-              <span className="text-xs font-medium opacity-60">Sem imagem</span>
+              <ImageIcon className="w-10 h-10 opacity-20 mb-2" />
+              <span className="text-[10px] font-medium opacity-60 uppercase tracking-widest">Sem imagem</span>
             </div>
           )}
 
-          {/* Overlay de Ações (Desktop Hover) */}
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2 backdrop-blur-[1px]">
-            {/* Botão Ver */}
-            <button
-              onClick={(e) => { e.stopPropagation(); navigate(`/app/produtos/${item.id}`) }}
-              className="px-4 py-2 bg-white/90 text-slate-900 rounded-lg hover:bg-white font-semibold text-xs shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all"
-            >
-              Ver Detalhes
-            </button>
-          </div>
+          {/* Destaque Badge */}
+          {item.destaque && (
+            <div className="absolute bottom-3 left-3">
+              <span className="flex items-center gap-1.5 text-[10px] font-bold text-amber-500 bg-white/95 dark:bg-slate-900/95 border border-amber-500/30 px-2 py-1 rounded-lg shadow-lg">
+                <Star className="w-3 h-3 fill-current" /> DESTAQUE
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* =======================
-            COLUNA DIREITA: DADOS
-        ======================== */}
-        <div className="flex-1 flex flex-col min-w-0 p-4 sm:p-5">
+        {/* Conteúdo Info */}
+        <div className="flex-1 flex flex-col p-4 sm:p-5">
+          {/* Categoria + Ações */}
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${item.categoria ? 'bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-800' : 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700'}`}>
+              {item.categoria || 'Sem Categoria'}
+            </span>
+            <div className="flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+              <button onClick={(e) => { e.stopPropagation(); handleEdit(item) }} className="p-1.5 text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 rounded-lg hover:bg-cyan-50 dark:hover:bg-cyan-500/10 transition-colors">
+                <Edit className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); handleDelete(item) }} className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors">
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
 
-          {/* -- Header: Categoria e REF -- */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2 overflow-hidden">
-              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${item.categoria ? 'bg-cyan-50 text-cyan-700 border-cyan-100 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-800' : 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700'}`}>
-                {item.categoria || 'SEM CATEGORIA'}
-              </span>
-              {item.destaque && (
-                <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800">
-                  <Star className="w-3 h-3 fill-current" /> Destaque
-                </span>
+          {/* Título + Descrição */}
+          <div className="mb-4">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight mb-1 line-clamp-1" title={item.nome}>
+              {item.nome || 'Produto sem nome'}
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-gray-400 line-clamp-2 min-h-[2.5em] leading-relaxed">
+              {item.descricao || 'Nenhuma descrição informada.'}
+            </p>
+          </div>
+
+          {/* Grid de Atributos */}
+          <div className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 border border-slate-100 dark:border-white/5 mb-4">
+            <div className="grid grid-cols-2 gap-3">
+              {displayFields.length > 0 ? displayFields.map((field, idx) => (
+                <div key={field.id || idx} className="flex flex-col min-w-0">
+                  <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight truncate">
+                    {field.field_name}
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 truncate">
+                    {formatValue(field.value)}
+                  </span>
+                </div>
+              )) : (
+                <div className="col-span-full flex items-center justify-center py-1 text-[10px] text-slate-400 italic gap-2">
+                  <Box className="w-3.5 h-3.5 opacity-50" /> Característica Padrão
+                </div>
               )}
             </div>
-
-            {/* Menu de Ações Rápido (Sempre visível ou no hover) */}
-            <div className="flex items-center gap-1">
-              <button onClick={(e) => { e.stopPropagation(); handleEdit(item) }} className="p-1.5 text-slate-400 hover:text-cyan-600 rounded hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition-colors">
-                <Edit className="w-4 h-4" />
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); handleDelete(item) }} className="p-1.5 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
           </div>
 
-          {/* -- Título e Descrição -- */}
-          <div className="mb-4">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight mb-1 truncate" title={item.nome}>
-              {item.nome || <span className="text-slate-400 italic font-normal">Produto sem nome</span>}
-            </h3>
-
-            <div className="flex items-start gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 min-h-[2.5em]">
-                {item.descricao || <span className="opacity-50 italic">Nenhuma descrição informada para este item.</span>}
-              </p>
-            </div>
-          </div>
-
-          {/* -- Grid de Atributos (Sempre ocupa espaço) -- */}
-          <div className="mt-auto bg-slate-50 dark:bg-white/5 rounded-lg p-3 border border-slate-100 dark:border-white/5">
-            {displayFields.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {displayFields.map((field, idx) => (
-                  <div key={field.id || idx} className="flex flex-col">
-                    <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase truncate">
-                      {field.field_name}
-                    </span>
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate" title={String(field.value)}>
-                      {formatValue(field.value)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              // Placeholder se não houver campos personalizados configurados
-              <div className="flex items-center justify-center py-2 text-xs text-slate-400 italic gap-2">
-                <Box className="w-4 h-4 opacity-50" />
-                Sem características adicionais
-              </div>
-            )}
-          </div>
-
-          {/* -- Rodapé: Preço e Código -- */}
-          <div className="mt-4 flex items-end justify-between border-t border-slate-100 dark:border-white/5 pt-3">
+          {/* Rodapé: Valor e Referência */}
+          <div className="mt-auto flex items-end justify-between border-t border-slate-100 dark:border-white/5 pt-4">
             <div>
-              <div className="text-[10px] font-medium text-slate-400 mb-0.5">Valor de Venda</div>
-              <div className="text-xl font-bold text-cyan-600 dark:text-cyan-400">
-                {item.valor ? currencyFormat(item.valor, item.currency || 'BRL') : <span className="text-sm text-slate-400 font-normal">Sob Consulta</span>}
+              <div className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Valor Sugerido</div>
+              <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                {item.valor ? currencyFormat(item.valor, item.currency || 'BRL') : <span className="text-xs text-slate-400 font-normal">Sob Consulta</span>}
               </div>
             </div>
-
             {item.codigo_referencia && (
               <div className="text-right">
-                <div className="text-[9px] font-bold text-slate-400 uppercase">Ref.</div>
-                <div className="text-xs font-mono font-medium text-slate-600 dark:text-slate-300">
+                <div className="text-[9px] font-bold text-slate-400/80 uppercase">Ref.</div>
+                <div className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300">
                   {item.codigo_referencia}
                 </div>
               </div>
             )}
           </div>
-
         </div>
       </div>
     )
@@ -712,195 +678,114 @@ export default function Produtos() {
   // Render
   // ============================
   return (
-    <div className="min-h-screen bg-white dark:bg-[#020617] text-slate-900 dark:text-slate-200">
-      {/* Header Fixo */}
-      <div className="sticky top-0 z-40 px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-white/10 bg-white dark:bg-[#020617] backdrop-blur-md">
-        {/* Linha 1: Título + Ordenação */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white flex items-center justify-center shadow-lg shadow-cyan-500/20">
-              <Package className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight font-outfit">
-                {t('sidebar.products', 'Produtos')}
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                Gerencie seu catálogo de produtos e serviços
-              </p>
-            </div>
-          </div>
+    <div className="min-h-[100dvh] bg-white dark:bg-[#030712] text-slate-900 dark:text-slate-200 flex flex-col relative overflow-hidden">
+      {/* Background Decorativo */}
+      <div className="pointer-events-none absolute inset-0 opacity-40">
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-blue-600/10 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(6,182,212,0.15),_transparent_55%)]" />
+      </div>
 
-          {/* Sort Button */}
-          <div className="relative">
-            <button
-              onClick={() => setShowSortMenu(!showSortMenu)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-sm font-medium text-slate-700 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-white/10 transition-all"
-            >
-              <ArrowUpDown className="w-4 h-4" />
-              <span className="hidden sm:inline">Ordenar</span>
-            </button>
-
-            {showSortMenu && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowSortMenu(false)} />
-                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 shadow-xl z-50 py-2">
-                  <div className="px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    Ordenar por
-                  </div>
-                  {[
-                    { key: 'nome-asc', label: 'Nome (A → Z)' },
-                    { key: 'nome-desc', label: 'Nome (Z → A)' },
-                    { key: 'preco-asc', label: 'Preço (Menor → Maior)' },
-                    { key: 'preco-desc', label: 'Preço (Maior → Menor)' },
-                    { key: 'data-desc', label: 'Mais Recentes' },
-                    { key: 'data-asc', label: 'Mais Antigos' },
-                  ].map(option => (
-                    <button
-                      key={option.key}
-                      onClick={() => { setSortBy(option.key as typeof sortBy); setShowSortMenu(false) }}
-                      className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${sortBy === option.key
-                        ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-medium'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5'
-                        }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+      {/* Header Fixo e Moderno */}
+      <div className="sticky top-0 z-40 px-4 sm:px-8 py-4 sm:py-6 bg-white/70 dark:bg-[#030712]/70 backdrop-blur-xl border-b border-slate-200/60 dark:border-white/5">
+        <div className="max-w-7xl mx-auto space-y-5">
+          {/* Linha 1: Título e Ação Principal */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 p-0.5 shadow-lg shadow-cyan-500/20">
+                <div className="w-full h-full rounded-[14px] bg-white/10 backdrop-blur-sm flex items-center justify-center text-white">
+                  <Package className="w-6 h-6" />
                 </div>
-              </>
-            )}
-          </div>
-        </div>
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white font-outfit uppercase leading-none">
+                  {t('sidebar.products', 'Produtos')}
+                </h1>
+                <p className="hidden sm:block text-[10px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] opacity-70 mt-1">
+                  Gestão de Catálogo Inteligente
+                </p>
+              </div>
+            </div>
 
-        {/* Linha 2: Tabs + Search + Buttons */}
-        <div className="flex items-center gap-4 flex-wrap">
-          {/* Tabs */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setTab('ativos')}
-              className={`px-4 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center gap-2 ${tab === 'ativos'
-                ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/25'
-                : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10'
-                }`}
-            >
-              <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-lg text-xs font-bold ${tab === 'ativos' ? 'bg-white/20' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                }`}>
-                {ativos.length}
-              </span>
-              <span className="hidden sm:inline">Ativos</span>
-            </button>
-            <button
-              onClick={() => setTab('inativos')}
-              className={`px-4 py-2.5 rounded-xl font-semibold text-sm transition-all flex items-center gap-2 ${tab === 'inativos'
-                ? 'bg-gradient-to-r from-slate-500 to-slate-600 text-white shadow-lg shadow-slate-500/25'
-                : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10'
-                }`}
-            >
-              <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-lg text-xs font-bold ${tab === 'inativos' ? 'bg-white/20' : 'bg-slate-500/10 text-slate-600 dark:text-slate-400'
-                }`}>
-                {inativos.length}
-              </span>
-              <span className="hidden sm:inline">Inativos</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleNewProduct}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm shadow-lg shadow-cyan-500/25 hover:scale-105 active:scale-95 transition-all"
+              >
+                <Plus className="w-5 h-5" />
+                <span className="hidden sm:inline tracking-tight">NOVO PRODUTO</span>
+              </button>
+            </div>
           </div>
 
-          {/* Search */}
-          <div className="flex-1 max-w-2xl">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          {/* Linha 2: Busca e Filtros Rápidos */}
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            {/* Search Box */}
+            <div className="relative flex-1 w-full group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-cyan-500 transition-colors" />
               <input
                 type="text"
-                placeholder="Buscar por nome, categoria, descrição..."
+                placeholder="Pesquisar por nome, categoria ou ref..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400/60 transition-all"
+                className="w-full pl-11 pr-10 py-3 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500/40 transition-all placeholder:text-slate-400"
               />
               {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                >
-                  <X className="w-5 h-5" />
+                <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500 transition-colors">
+                  <X className="w-4 h-4" />
                 </button>
               )}
             </div>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
-            {selectMode ? (
-              <>
-                <button onClick={selectAll} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-cyan-400/40 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/20 transition-all font-medium text-sm">
-                  <Check className="w-4 h-4" />
-                  <span className="hidden sm:inline">Todos</span>
+            {/* Ações Especiais */}
+            <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto scrollbar-hide pb-1 sm:pb-0">
+              {/* Abas Ativos/Inativos */}
+              <div className="flex items-center p-1 rounded-2xl bg-slate-100/80 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                <button
+                  onClick={() => setTab('ativos')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${tab === 'ativos' ? 'bg-white dark:bg-white/10 text-cyan-500 shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                >
+                  ATIVOS ({ativos.length})
                 </button>
-                <button onClick={deselectAll} className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 transition-all font-medium text-sm">
-                  <X className="w-4 h-4" />
-                  <span className="hidden sm:inline">Limpar</span>
+                <button
+                  onClick={() => setTab('inativos')}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${tab === 'inativos' ? 'bg-white dark:bg-white/10 text-rose-500 shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                >
+                  INATIVOS ({inativos.length})
                 </button>
-                <button onClick={confirmBulkDelete} disabled={selectedIds.size === 0} className="p-2.5 rounded-xl border border-rose-400/40 bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-                  <Trash2 className="w-5 h-5" />
-                </button>
-                <div className="w-px h-6 bg-slate-200 dark:bg-white/10 mx-1" />
-                <button onClick={toggleSelectMode} className="p-2.5 rounded-xl border border-slate-300 dark:border-white/20 bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-all">
-                  <X className="w-5 h-5" />
-                </button>
-                {selectedIds.size > 0 && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20">
-                    <Trash2 className="w-4 h-4 text-rose-500" />
-                    <span className="text-sm font-medium text-rose-600 dark:text-rose-400">{selectedIds.size}</span>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <button onClick={toggleSelectMode} className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 transition-all" title="Selecionar">
-                  <Check className="w-5 h-5" />
-                </button>
-                <button onClick={() => setFiltersOpen(true)} className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 hover:border-cyan-400/40 transition-all" title="Filtros">
+              </div>
+
+              <div className="flex items-center gap-1.5 ml-auto">
+                <button onClick={() => setFiltersOpen(true)} className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-500 hover:text-cyan-500 hover:border-cyan-500/40 transition-all shadow-sm">
                   <Filter className="w-5 h-5" />
                 </button>
-                <div className="hidden md:flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white dark:bg-white/10 text-cyan-600 dark:text-cyan-400 shadow-sm' : 'text-slate-500 dark:text-gray-400 hover:text-slate-700'}`}
-                  >
+                <div className="hidden lg:flex items-center gap-1.5 p-1 rounded-xl bg-slate-100/50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                  <button onClick={() => setViewMode('list')} className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white dark:bg-white/10 text-cyan-500 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
                     <List className="w-5 h-5" />
                   </button>
-                  <button
-                    onClick={() => setViewMode('grid')}
-                    className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-white/10 text-cyan-600 dark:text-cyan-400 shadow-sm' : 'text-slate-500 dark:text-gray-400 hover:text-slate-700'}`}
-                  >
+                  <button onClick={() => setViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-white/10 text-cyan-500 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
                     <Grid3X3 className="w-5 h-5" />
                   </button>
                 </div>
-                <button onClick={() => setRefreshKey(k => k + 1)} className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-500 dark:text-gray-400 hover:text-cyan-600 hover:border-cyan-400/40 transition-all" title="Atualizar">
-                  <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                </button>
-                <div className="w-px h-6 bg-slate-200 dark:bg-white/10 mx-1" />
                 <button
-                  onClick={handleNewProduct}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 text-white font-medium hover:from-cyan-600 hover:to-cyan-700 shadow-lg shadow-cyan-500/25 transition-all"
+                  onClick={() => { setSelectMode(!selectMode); if (selectMode) setSelectedIds(new Set()) }}
+                  className={`p-2.5 rounded-xl border transition-all shadow-sm ${selectMode ? 'border-rose-500/40 bg-rose-500/10 text-rose-500' : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-500 hover:text-rose-500'}`}
                 >
-                  <Plus className="w-5 h-5" />
-                  <span className="hidden sm:inline">Novo</span>
+                  <CheckSquare className="w-5 h-5" />
                 </button>
-              </>
-            )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6 lg:p-8">
         {(viewMode === 'grid' || isMobile) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 justify-items-center">
-            {loading && Array.from({ length: 6 }).map((_, i) => (
-              <div key={`skeleton-${i}`} className="w-[530px] h-[300px] rounded-xl bg-slate-100 dark:bg-slate-800/50 animate-pulse" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
+            {loading && Array.from({ length: 8 }).map((_, i) => (
+              <div key={`skeleton-${i}`} className="w-full aspect-[3/4] rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 animate-pulse" />
             ))}
             {!loading && filteredList.length === 0 && (
-              <div className="md:col-span-2 xl:col-span-3">{EmptyState}</div>
+              <div className="col-span-full">{EmptyState}</div>
             )}
             {!loading && filteredList.map((item) => (
               <Card key={item.id} item={item} />

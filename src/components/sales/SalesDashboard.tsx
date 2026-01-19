@@ -126,11 +126,11 @@ export default function SalesDashboard({ sales }: SalesDashboardProps) {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
-      {/* Cards de Topo */}
-      <div className={`grid grid-cols-1 gap-4 ${hasReceived ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+      {/* Cards de Topo - Estilo Carrossel no Mobile */}
+      <div className={`flex md:grid gap-4 overflow-x-auto md:overflow-visible pb-4 md:pb-0 snap-x snap-mandatory scrollbar-hide ${hasReceived ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
 
         {/* Card 1: Previsão */}
-        <div className={`${cardBg} border rounded-2xl p-6 relative overflow-hidden group`}>
+        <div className={`flex-shrink-0 w-[85%] md:w-auto snap-center ${cardBg} border rounded-2xl p-6 relative overflow-hidden group`}>
           <div className="absolute right-0 top-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-amber-500/20" />
           <div className="flex items-start justify-between relative z-10">
             <div>
@@ -153,7 +153,7 @@ export default function SalesDashboard({ sales }: SalesDashboardProps) {
 
         {/* Card 2: Recebido (Condicional) */}
         {hasReceived && (
-          <div className={`${cardBg} border rounded-2xl p-6 relative overflow-hidden group`}>
+          <div className={`flex-shrink-0 w-[85%] md:w-auto snap-center ${cardBg} border rounded-2xl p-6 relative overflow-hidden group`}>
             <div className="absolute right-0 top-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-emerald-500/20" />
             <div className="flex items-start justify-between relative z-10">
               <div>
@@ -176,7 +176,7 @@ export default function SalesDashboard({ sales }: SalesDashboardProps) {
         )}
 
         {/* Card 3: Inadimplência */}
-        <div className={`${cardBg} border rounded-2xl p-6 relative overflow-hidden group`}>
+        <div className={`flex-shrink-0 w-[85%] md:w-auto snap-center ${cardBg} border rounded-2xl p-6 relative overflow-hidden group`}>
           <div className="absolute right-0 top-0 w-32 h-32 bg-rose-500/10 rounded-full blur-3xl -mr-16 -mt-16 transition-all group-hover:bg-rose-500/20" />
           <div className="flex items-start justify-between relative z-10">
             <div>

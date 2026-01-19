@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { CheckCircle, Clock, AlertCircle, Calendar, User, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { CheckCircle, Clock, AlertCircle, Calendar, User, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown, Pencil } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd'
 import { useThemeStore } from '../../stores/themeStore'
@@ -19,6 +19,7 @@ interface SalesKanbanProps {
   sales: Sale[]
   onStatusChange: (id: string, status: Sale['status']) => void
   onDelete: (id: string) => void
+  onEdit?: (sale: any) => void
 }
 
 type SortOption = 'date_desc' | 'date_asc' | 'value_desc' | 'value_asc' | 'name_asc' | 'name_desc'
@@ -44,7 +45,7 @@ const COLUMNS = [
   { id: 'paid', title: 'Recebido', color: '#10B981', icon: CheckCircle },
 ] as const
 
-export default function SalesKanban({ sales, onStatusChange }: SalesKanbanProps) {
+export default function SalesKanban({ sales, onStatusChange, onEdit }: SalesKanbanProps) {
   const navigate = useNavigate()
   const { isDark } = useThemeStore()
   const [enabled, setEnabled] = useState(false)
@@ -169,9 +170,9 @@ export default function SalesKanban({ sales, onStatusChange }: SalesKanbanProps)
         </div>
       </div>
 
-      {/* Container com 3 colunas que preenchem o espaço */}
-      <div className="relative h-[calc(100vh-320px)] overflow-hidden px-6 pb-4">
-        <div className="grid grid-cols-3 gap-4 h-full">
+      {/* Container com colunas que se adaptam ao mobile */}
+      <div className="relative h-[calc(100vh-320px)] overflow-hidden px-4 sm:px-6 pb-4">
+        <div className="flex md:grid md:grid-cols-3 gap-4 h-full overflow-x-auto md:overflow-hidden snap-x snap-mandatory">
           {COLUMNS.map(col => {
             const colSales = grouped[col.id] || []
             const totalValue = colSales.reduce((acc, curr) => acc + Number(curr.value), 0)
@@ -182,7 +183,7 @@ export default function SalesKanban({ sales, onStatusChange }: SalesKanbanProps)
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className={`rounded-xl ${columnBg} border p-4 h-full flex flex-col shadow-sm hover:shadow-md transition-shadow`}
+                    className={`flex-shrink-0 w-full min-w-[85vw] md:min-w-0 snap-center rounded-xl ${columnBg} border p-4 h-full flex flex-col shadow-sm hover:shadow-md transition-shadow`}
                   >
                     {/* Header da Coluna */}
                     <div className="flex items-center justify-between mb-4 flex-shrink-0">
@@ -207,7 +208,8 @@ export default function SalesKanban({ sales, onStatusChange }: SalesKanbanProps)
                               ref={pp.innerRef}
                               {...pp.draggableProps}
                               {...pp.dragHandleProps}
-                              className={`rounded-lg ${cardBg} border p-3 cursor-grab active:cursor-grabbing transition-all ${snapshot.isDragging ? `ring-2 ring-cyan-500/60 ring-offset-2 ${cardDragging} scale-[1.02] shadow-md` : 'hover:shadow-sm'}`}
+                              onClick={() => onEdit?.(sale)}
+                              className={`rounded-lg ${cardBg} border p-3 cursor-pointer active:cursor-grabbing transition-all ${snapshot.isDragging ? `ring-2 ring-cyan-500/60 ring-offset-2 ${cardDragging} scale-[1.02] shadow-md` : 'hover:shadow-sm hover:border-cyan-500/30'}`}
                             >
                               {/* Layout horizontal para cards mais compactos */}
                               <div className="flex items-center gap-3">
@@ -241,6 +243,18 @@ export default function SalesKanban({ sales, onStatusChange }: SalesKanbanProps)
                                 <div className="text-base font-bold text-cyan-500 whitespace-nowrap">
                                   {formatCurrency(sale.value)}
                                 </div>
+
+                                {/* Botão Editar */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    onEdit?.(sale)
+                                  }}
+                                  className={`p-1.5 rounded-lg transition-colors ${isDark ? 'hover:bg-white/10 text-slate-400 hover:text-white' : 'hover:bg-gray-100 text-gray-400 hover:text-gray-700'}`}
+                                  title="Editar venda"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
                               </div>
                             </div>
                           )}

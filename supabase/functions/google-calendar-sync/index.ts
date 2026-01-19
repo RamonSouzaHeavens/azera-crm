@@ -108,13 +108,25 @@ serve(async (req) => {
       try {
         console.log('[SYNC] Enviando evento para Google:', event.id, event.title)
 
-        const googlePayload = {
+        const googlePayload: any = {
           summary: event.title,
           description: event.description,
           location: event.location,
           start: event.all_day ? { date: event.start_date.split('T')[0] } : { dateTime: event.start_date },
           end: event.all_day ? { date: event.end_date?.split('T')[0] || event.start_date.split('T')[0] } : { dateTime: event.end_date || event.start_date },
         }
+
+        // Adicionar lembretes se existirem
+        if (event.reminders && Array.isArray(event.reminders) && event.reminders.length > 0) {
+          googlePayload.reminders = {
+            useDefault: false,
+            overrides: event.reminders.map((r: any) => ({
+              method: 'popup',
+              minutes: r.minutes_before || r.minutes || 30
+            }))
+          }
+        }
+
 
         console.log('[SYNC] Payload Google:', JSON.stringify(googlePayload))
 

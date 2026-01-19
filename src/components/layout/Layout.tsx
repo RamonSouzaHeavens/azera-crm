@@ -15,7 +15,7 @@ export const Layout = ({ onShowTutorial, onShowPreset }: { onShowTutorial?: () =
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header onShowTutorial={onShowTutorial} onShowPreset={onShowPreset} />
-        <main className={`flex-1 overflow-hidden md:overflow-y-auto ${!location.pathname.includes('/conversations') ? 'pb-24' : ''} md:pb-0`}>
+        <main className={`flex-1 overflow-y-auto ${!location.pathname.includes('/conversations') ? 'pb-20 sm:pb-24' : ''} md:pb-0`}>
           <Outlet context={{ onShowTutorial, onShowPreset } satisfies LayoutContextType} />
         </main>
       </div>

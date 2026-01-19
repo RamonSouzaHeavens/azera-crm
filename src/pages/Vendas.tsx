@@ -108,6 +108,16 @@ export default function Vendas() {
   })
   const [submitting, setSubmitting] = useState(false)
 
+  // Modal Edição Venda
+  const [editingSale, setEditingSale] = useState<Sale | null>(null)
+  const [editForm, setEditForm] = useState({
+    lead_id: '',
+    title: '',
+    value: '',
+    due_date: '',
+    status: 'pending' as Sale['status']
+  })
+
   // =====================
   // Carregamento de Dados
   // =====================
@@ -264,6 +274,71 @@ export default function Vendas() {
       toast.error('Erro ao criar venda')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  // Abrir modal de edição
+  const handleEdit = (sale: Sale) => {
+    setEditingSale(sale)
+    setEditForm({
+      lead_id: sale.lead_id,
+      title: sale.title,
+      value: sale.value.toString(),
+      due_date: sale.due_date.split('T')[0],
+      status: sale.status
+    })
+  }
+
+  // Salvar edição
+  const handleUpdate = async () => {
+    if (!editingSale || !editForm.title || !editForm.value) {
+      toast.error('Preencha todos os campos obrigatórios')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const { error } = await supabase
+        .from('lead_sales')
+        .update({
+          lead_id: editForm.lead_id,
+          title: editForm.title,
+          value: parseFloat(editForm.value.replace(',', '.')),
+          due_date: new Date(editForm.due_date).toISOString(),
+          status: editForm.status
+        })
+        .eq('id', editingSale.id)
+
+      if (error) throw error
+
+      toast.success('Venda atualizada!')
+      setEditingSale(null)
+      loadSales()
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao atualizar venda')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Excluir da edição
+  const handleDeleteFromEdit = async () => {
+    if (!editingSale) return
+    if (!confirm('Tem certeza que deseja excluir esta venda?')) return
+
+    try {
+      const { error } = await supabase
+        .from('lead_sales')
+        .delete()
+        .eq('id', editingSale.id)
+      if (error) throw error
+
+      setSales(prev => prev.filter(s => s.id !== editingSale.id))
+      toast.success('Venda excluída!')
+      setEditingSale(null)
+    } catch (err) {
+      toast.error('Erro ao excluir venda')
     }
   }
 
@@ -488,6 +563,7 @@ export default function Vendas() {
               sales={sales}
               onStatusChange={handleStatusChange}
               onDelete={handleDelete}
+              onEdit={handleEdit}
             />
           ) : (
             <div className="animate-in fade-in duration-500">
@@ -634,6 +710,122 @@ export default function Vendas() {
                   onClick={handleSubmit}
                   disabled={submitting}
                   className="flex-1 px-4 py-3 bg-amber-600 hover:bg-amber-700 rounded-xl font-medium transition disabled:opacity-50"
+                >
+                  {submitting ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Editar Venda */}
+      <AnimatePresence>
+        {editingSale && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setEditingSale(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className={`border rounded-2xl p-6 w-full max-w-md shadow-2xl ${isDark ? 'bg-slate-800 border-white/10' : 'bg-white border-gray-200'}`}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold">Editar Venda</h3>
+                <button onClick={() => setEditingSale(null)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}>
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Lead */}
+                <div>
+                  <label className={`text-sm font-medium mb-1 block ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>Lead</label>
+                  <select
+                    value={editForm.lead_id}
+                    onChange={e => setEditForm({ ...editForm, lead_id: e.target.value })}
+                    className={`w-full p-3 rounded-xl border text-sm focus:ring-2 focus:ring-amber-500/50 ${isDark ? 'bg-black/20 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                  >
+                    <option value="">Selecione o lead</option>
+                    {leads.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+                  </select>
+                </div>
+
+                {/* Título */}
+                <div>
+                  <label className={`text-sm font-medium mb-1 block ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>Descrição *</label>
+                  <input
+                    type="text"
+                    value={editForm.title}
+                    onChange={e => setEditForm({ ...editForm, title: e.target.value })}
+                    placeholder="Ex: Mensalidade, Consultoria..."
+                    className={`w-full p-3 rounded-xl border text-sm focus:ring-2 focus:ring-amber-500/50 ${isDark ? 'bg-black/20 border-white/10 text-white placeholder-gray-500' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'}`}
+                  />
+                </div>
+
+                {/* Valor */}
+                <div>
+                  <label className={`text-sm font-medium mb-1 block ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>Valor (R$) *</label>
+                  <input
+                    type="text"
+                    value={editForm.value}
+                    onChange={e => setEditForm({ ...editForm, value: e.target.value })}
+                    placeholder="0,00"
+                    className={`w-full p-3 rounded-xl border text-sm focus:ring-2 focus:ring-amber-500/50 ${isDark ? 'bg-black/20 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                  />
+                </div>
+
+                {/* Data */}
+                <div>
+                  <label className={`text-sm font-medium mb-1 block ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>Data de Vencimento</label>
+                  <input
+                    type="date"
+                    value={editForm.due_date}
+                    onChange={e => setEditForm({ ...editForm, due_date: e.target.value })}
+                    className={`w-full p-3 rounded-xl border text-sm focus:ring-2 focus:ring-amber-500/50 ${isDark ? 'bg-black/20 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                  />
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className={`text-sm font-medium mb-1 block ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>Status</label>
+                  <select
+                    value={editForm.status}
+                    onChange={e => setEditForm({ ...editForm, status: e.target.value as Sale['status'] })}
+                    className={`w-full p-3 rounded-xl border text-sm focus:ring-2 focus:ring-amber-500/50 ${isDark ? 'bg-black/20 border-white/10 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                  >
+                    <option value="pending">Pendente</option>
+                    <option value="paid">Pago</option>
+                    <option value="overdue">Vencido</option>
+                    <option value="canceled">Cancelado</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Botões */}
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={handleDeleteFromEdit}
+                  className="px-4 py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl font-medium transition"
+                >
+                  Excluir
+                </button>
+                <button
+                  onClick={() => setEditingSale(null)}
+                  className={`flex-1 px-4 py-3 border rounded-xl font-medium transition ${isDark ? 'bg-white/5 hover:bg-white/10 border-white/10' : 'bg-gray-100 hover:bg-gray-200 border-gray-200'}`}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleUpdate}
+                  disabled={submitting}
+                  className="flex-1 px-4 py-3 bg-amber-600 hover:bg-amber-700 rounded-xl font-medium transition disabled:opacity-50 text-white"
                 >
                   {submitting ? 'Salvando...' : 'Salvar'}
                 </button>
