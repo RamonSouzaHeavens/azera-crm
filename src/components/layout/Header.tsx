@@ -194,9 +194,19 @@ export const Header = ({ onShowTutorial, onShowPreset }: { onShowTutorial?: () =
           )}
         </div>
 
-        {/* MOBILE: Botões de Linguagem e Logout */}
+        {/* MOBILE: Botões de Linguagem, Tema e Logout */}
         <div className="flex sm:hidden items-center gap-2">
           <LanguageSelector isDark={isDark} />
+          <button
+            onClick={toggleTheme}
+            className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl transition-all hover:scale-105 ${isDark
+              ? 'bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+              }`}
+            aria-label={isDark ? t('header.activateLightTheme') : t('header.activateDarkTheme')}
+          >
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
           <Link
             to="/login"
             onClick={() => useAuthStore.getState().signOut()}
