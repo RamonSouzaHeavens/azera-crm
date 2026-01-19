@@ -187,6 +187,114 @@ function EventModal({
   )
 }
 
+// Modal de Visualização do Dia
+function DayViewModal({
+  date,
+  events,
+  onClose,
+  onSelectEvent,
+  onCreateEvent
+}: {
+  date: Date | null
+  events: CalendarEvent[]
+  onClose: () => void
+  onSelectEvent: (eventId: string) => void
+  onCreateEvent: () => void
+}) {
+  if (!date) return null
+
+  const dateStr = date.toISOString().split('T')[0]
+  const dayEvents = events.filter(e => e.start_date.startsWith(dateStr))
+    .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+
+  const formattedDate = date.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  })
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-[#0f172a] border border-white/10 rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-hidden shadow-2xl flex flex-col">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-slate-400 hover:text-white transition"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-white capitalize">{formattedDate}</h2>
+          <p className="text-sm text-slate-400">
+            {dayEvents.length} {dayEvents.length === 1 ? 'evento' : 'eventos'}
+          </p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 mb-4">
+          {dayEvents.length === 0 ? (
+            <div className="py-12 text-center">
+              <CalendarIcon className="w-12 h-12 mx-auto mb-4 text-slate-600" />
+              <p className="text-slate-500">Nenhum evento neste dia</p>
+            </div>
+          ) : (
+            dayEvents.map(event => (
+              <button
+                key={event.id}
+                onClick={() => {
+                  onSelectEvent(event.id)
+                  onClose()
+                }}
+                className="w-full text-left p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-1.5 h-12 rounded-full shrink-0"
+                    style={{ backgroundColor: event.color }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-bold text-white group-hover:text-cyan-400 transition truncate">
+                      {event.title}
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-1 flex items-center gap-2">
+                      <Clock className="w-3 h-3" />
+                      {event.all_day ? 'Dia inteiro' : (
+                        <>
+                          {new Date(event.start_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          {' - '}
+                          {new Date(event.end_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </>
+                      )}
+                    </p>
+                    {event.location && (
+                      <p className="text-xs text-slate-500 mt-1 flex items-center gap-1 truncate">
+                        <MapPin className="w-3 h-3" />
+                        {event.location}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+
+        <button
+          onClick={() => {
+            onCreateEvent()
+            onClose()
+          }}
+          className="w-full py-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-bold rounded-xl transition-all hover:shadow-lg hover:shadow-cyan-500/30 flex items-center justify-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Criar Evento
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // Modal de Criar Evento
 function CreateEventModal({
   isOpen,
@@ -452,6 +560,7 @@ export default function Agenda() {
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
   const [googleIntegration, setGoogleIntegration] = useState<GoogleIntegration | null>(null)
   const [selectedEventData, setSelectedEventData] = useState<CalendarEvent | null>(null)
+  const [dayViewDate, setDayViewDate] = useState<Date | null>(null) // Para popup de visualização do dia
 
   // Verificar status do Google Calendar
   const checkGoogleStatus = async () => {
@@ -515,108 +624,110 @@ export default function Agenda() {
   }, [])
 
   return (
-    <div className="h-full bg-background p-6 flex flex-col overflow-hidden">
+    <div className="h-full bg-background p-3 md:p-6 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6 shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center shadow-lg shadow-cyan-500/30">
-            <CalendarIcon className="w-6 h-6 text-white" />
+      <div className="flex flex-col gap-3 mb-4 md:mb-6 shrink-0">
+        {/* Título */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+            <CalendarIcon className="w-5 h-5 md:w-6 md:h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white font-outfit">Agenda</h1>
-            <p className="text-slate-400">Gerencie seus eventos e compromissos</p>
+            <h1 className="text-xl md:text-2xl font-bold text-white font-outfit">Agenda</h1>
+            <p className="text-sm text-slate-400 hidden sm:block">Gerencie seus eventos e compromissos</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Controles */}
+        <div className="flex flex-wrap items-center gap-2">
           {/* Navegação */}
           <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1">
             <button
               onClick={goToPrevious}
-              className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition"
+              className="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
             </button>
             <button
               onClick={goToToday}
-              className="px-3 py-1.5 rounded-lg hover:bg-white/10 text-sm font-medium text-slate-300 hover:text-white transition"
+              className="px-2 md:px-3 py-1 md:py-1.5 rounded-lg hover:bg-white/10 text-xs md:text-sm font-medium text-slate-300 hover:text-white transition"
             >
               Hoje
             </button>
             <button
               onClick={goToNext}
-              className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition"
+              className="p-1.5 md:p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           </div>
 
           {/* Título do período */}
-          <div className="px-4 py-2 bg-white/5 rounded-xl">
-            <span className="text-white font-medium capitalize">{getViewTitle()}</span>
+          <div className="px-2 md:px-4 py-1.5 md:py-2 bg-white/5 rounded-xl">
+            <span className="text-white text-xs md:text-sm font-medium capitalize">{getViewTitle()}</span>
           </div>
 
           {/* Seletor de View */}
           <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1">
             <button
               onClick={() => setView('month')}
-              className={`p-2 rounded-lg transition ${view === 'month' ? 'bg-white/10 text-cyan-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              className={`p-1.5 md:p-2 rounded-lg transition ${view === 'month' ? 'bg-white/10 text-cyan-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
               title="Mês"
             >
-              <LayoutGrid className="w-5 h-5" />
+              <LayoutGrid className="w-4 h-4 md:w-5 md:h-5" />
             </button>
             <button
               onClick={() => setView('week')}
-              className={`p-2 rounded-lg transition ${view === 'week' ? 'bg-white/10 text-cyan-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              className={`p-1.5 md:p-2 rounded-lg transition ${view === 'week' ? 'bg-white/10 text-cyan-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
               title="Semana"
             >
-              <CalendarDays className="w-5 h-5" />
+              <CalendarDays className="w-4 h-4 md:w-5 md:h-5" />
             </button>
             <button
               onClick={() => setView('list')}
-              className={`p-2 rounded-lg transition ${view === 'list' ? 'bg-white/10 text-cyan-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              className={`p-1.5 md:p-2 rounded-lg transition ${view === 'list' ? 'bg-white/10 text-cyan-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
               title="Lista"
             >
-              <List className="w-5 h-5" />
+              <List className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           </div>
 
-          {/* Refresh */}
+          {/* Refresh - hidden on mobile */}
           <button
             onClick={() => refetch()}
             disabled={isLoading}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 border border-white/10 rounded-xl hover:brightness-110 text-white transition disabled:opacity-50 min-w-[140px] shadow-lg shadow-black/20"
+            className="hidden md:flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-slate-700 to-slate-800 border border-white/10 rounded-xl hover:brightness-110 text-white transition disabled:opacity-50 min-w-[140px] shadow-lg shadow-black/20"
             title="Sincronizar"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
             <span className="font-medium">Sincronizar</span>
           </button>
 
-          {/* WhatsApp Agenda */}
+          {/* WhatsApp Agenda - hidden on mobile */}
           <button
             onClick={() => setIsWhatsAppModalOpen(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-purple-800 border border-purple-500/30 rounded-xl text-white hover:brightness-110 transition min-w-[140px] shadow-lg shadow-purple-500/20"
+            className="hidden md:flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-purple-800 border border-purple-500/30 rounded-xl text-white hover:brightness-110 transition min-w-[140px] shadow-lg shadow-purple-500/20"
             title="Configurar Agenda via WhatsApp"
           >
             <MessageCircle className="w-4 h-4" />
             <span className="font-medium">WhatsApp</span>
           </button>
 
-          {/* Botão Criar */}
+          {/* Botão Criar - adaptado para mobile */}
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-medium rounded-xl shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all hover:scale-105 min-w-[160px]"
+            className="flex items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-medium rounded-xl shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all hover:scale-105"
           >
             <Plus className="w-4 h-4" />
-            <span className="font-medium">Novo Evento</span>
+            <span className="text-sm md:text-base font-medium">Novo</span>
           </button>
         </div>
       </div>
 
       {/* Grid Principal */}
-      <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="flex-1 overflow-hidden flex flex-col lg:grid lg:grid-cols-4 gap-4 md:gap-6 min-h-0">
         {/* Lado Esquerdo: Calendário */}
-        <div className="lg:col-span-3 flex flex-col overflow-hidden bg-white/5 rounded-2xl border border-white/10">
+        <div className="lg:col-span-3 flex flex-col overflow-hidden bg-white/5 rounded-xl md:rounded-2xl border border-white/10 flex-1 min-h-[300px]">
           {isLoading ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="flex flex-col items-center gap-4">
@@ -631,7 +742,7 @@ export default function Agenda() {
                 events={events}
                 onSelectDate={(date) => {
                   selectDate(date)
-                  setIsCreateModalOpen(true)
+                  setDayViewDate(date) // Abre popup de visualização do dia
                 }}
                 onSelectEvent={handleSelectEvent}
               />
@@ -684,8 +795,8 @@ export default function Agenda() {
           )}
         </div>
 
-        {/* Lado Direito: Próximos Eventos & Integrações */}
-        <div className="flex flex-col gap-6 overflow-hidden">
+        {/* Lado Direito: Próximos Eventos & Integrações - hidden on mobile */}
+        <div className="hidden lg:flex flex-col gap-6 overflow-hidden">
           {/* Próximos Compromissos */}
           <div className="bg-white/5 rounded-2xl border border-white/10 p-5 flex flex-col overflow-hidden max-h-[60%]">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2 shrink-0">
@@ -762,6 +873,23 @@ export default function Agenda() {
       </div>
 
       {/* Modais */}
+
+      {/* Modal de Visualização do Dia */}
+      {dayViewDate && (
+        <DayViewModal
+          date={dayViewDate}
+          events={events}
+          onClose={() => setDayViewDate(null)}
+          onSelectEvent={(eventId) => {
+            handleSelectEvent(eventId)
+            setDayViewDate(null)
+          }}
+          onCreateEvent={() => {
+            setIsCreateModalOpen(true)
+          }}
+        />
+      )}
+
       <EventModal
         event={selectedEventData}
         isOpen={!!selectedEventId}

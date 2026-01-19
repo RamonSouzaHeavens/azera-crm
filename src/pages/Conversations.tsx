@@ -1105,7 +1105,7 @@ export default function ConversationsPage() {
                   </div>
 
                   {/* Input Area */}
-                  <div className="px-3 py-2 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-gray-800">
+                  <div className="px-3 py-2 pb-20 md:pb-2 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-gray-800">
                     {isRecording ? (
                       <div className="flex items-center gap-4 animate-in fade-in duration-200">
                         <div className="flex-1 bg-red-50 dark:bg-red-900/20 rounded-lg p-3 flex items-center gap-3 border border-red-100 dark:border-red-900/30">

@@ -430,7 +430,7 @@ export default function ConnectChannelsPage() {
                   </div>
 
                   {/* Adicionar novo número */}
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <input
                       type="text"
                       value={newAdminPhone}
@@ -449,7 +449,7 @@ export default function ConnectChannelsPage() {
                           toast.error('Digite um número válido');
                         }
                       }}
-                      className="px-4 py-3 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white rounded-lg font-medium transition-all flex items-center gap-2"
+                      className="flex-shrink-0 px-4 py-3 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2 whitespace-nowrap"
                     >
                       <Plus className="w-4 h-4" />
                       Adicionar

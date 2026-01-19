@@ -378,7 +378,7 @@ export const Sidebar = () => {
 
       {/* ===== MOBILE DOWNBAR (< md) ===== */}
       <div className={`md:hidden ${location.pathname.includes('/conversations') && !location.pathname.endsWith('/conversations') ? 'hidden' : ''}`}>
-        <div className="fixed bottom-0 left-0 right-0 h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 z-[60] px-6 pb-safe flex items-center justify-between shadow-[0_-8px_30px_rgb(0,0,0,0.12)]">
+        <div className="fixed bottom-0 left-0 right-0 h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-200 dark:border-white/10 z-[60] px-4 pb-safe flex items-center justify-between shadow-[0_-8px_30px_rgb(0,0,0,0.12)]">
           <MobileNavItem
             icon={TrendingUp}
             isActive={location.pathname === '/app/dashboard' || location.pathname === '/app/ferramentas-pro'}
@@ -392,14 +392,14 @@ export const Sidebar = () => {
 
           {/* Conversas e Vendas - Direct Links */}
           <Link to="/app/conversations" className="relative group flex flex-col items-center">
-            <div className={`p-3 rounded-2xl transition-all duration-300 ${location.pathname === '/app/conversations' ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-              <MessageCircle className="w-6 h-6" />
+            <div className={`p-2.5 rounded-xl transition-all duration-300 ${location.pathname === '/app/conversations' ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+              <MessageCircle className="w-5 h-5" />
             </div>
           </Link>
 
           <Link to="/app/vendas" className="relative group flex flex-col items-center">
-            <div className={`p-3 rounded-2xl transition-all duration-300 ${location.pathname === '/app/vendas' ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-              <DollarSign className="w-6 h-6" />
+            <div className={`p-2.5 rounded-xl transition-all duration-300 ${location.pathname === '/app/vendas' ? 'bg-primary text-white shadow-lg shadow-primary/25' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+              <DollarSign className="w-5 h-5" />
             </div>
           </Link>
 
@@ -470,8 +470,8 @@ export const Sidebar = () => {
 // Helpers for Mobile Nav
 const MobileNavItem = ({ icon: Icon, isActive, onClick }: { icon: any; isActive: boolean; onClick: () => void }) => (
   <button onClick={onClick} className="relative group flex flex-col items-center">
-    <div className={`p-3 rounded-2xl transition-all duration-300 ${isActive ? 'bg-primary/10 text-primary' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-      <Icon className="w-6 h-6" />
+    <div className={`p-2.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-primary/10 text-primary' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+      <Icon className="w-5 h-5" />
       {isActive && <motion.div layoutId="nav-dot" className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary rounded-full" />}
     </div>
   </button>
