@@ -22,6 +22,7 @@ interface Integration {
     auto_create_leads?: boolean
     whatsapp_agenda_active?: boolean
     whatsapp_agenda_trigger?: string
+    admin_phones?: string[] // Números de administrador que podem usar comandos
   }
   created_at: string
 }
@@ -167,6 +168,34 @@ export function useIntegration() {
     }
   }
 
+  const updateAdminPhones = async (phones: string[]) => {
+    try {
+      const wpp = integrations.find(i => i.channel === 'whatsapp')
+      if (!wpp?.id) {
+        toast.error('Integração WhatsApp não encontrada')
+        return false
+      }
+
+      const currentConfig = wpp.config || {}
+      const newConfig = { ...currentConfig, admin_phones: phones }
+
+      const { error } = await supabase
+        .from('integrations')
+        .update({ config: newConfig })
+        .eq('id', wpp.id)
+
+      if (error) throw error
+
+      toast.success('Números de administrador atualizados!')
+      await fetchIntegration()
+      return true
+    } catch (error) {
+      console.error('Error updating admin phones:', error)
+      toast.error('Erro ao atualizar números')
+      return false
+    }
+  }
+
   useEffect(() => {
     fetchIntegration()
   }, [tenant?.id])
@@ -184,6 +213,7 @@ export function useIntegration() {
     fetchIntegration,
     disconnectIntegration,
     updateIntegration,
-    connectInstagram
+    connectInstagram,
+    updateAdminPhones
   }
 }

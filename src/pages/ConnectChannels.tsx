@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { MessageCircle, Check, Loader2, Zap, Edit2, Wifi, WifiOff, BookOpen, AlertCircle, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MessageCircle, Check, Loader2, Zap, Edit2, Wifi, WifiOff, BookOpen, AlertCircle, CheckCircle, UserPlus, Plus, X, Shield } from 'lucide-react';
 import RequireRole from '../components/auth/RequireRole';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../stores/authStore';
@@ -9,7 +9,7 @@ import PremiumGate from '../components/premium/PremiumGate';
 
 export default function ConnectChannelsPage() {
   const { } = useAuthStore();
-  const { whatsappIntegration, loading, disconnectIntegration, updateIntegration } = useIntegration();
+  const { whatsappIntegration, loading, disconnectIntegration, updateIntegration, updateAdminPhones } = useIntegration();
   const { t } = useTranslation();
 
   // Form state
@@ -21,6 +21,18 @@ export default function ConnectChannelsPage() {
   });
   const [saving, setSaving] = useState(false);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState<'whatsapp' | null>(null);
+
+  // Admin phones state
+  const [adminPhones, setAdminPhones] = useState<string[]>([]);
+  const [newAdminPhone, setNewAdminPhone] = useState('');
+  const [savingAdmins, setSavingAdmins] = useState(false);
+
+  // Carregar telefones admin quando integração mudar
+  useEffect(() => {
+    if (whatsappIntegration?.config?.admin_phones) {
+      setAdminPhones(whatsappIntegration.config.admin_phones);
+    }
+  }, [whatsappIntegration]);
 
   const isWhatsAppConnected = whatsappIntegration?.status === 'active' && whatsappIntegration?.is_active;
 
@@ -371,6 +383,105 @@ export default function ConnectChannelsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Row 2: Admin Phones Section */}
+              {isWhatsAppConnected && (
+                <div className="rounded-xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 shadow-sm dark:shadow-xl p-6 transition-colors">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-10 h-10 bg-amber-100 dark:bg-amber-500/20 rounded-lg flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Números de Administrador</h3>
+                      <p className="text-sm text-gray-500 dark:text-slate-400">
+                        Apenas esses números podem usar comandos do bot (relatórios, agenda, vendas)
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Lista de admins */}
+                  <div className="space-y-3 mb-4">
+                    {adminPhones.length === 0 ? (
+                      <div className="text-center py-6 text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-white/5 rounded-lg border border-dashed border-gray-300 dark:border-white/10">
+                        <p className="text-sm">Nenhum administrador cadastrado.</p>
+                        <p className="text-xs mt-1">Adicione números de telefone para restringir o acesso.</p>
+                      </div>
+                    ) : (
+                      adminPhones.map((phone, index) => (
+                        <div key={index} className="flex items-center justify-between gap-3 p-3 bg-gray-50 dark:bg-white/5 rounded-lg border border-gray-200 dark:border-white/10">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-green-100 dark:bg-green-500/20 rounded-full flex items-center justify-center">
+                              <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                            </div>
+                            <span className="text-gray-900 dark:text-white font-mono">{phone}</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              const newList = adminPhones.filter((_, i) => i !== index);
+                              setAdminPhones(newList);
+                            }}
+                            className="p-2 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg transition-colors text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Adicionar novo número */}
+                  <div className="flex gap-3">
+                    <input
+                      type="text"
+                      value={newAdminPhone}
+                      onChange={(e) => setNewAdminPhone(e.target.value.replace(/\D/g, ''))}
+                      placeholder="Ex: 5531912345678"
+                      className="flex-1 px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/50 transition-all text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400 font-mono"
+                    />
+                    <button
+                      onClick={() => {
+                        if (newAdminPhone.length >= 10 && !adminPhones.includes(newAdminPhone)) {
+                          setAdminPhones([...adminPhones, newAdminPhone]);
+                          setNewAdminPhone('');
+                        } else if (adminPhones.includes(newAdminPhone)) {
+                          toast.error('Número já cadastrado');
+                        } else {
+                          toast.error('Digite um número válido');
+                        }
+                      }}
+                      className="px-4 py-3 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white rounded-lg font-medium transition-all flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Adicionar
+                    </button>
+                  </div>
+
+                  {/* Botão Salvar */}
+                  <div className="mt-6 flex justify-end">
+                    <button
+                      onClick={async () => {
+                        setSavingAdmins(true);
+                        await updateAdminPhones(adminPhones);
+                        setSavingAdmins(false);
+                      }}
+                      disabled={savingAdmins}
+                      className="px-6 py-3 bg-cyan-600 hover:bg-cyan-700 dark:bg-gradient-to-r dark:from-cyan-500 dark:to-cyan-600 text-white rounded-lg font-semibold transition-all shadow-sm disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {savingAdmins ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Salvando...
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4" />
+                          Salvar Administradores
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

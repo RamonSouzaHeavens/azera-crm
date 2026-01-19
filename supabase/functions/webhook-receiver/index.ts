@@ -84,12 +84,15 @@ serve(async (req) => {
     const contactName = chat.wa_name || chat.wa_contactName || chat.name || message.senderName || 'WhatsApp User'
     const avatarUrl = chat.imagePreview || chat.image || null
     const originalMessageText = message.text || ''
-    const messageId = message.id || message.messageid
-    const messageType = message.mediaType || message.messageType || 'text'
-    const mediaUrl = message.content?.URL || null
+    // Priorizar messageid (ID curto) pois a API de download espera esse formato
+    const messageId = message.messageid || message.id
+    // Detectar tipo de mensagem: priorizar wa_lastMessageType do chat
+    const messageType = chat.wa_lastMessageType || message.mediaType || message.messageType || 'text'
+    const mediaUrl = message.content?.URL || message.mediaUrl || null
 
     // Log essencial para debug
     console.log(`[WEBHOOK] Message from ${contactName} (${phoneNumber}): ${originalMessageText?.substring(0, 80)}${originalMessageText?.length > 80 ? '...' : ''}`)
+    console.log('[DEBUG] MessageType:', messageType, '| MessageId:', messageId)
     console.log('[DEBUG STEP 1] Payload parsed')
 
     // Find integration
@@ -397,13 +400,79 @@ serve(async (req) => {
       'quero saber', 'me mostra', 'me fala'
     ]
 
+    // Keywords para ajuda/guia
+    const helpKeywords = [
+      'guia', 'ajuda', 'comandos', 'menu', 'o que você faz', 'o que voce faz', 'opções', 'opcoes'
+    ]
+
     const messageLower = messageText.toLowerCase()
 
     // =========================================================================
-    // VERIFICAR CONFIRMAÇÃO DE VENDA PENDENTE (Comprovante PIX)
+    // VERIFICAR SE REMETENTE É ADMINISTRADOR
     // =========================================================================
-    if (isFromMe && !wasSentByApi && (messageLower === 'sim' || messageLower === 's' || messageLower === 'confirma' || messageLower === 'pode')) {
-      // Verificar se há venda pendente de confirmação
+    // Se admin_phones estiver configurado, só responde para números cadastrados
+    const adminPhones = integration.config?.admin_phones || []
+    const isAdmin = adminPhones.length === 0 || adminPhones.some((admin: string) => {
+      // Comparar os últimos 8-11 dígitos para ignorar código internacional
+      const adminDigits = admin.replace(/\D/g, '').slice(-11)
+      const senderDigits = phoneNumber.replace(/\D/g, '').slice(-11)
+      return adminDigits === senderDigits || admin === phoneNumber
+    })
+
+    // Se NÃO for admin e a lista não estiver vazia, bloquear comandos
+    if (!isAdmin && adminPhones.length > 0) {
+      console.log('[ADMIN] Remetente não autorizado:', phoneNumber, '| Admins:', adminPhones)
+      // Não responde a comandos, mas continua o fluxo normal (criar lead, salvar mensagem, etc.)
+    }
+
+    // =========================================================================
+    // COMANDO GUIA / AJUDA (apenas para admins)
+    // =========================================================================
+    if (isAdmin && !wasSentByApi && !isConfirmationMessage && helpKeywords.some(kw => messageLower === kw || messageLower.startsWith(kw + ' '))) {
+      console.log('[GUIA] Solicitado comando de ajuda:', messageText)
+
+      const guiaMsg = `🤖 *Guia de Comandos do Azera CRM*
+
+Aqui está o que eu posso fazer por você:
+
+📊 *Relatórios de Vendas*
+• "Vendas hoje"
+• "Vendas da semana"
+• "Vendas do mês"
+• "Quanto vendi este mês?"
+
+💰 *Financeiro*
+• "A receber" (vendas pendentes)
+• "O que tenho pra receber hoje?"
+
+📸 *Registrar Venda (PIX)*
+• Envie a foto de um comprovante PIX
+• Eu analiso e pergunto se quer registrar a venda!
+
+📅 *Agenda e Lembretes*
+• "Agendar reunião amanhã às 14h"
+• "Me lembre de ligar para o cliente em 30 min"
+• "Minha agenda hoje"
+
+📋 *Gestão*
+• "Novos leads"
+• "Minhas tarefas"
+• "Tarefas de hoje"
+
+Tente enviar um desses comandos agora! 🚀`
+
+      await sendWhatsAppMessage(conversationId, guiaMsg)
+      return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders })
+    }
+
+    // =========================================================================
+    // VERIFICAR CONFIRMAÇÃO DE VENDA PENDENTE (Comprovante PIX) - apenas para admins
+    // =========================================================================
+    // Permitir confirmação independente de quem enviou (isFromMe não obrigatório)
+    if (isAdmin && !wasSentByApi && (messageLower === 'sim' || messageLower === 's' || messageLower === 'confirma' || messageLower === 'pode' || messageLower === 'confirmo')) {
+      console.log('[VENDAS] Verificando confirmação de venda para conversa:', conversationId)
+
+      // Verificar se há mensagem de pergunta sobre venda pendente
       const { data: pendingSale } = await supabase
         .from('messages')
         .select('content')
@@ -415,43 +484,67 @@ serve(async (req) => {
         .maybeSingle()
 
       if (pendingSale) {
-        // Extrair valor da mensagem pendente - suporta formato brasileiro (1.234,56 ou 1234,56)
+        console.log('[VENDAS] Mensagem pendente encontrada:', pendingSale.content.substring(0, 50))
+
+        // Extrair valor
         const valorMatch = pendingSale.content.match(/R\$\s*([\d.,]+)/i)
+        // Extrair pagador
+        const pagadorMatch = pendingSale.content.match(/Pagador:\s*([^\n]+)/i)
+        const pagador = pagadorMatch ? pagadorMatch[1].trim() : 'Cliente WhatsApp'
+
         if (valorMatch) {
           let valorStr = valorMatch[1]
-          // Se tem vírgula como decimal (formato BR), converter para formato numérico
           if (valorStr.includes(',')) {
             valorStr = valorStr.replace(/\./g, '').replace(',', '.')
           }
           const valor = parseFloat(valorStr)
 
           if (!isNaN(valor) && valor > 0) {
-            // Criar a venda
+            console.log('[VENDAS] Criando venda na tabela lead_sales:', { valor, pagador, tenantId })
+
+            // Tentar encontrar um lead associado a esta conversa para vincular a venda
+            // Se não tiver lead, usaremos um dummy ID ou criaremos warning (mas lead_id é NOT NULL na tabela, precisamos resolver isso)
+            // Vamos tentar pegar o lead_id da conversa se existir, ou usar um padrão
+
+            const { data: conversationData } = await supabase
+              .from('conversations')
+              .select('lead_id')
+              .eq('id', conversationId)
+              .single()
+
+            const leadId = conversationData?.lead_id || null // Lead opcional agora
+
+            // Criar a venda na tabela CORRETA: lead_sales
             const { error: vendaError } = await supabase
-              .from('vendas')
+              .from('lead_sales')
               .insert({
                 tenant_id: tenantId,
-                valor: valor,
-                status: 'concluida',
-                notas: 'Venda criada via comprovante PIX no WhatsApp',
-                data_venda: new Date().toISOString()
+                lead_id: leadId, // Necessário vincular a um lead
+                title: `Venda PIX - ${pagador}`,
+                value: valor,
+                status: 'paid', // Status correto: paid, pending, overdue
+                due_date: new Date().toISOString()
               })
 
             if (!vendaError) {
-              console.log('[VENDAS] Venda confirmada e criada:', valor)
-              await sendWhatsAppMessage(conversationId, `✅ *Venda registrada!*\n\n💰 Valor: R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n📅 Data: ${new Date().toLocaleDateString('pt-BR')}\n\n_Venda adicionada ao seu CRM Azera._`)
+              console.log('[VENDAS] Venda confirmada e criada com sucesso!')
+              await sendWhatsAppMessage(conversationId, `✅ *Venda registrada!*\n\n💰 Valor: R$ ${valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n👤 Cliente: ${pagador}\n📅 Data: ${new Date().toLocaleDateString('pt-BR')}\n\n_Venda adicionada ao CRM._`)
+            } else {
+              console.error('[VENDAS] Erro ao criar venda:', vendaError)
+              await sendWhatsAppMessage(conversationId, `❌ Erro ao registrar venda: ${vendaError.message}`)
             }
           }
         }
         return new Response(JSON.stringify({ success: true }), { status: 200, headers: corsHeaders })
+      } else {
+        console.log('[VENDAS] Nenhuma mensagem de confirmação pendente encontrada.')
       }
     }
 
     // =========================================================================
-    // RELATÓRIOS COMPLETOS (Vendas, Leads, Tarefas, Agenda)
+    // RELATÓRIOS COMPLETOS (Vendas, Leads, Tarefas, Agenda) - apenas para admins
     // =========================================================================
-    // Permitir consultas de qualquer remetente (não apenas isFromMe)
-    if (!wasSentByApi && !isConfirmationMessage && (
+    if (isAdmin && !wasSentByApi && !isConfirmationMessage && (
       salesQueryKeywords.some(kw => messageLower.includes(kw)) ||
       reportKeywords.some(kw => messageLower.includes(kw))
     )) {
@@ -722,11 +815,14 @@ Exemplos:
     }
 
     // =========================================================================
-    // DETECÇÃO DE COMPROVANTE PIX (IMAGEM)
+    // DETECÇÃO DE COMPROVANTE PIX (IMAGEM) - apenas para admins
     // =========================================================================
     const isImageMessage = messageType === 'image' || messageType === 'ImageMessage'
 
-    if (isFromMe && isImageMessage && mediaUrl && !wasSentByApi && openaiApiKey) {
+    console.log('[DEBUG PIX] isImageMessage:', isImageMessage, '| messageId:', messageId, '| openaiApiKey:', !!openaiApiKey)
+
+    // Apenas admins podem enviar comprovantes para registro
+    if (isAdmin && isImageMessage && messageId && !wasSentByApi && openaiApiKey) {
       console.log('[VENDAS] Imagem detectada, analisando se é comprovante...')
 
       try {
@@ -735,7 +831,10 @@ Exemplos:
         const uazapiBaseUrl = integration.credentials?.base_url
         const uazapiToken = integration.credentials?.secret_key
 
+        console.log('[PIX DEBUG] UAZAPI config:', { hasBaseUrl: !!uazapiBaseUrl, hasToken: !!uazapiToken, messageId })
+
         if (uazapiBaseUrl && uazapiToken && messageId) {
+          console.log('[PIX DEBUG] Tentando baixar via UAZAPI...')
           const downloadResponse = await fetch(`${uazapiBaseUrl}/message/download`, {
             method: 'POST',
             headers: {
@@ -745,32 +844,53 @@ Exemplos:
             },
             body: JSON.stringify({
               id: messageId,
-              return_link: true,
               return_base64: true
             })
           })
 
+          console.log('[PIX DEBUG] UAZAPI response status:', downloadResponse.status)
+
           if (downloadResponse.ok) {
             const downloadData = await downloadResponse.json()
-            imageBase64 = downloadData.base64 || downloadData.content
+            // Suporte para diferentes formatos de resposta da UAZAPI
+            imageBase64 = downloadData.base64Data || downloadData.base64 || downloadData.content
+            console.log('[PIX DEBUG] Base64 obtido via UAZAPI:', imageBase64 ? `${imageBase64.substring(0, 50)}...` : 'null')
+
+            if (!imageBase64) {
+              console.log('[PIX DEBUG] Resposta completa UAZAPI:', JSON.stringify(downloadData))
+            }
+          } else {
+            const errText = await downloadResponse.text()
+            console.log('[PIX DEBUG] UAZAPI error:', errText)
           }
         }
 
-        // Se não conseguiu base64 da UAZAPI, tentar baixar direto da URL
+        // Se não conseguiu base64 da UAZAPI, tentar baixar direto da URL APENAS se não for criptografada
         if (!imageBase64 && mediaUrl) {
-          try {
-            const imgResponse = await fetch(mediaUrl)
-            if (imgResponse.ok) {
-              const imgBuffer = await imgResponse.arrayBuffer()
-              imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imgBuffer)))
+          if (mediaUrl.includes('mmg.whatsapp.net') || mediaUrl.includes('.enc')) {
+            console.log('[PIX DEBUG] Ignorando URL criptografada do WhatsApp:', mediaUrl)
+          } else {
+            console.log('[PIX DEBUG] Tentando baixar direto da URL:', mediaUrl.substring(0, 80))
+            try {
+              const imgResponse = await fetch(mediaUrl)
+              console.log('[PIX DEBUG] Direct URL response status:', imgResponse.status)
+              if (imgResponse.ok) {
+                const imgBuffer = await imgResponse.arrayBuffer()
+                imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imgBuffer)))
+                console.log('[PIX DEBUG] Base64 obtido via URL direta:', imageBase64 ? `${imageBase64.substring(0, 50)}...` : 'null')
+              }
+            } catch (imgErr) {
+              console.error('[VENDAS] Erro ao baixar imagem:', imgErr)
             }
-          } catch (imgErr) {
-            console.error('[VENDAS] Erro ao baixar imagem:', imgErr)
           }
         }
+
+        console.log('[PIX DEBUG] Final imageBase64:', imageBase64 ? 'SIM (tem base64)' : 'NÃO (null)')
 
         if (imageBase64) {
           // Usar GPT-4 Vision para analisar a imagem
+          console.log('[PIX DEBUG] Chamando GPT-4 Vision...')
+
           const visionResponse = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -812,9 +932,13 @@ Retorne APENAS o JSON, sem markdown ou explicações.`
             }),
           })
 
+          console.log('[PIX DEBUG] GPT-4 Vision response status:', visionResponse.status)
+
           if (visionResponse.ok) {
             const visionData = await visionResponse.json()
             const visionContent = visionData.choices[0].message.content
+
+            console.log('[PIX DEBUG] GPT-4 Vision response:', visionContent)
 
             // Tentar extrair JSON da resposta
             let comprovanteData
@@ -822,6 +946,7 @@ Retorne APENAS o JSON, sem markdown ou explicações.`
               // Remover possíveis markdown
               const jsonStr = visionContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
               comprovanteData = JSON.parse(jsonStr)
+              console.log('[PIX DEBUG] Comprovante parsed:', comprovanteData)
             } catch {
               console.log('[VENDAS] Não foi possível parsear resposta da Vision:', visionContent)
             }
@@ -839,6 +964,9 @@ Retorne APENAS o JSON, sem markdown ou explicações.`
 
               await sendWhatsAppMessage(conversationId, perguntaMsg)
             }
+          } else {
+            const errorText = await visionResponse.text()
+            console.error('[PIX DEBUG] GPT-4 Vision ERROR:', errorText)
           }
         }
       } catch (visionError) {
@@ -847,7 +975,7 @@ Retorne APENAS o JSON, sem markdown ou explicações.`
     }
 
     // =========================================================================
-    // WHATSAPP AGENDA LOGIC
+    // WHATSAPP AGENDA LOGIC - apenas para admins
     // =========================================================================
     console.log('[AGENDA DEBUG] --------------------------------------------------')
     console.log('[AGENDA DEBUG] Message:', messageText)
@@ -863,8 +991,8 @@ Retorne APENAS o JSON, sem markdown ou explicações.`
       textLen: messageText?.length
     })
 
-    // Permitir mensagens do usuário (isFromMe), mas bloquear confirmações automáticas
-    if (isWhatsAppAgendaActive && messageText && messageText.length > 5 && !wasSentByApi && !isConfirmationMessage) {
+    // Apenas admins podem usar a agenda via WhatsApp
+    if (isAdmin && isWhatsAppAgendaActive && messageText && messageText.length > 5 && !wasSentByApi && !isConfirmationMessage) {
       const schedulingKeywords = [
         'agendar', 'agenda', 'agendamento',
         'marcar', 'marca', 'marcação',
