@@ -73,7 +73,9 @@ serve(async (req) => {
     const chat = actualPayload?.chat
     const message = actualPayload?.message
     const instanceOwner = actualPayload?.owner
-    const instanceIdFromPayload = actualPayload?.instanceId || actualPayload?.instance_id || actualPayload?.instance
+    // UAZAPI envia 'instanceName', não 'instanceId'!
+    const instanceIdFromPayload = actualPayload?.instanceName || actualPayload?.instanceId || actualPayload?.instance_id || actualPayload?.instance
+    const baseUrlFromPayload = actualPayload?.BaseUrl || actualPayload?.base_url
 
     if (!message || !chat) {
       return new Response(JSON.stringify({ error: 'Missing data' }), { status: 200, headers: corsHeaders })
@@ -92,6 +94,15 @@ serve(async (req) => {
 
     // Log essencial para debug
     console.log(`[WEBHOOK] Message from ${contactName} (${phoneNumber}): ${originalMessageText?.substring(0, 80)}${originalMessageText?.length > 80 ? '...' : ''}`)
+    console.log('[DEBUG PAYLOAD KEYS]', Object.keys(actualPayload || {}).join(', '))
+    console.log('[DEBUG INSTANCE FIELDS]', JSON.stringify({
+      instanceId: actualPayload?.instanceId,
+      instance_id: actualPayload?.instance_id,
+      instance: actualPayload?.instance,
+      instanceName: actualPayload?.instanceName,
+      owner: actualPayload?.owner,
+      base_url: actualPayload?.base_url
+    }))
     console.log('[DEBUG] MessageType:', messageType, '| MessageId:', messageId)
     console.log('[DEBUG STEP 1] Payload parsed')
 
@@ -139,6 +150,20 @@ serve(async (req) => {
             break
           }
         }
+      }
+
+      // Try matching by base_url
+      if (!integration && baseUrlFromPayload) {
+        integration = allIntegrations.find((int: any) => {
+          const dbBaseUrl = int.credentials?.base_url
+          const match = dbBaseUrl && (
+            dbBaseUrl === baseUrlFromPayload ||
+            baseUrlFromPayload.includes(int.credentials?.instance_id) ||
+            dbBaseUrl.includes(instanceIdFromPayload)
+          )
+          if (match) console.log(`[DEBUG MATCH] Matched by BaseUrl: ${int.id}`)
+          return match
+        })
       }
     }
 
@@ -213,13 +238,27 @@ serve(async (req) => {
 
     // Find or create conversation
     let conversationId = null
-    const { data: existingConv } = await supabase
+    const { data: allConvs } = await supabase
       .from('conversations')
-      .select('id, unread_count')
+      .select('id, unread_count, contact_phone')
       .eq('tenant_id', tenantId)
-      .eq('contact_phone', phoneNumber)
       .eq('channel', 'whatsapp')
-      .maybeSingle()
+
+    // Busca inteligente: comparar ignorando o dígito 9 se necessário
+    let existingConv = allConvs?.find(c => c.contact_phone === phoneNumber)
+
+    if (!existingConv && phoneNumber && phoneNumber.startsWith('55')) {
+      // Tentar match flexível para números brasileiros (9 dígitos vs 8 dígitos)
+      const isShort = phoneNumber.length === 12 // 55 + DDD + 8 dígitos
+      const formatToMatch = isShort
+        ? phoneNumber.slice(0, 4) + '9' + phoneNumber.slice(4) // Adiciona o 9
+        : phoneNumber.slice(0, 4) + phoneNumber.slice(5)      // Remove o 9
+
+      existingConv = allConvs?.find(c => c.contact_phone === formatToMatch)
+      if (existingConv) {
+        console.log(`[DEBUG] Flexible match found: ${phoneNumber} matched with ${formatToMatch}`)
+      }
+    }
 
     if (existingConv) {
       conversationId = existingConv.id
@@ -313,8 +352,38 @@ serve(async (req) => {
       finalContent = messageText || ''
     }
 
-    // Insert Message
+    // 341: Check for duplicate message before inserting
     const messageDirection = isFromMe ? 'outbound' : 'inbound'
+
+    // Evitar que mensagens enviadas pelo próprio CRM (via API) sejam duplicadas,
+    // já que a função 'send-message' já as insere no banco com status 'sent'.
+    if (isFromMe && (actualPayload?.wasSentByApi || actualPayload?.fromMe)) {
+      console.log('[DEBUG] Message sent by API detected via webhook, updating status instead of inserting.')
+      if (messageId) {
+        await supabase
+          .from('messages')
+          .update({ status: 'delivered' })
+          .eq('external_message_id', messageId)
+          .eq('conversation_id', conversationId)
+      }
+      return new Response(JSON.stringify({ success: true, processed: 'outbound_update' }), { status: 200, headers: corsHeaders })
+    }
+
+    if (messageId) {
+      const { data: existingMsg } = await supabase
+        .from('messages')
+        .select('id')
+        .eq('conversation_id', conversationId)
+        .eq('external_message_id', messageId)
+        .maybeSingle()
+
+      if (existingMsg) {
+        console.log('[DEBUG] Duplicate message detected, skipping:', messageId)
+        return new Response(JSON.stringify({ success: true, duplicate: true }), { status: 200, headers: corsHeaders })
+      }
+    }
+
+    // Insert Message
     const { error: msgError } = await supabase
       .from('messages')
       .insert({
@@ -411,18 +480,32 @@ serve(async (req) => {
     // VERIFICAR SE REMETENTE É ADMINISTRADOR
     // =========================================================================
     // Se admin_phones estiver configurado, só responde para números cadastrados
+    // Se NÃO estiver configurado, NINGUÉM pode usar comandos (segurança)
     const adminPhones = integration.config?.admin_phones || []
-    const isAdmin = adminPhones.length === 0 || adminPhones.some((admin: string) => {
+    const isAdmin = adminPhones.length > 0 && adminPhones.some((admin: string) => {
       // Comparar os últimos 8-11 dígitos para ignorar código internacional
       const adminDigits = admin.replace(/\D/g, '').slice(-11)
       const senderDigits = phoneNumber.replace(/\D/g, '').slice(-11)
       return adminDigits === senderDigits || admin === phoneNumber
     })
 
-    // Se NÃO for admin e a lista não estiver vazia, bloquear comandos
-    if (!isAdmin && adminPhones.length > 0) {
-      console.log('[ADMIN] Remetente não autorizado:', phoneNumber, '| Admins:', adminPhones)
-      // Não responde a comandos, mas continua o fluxo normal (criar lead, salvar mensagem, etc.)
+    // Verificar se a mensagem é um comando (para decidir se envia mensagem de bloqueio)
+    const isCommand = helpKeywords.some(kw => messageLower === kw || messageLower.startsWith(kw + ' ')) ||
+      salesQueryKeywords.some(kw => messageLower.includes(kw)) ||
+      reportKeywords.some(kw => messageLower.includes(kw)) ||
+      messageLower.includes('agenda') ||
+      messageLower.includes('agendar') ||
+      messageLower.includes('lembrete')
+
+    // Se NÃO for admin e tentou usar comando, bloquear e avisar
+    if (!isAdmin && isCommand && !wasSentByApi && !isConfirmationMessage) {
+      console.log('[ADMIN] Comando bloqueado para não-admin:', phoneNumber, '| Mensagem:', messageText)
+
+      // Enviar mensagem de aviso
+      const blockedMsg = `🔒 *Acesso restrito*\n\nEsse comando só pode ser usado por administradores autorizados.\n\nSe você deveria ter acesso, peça ao responsável para adicionar seu número nas configurações. 😊`
+      await sendWhatsAppMessage(conversationId, blockedMsg)
+
+      return new Response(JSON.stringify({ success: true, blocked: 'not_admin' }), { status: 200, headers: corsHeaders })
     }
 
     // =========================================================================

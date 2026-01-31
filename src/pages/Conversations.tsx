@@ -58,6 +58,38 @@ interface Lead {
   // outros campos conforme necessário
 }
 
+// Função para converter markdown do WhatsApp em HTML e remover assinatura
+function formatWhatsAppMessage(text: string): { __html: string } {
+  if (!text) return { __html: '' };
+
+  // Remover assinatura "_Azera CRM_" e variações
+  let formatted = text
+    .replace(/\n_Azera CRM_\s*$/gi, '')
+    .replace(/_Azera CRM_/gi, '')
+    .trim();
+
+  // Escapar HTML para segurança
+  formatted = formatted
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Converter markdown do WhatsApp para HTML
+  // *texto* -> negrito
+  formatted = formatted.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+  // _texto_ -> itálico
+  formatted = formatted.replace(/_([^_]+)_/g, '<em>$1</em>');
+  // ~texto~ -> riscado
+  formatted = formatted.replace(/~([^~]+)~/g, '<s>$1</s>');
+  // ```texto``` -> código
+  formatted = formatted.replace(/```([^`]+)```/g, '<code class="bg-black/10 px-1 rounded">$1</code>');
+
+  // Preservar quebras de linha
+  formatted = formatted.replace(/\n/g, '<br/>');
+
+  return { __html: formatted };
+}
+
 export default function ConversationsPage() {
   const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -1083,9 +1115,10 @@ export default function ConversationsPage() {
                                 !textContent.startsWith('📄') &&
                                 !textContent.startsWith('📎') && (
                                   <div className="px-3 py-2">
-                                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                                      {textContent}
-                                    </p>
+                                    <p
+                                      className="text-sm leading-relaxed"
+                                      dangerouslySetInnerHTML={formatWhatsAppMessage(textContent)}
+                                    />
                                   </div>
                                 )}
 
