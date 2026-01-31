@@ -79,7 +79,6 @@ export function useMessages(conversationId: string | null) {
           // Evitar duplicatas com external_message_id
           if (newMsg.external_message_id) {
             if (processedExternalIds.has(newMsg.external_message_id)) {
-              console.log('[REALTIME] Duplicata detectada, ignorando:', newMsg.external_message_id)
               return
             }
             processedExternalIds.add(newMsg.external_message_id)
@@ -91,19 +90,17 @@ export function useMessages(conversationId: string | null) {
               m => !(m.status === 'pending' && m.direction === newMsg.direction && m.content === newMsg.content)
             )
 
-            // Verificar se mensagem já existe
-            const key = newMsg.external_message_id ? `${newMsg.direction}-${newMsg.external_message_id}` : newMsg.id
+            // Verificar se mensagem já existe por ID ou external_message_id
             const exists = cleaned.some(m => {
-              const existingKey = m.external_message_id ? `${m.direction}-${m.external_message_id}` : m.id
-              return existingKey === key
+              if (m.id === newMsg.id) return true
+              if (newMsg.external_message_id && m.external_message_id === newMsg.external_message_id) return true
+              return false
             })
 
             if (exists) {
-              console.log('[REALTIME] Mensagem já existe:', newMsg.id)
               return cleaned
             }
 
-            console.log('[REALTIME] Nova mensagem:', newMsg.id, newMsg.direction)
             return [...cleaned, newMsg]
           })
           setTimeout(scrollToBottom, 100)
@@ -118,15 +115,12 @@ export function useMessages(conversationId: string | null) {
           filter: `conversation_id=eq.${conversationId}`
         },
         (payload) => {
-          console.log('[REALTIME] Atualização de mensagem:', payload.new.id)
           setMessages((prev) =>
             prev.map(m => m.id === payload.new.id ? (payload.new as Message) : m)
           )
         }
       )
-      .subscribe((status) => {
-        console.log('[REALTIME] Status:', status)
-      })
+      .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
@@ -170,7 +164,6 @@ export function useMessages(conversationId: string | null) {
       setMessages(prev => prev.filter(m => m.id !== tempId))
 
     } catch (err) {
-      console.error('Erro ao enviar mensagem:', err)
       toast.error('Falha ao enviar mensagem')
       setMessages(prev => prev.filter(m => m.id !== tempId))
     } finally {

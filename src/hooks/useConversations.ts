@@ -85,7 +85,6 @@ export function useConversations() {
 
       const finalConversations = Array.from(uniqueConversations.values())
 
-      console.log('[CONVERSATIONS] Carregadas:', finalConversations.length, 'conversas únicas')
       setConversations(finalConversations)
     }
     setLoading(false)
@@ -178,7 +177,6 @@ export function useConversations() {
   useEffect(() => {
     if (!tenant?.id) return
 
-    console.log('[CONVERSATIONS] Carregando conversas para tenant:', tenant.id)
     fetchConversations()
 
     // 2. Setup Realtime
@@ -193,7 +191,6 @@ export function useConversations() {
           filter: `tenant_id=eq.${tenant.id}`
         },
         (payload) => {
-          console.log('[CONVERSATIONS] Nova conversa:', payload.new.id)
           // Recarregar lista
           fetchConversations()
         }
@@ -207,7 +204,6 @@ export function useConversations() {
           filter: `tenant_id=eq.${tenant.id}`
         },
         (payload) => {
-          console.log('[CONVERSATIONS] Conversa atualizada:', payload.new.id)
           // Atualizar apenas a conversa mudada
           setConversations(prev => {
             const updated = prev.map(c => {
@@ -230,9 +226,7 @@ export function useConversations() {
           })
         }
       )
-      .subscribe((status) => {
-        console.log('[CONVERSATIONS] Realtime status:', status)
-      })
+      .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
