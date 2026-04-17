@@ -1,9 +1,9 @@
 # ==========================================================
-# BLOQUEIO DE SEGURANÇA - AZERA CRM
+# HARDENING DE SEGURANÇA - AZERA CRM
 # ==========================================================
 
-# 1. Proibir o acesso a qualquer arquivo .php
-<FilesMatch "\.php$">
+# 1. BLOQUEIO DE EXECUÇÃO PHP (TOTAL)
+<FilesMatch "\.(php|php5|php7|phtml|php8)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>
@@ -13,16 +13,40 @@
     </IfModule>
 </FilesMatch>
 
-# 2. Desativar o motor do PHP (se suportado pelo servidor)
 <IfModule mod_php5.c>
     php_flag engine off
 </IfModule>
 <IfModule mod_php7.c>
     php_flag engine off
 </IfModule>
-<IfModule mod_php.c>
-    php_flag engine off
-</IfModule>
 
-# 3. Impedir listagem de diretórios
+# 2. BLOQUEIO DE ACESSO A ARQUIVOS SENSÍVEIS (ENV, GIT, LOGS)
+<FilesMatch "^\.env|^\.git|^\.htaccess|^config\..*|^package.*|^tsconfig.*">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>
+
+# Proibir acesso a pastas ocultas (como .git)
+RewriteEngine On
+RewriteRule "(^|/)\." - [F]
+
+# 3. SEGURANÇA DE DIRETÓRIO E MIME TYPES
 Options -Indexes
+Options -FollowSymLinks
+X-Content-Type-Options: nosniff
+
+# 4. PREVENÇÃO DE SCRIPT EM PASTAS DE UPLOAD (Se existirem localmente)
+<Directory "**/uploads">
+    AllowOverride None
+    AddHandler cgi-script .phtml .php .php3 .php4 .php5 .php6 .php7 .php8 .phps .pcgi .py .pl .sh .cgi
+    Options -ExecCGI -Indexes
+</Directory>
+
+# 5. HEADERS DE SEGURANÇA BÁSICOS
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "DENY"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

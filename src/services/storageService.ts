@@ -29,22 +29,52 @@ export async function uploadFileWithValidation(
   file: File
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
-    // Verificar autenticação
+    // 1. Verificar autenticação
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
       return { success: false, error: 'Usuário não autenticado' }
     }
 
-    console.log(`Fazendo upload para bucket ${bucketName}: ${path}`)
-    console.log(`Usuário: ${user.id}`)
-    console.log(`Arquivo: ${file.name} (${file.size} bytes)`)
+    // 2. Validação de Tamanho (Limite de 10MB)
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+    if (file.size > MAX_SIZE) {
+      return { success: false, error: 'Arquivo muito grande. O limite é de 10MB.' }
+    }
 
-    // Fazer upload
+    // 3. Bloqueio de Extensões Perigosas (Blacklist)
+    const forbiddenExtensions = ['php', 'php5', 'phtml', 'exe', 'sh', 'js', 'bat', 'cmd', 'msi', 'vbs'];
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+    
+    if (forbiddenExtensions.includes(fileExt)) {
+      console.warn(`Tentativa de upload de arquivo proibido: ${file.name}`);
+      return { success: false, error: 'Tipo de arquivo não permitido por motivos de segurança.' }
+    }
+
+    // 4. Validação de MIME Type
+    const allowedMimeTypes = [
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+      'application/pdf',
+      'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm',
+      'text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
+
+    if (!allowedMimeTypes.includes(file.type)) {
+      // Se for um arquivo de lead-attachments, podemos ser um pouco mais flexíveis com tipos de documento
+      // mas nunca permitimos executáveis (já checado acima)
+      if (bucketName !== 'attachments') {
+        return { success: false, error: 'Formato de arquivo não suportado.' }
+      }
+    }
+
+    console.log(`Fazendo upload seguro para bucket ${bucketName}: ${path}`)
+
+    // 5. Fazer upload
     const { data, error } = await supabase.storage
       .from(bucketName)
       .upload(path, file, {
         cacheControl: '3600',
-        upsert: false
+        upsert: false,
+        contentType: file.type // Garante que o MIME type seja gravado corretamente
       })
 
     if (error) {
@@ -56,7 +86,7 @@ export async function uploadFileWithValidation(
       return { success: false, error: 'Caminho do arquivo não retornado' }
     }
 
-    // Obter URL pública
+    // 6. Obter URL pública (Apenas para buckets configurados como públicos)
     const { data: publicUrl } = supabase.storage
       .from(bucketName)
       .getPublicUrl(data.path)

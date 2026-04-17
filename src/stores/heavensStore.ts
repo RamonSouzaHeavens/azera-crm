@@ -20,7 +20,8 @@ export const useHeavensStore = create<HeavensStore>()(
       }
     }),
     {
-      name: 'heavens-ai-storage' // salva no localStorage
+      name: 'heavens-ai-storage',
+      partialize: (state) => ({ supabaseUrl: state.supabaseUrl }), // Salva apenas a URL, NUNCA a chave
     }
   )
 )

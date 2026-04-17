@@ -27,8 +27,14 @@ export function HeavensSettings() {
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                     Configure a API do Supabase do projeto Heavens AI para publicar tarefas automaticamente.
-                    Use a chave <strong>service_role</strong> (bypassa RLS).
                 </p>
+                <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                    <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                        ⚠️ <strong>AVISO DE SEGURANÇA:</strong> O uso da chave <code>service_role</code> no frontend é perigoso. 
+                        Esta chave não é mais salva no seu navegador após fechar a aba. Recomendamos migrar esta lógica para uma 
+                        <strong> Supabase Edge Function</strong> para maior proteção.
+                    </p>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 max-w-2xl">

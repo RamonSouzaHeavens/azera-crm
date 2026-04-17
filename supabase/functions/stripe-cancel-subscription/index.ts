@@ -29,27 +29,57 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // Criar cliente Supabase com o token do usuário para validar identidade
+    const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
+      global: { headers: { Authorization: authHeader } }
+    })
+
+    const { data: { user }, error: userError } = await userClient.auth.getUser()
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'Sessão inválida' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
     const body = await req.json().catch(() => null) as { subscriptionId?: string, supabaseId?: string }
     const subscriptionId = body?.subscriptionId
     const supabaseId = body?.supabaseId
 
-    if (!subscriptionId) {
-      return new Response(JSON.stringify({ error: 'subscriptionId é obrigatório' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    if (!subscriptionId || !supabaseId) {
+      return new Response(JSON.stringify({ error: 'subscriptionId e supabaseId são obrigatórios' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    console.log('[stripe-cancel-subscription] Cancelando no Stripe:', subscriptionId)
-    // Cancela imediatamente
+    // SEGURANÇA: Verificar se a assinatura pertence ao usuário que está pedindo o cancelamento
+    const { data: subData, error: subError } = await serviceClient
+      .from('subscriptions')
+      .select('user_id, stripe_subscription_id')
+      .eq('id', supabaseId)
+      .single()
+
+    if (subError || !subData) {
+      return new Response(JSON.stringify({ error: 'Assinatura não encontrada' }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    if (subData.user_id !== user.id) {
+       // Se o ID não bate, verificamos se o usuário é um master admin (opcional, mas aqui bloqueamos por segurança)
+       if (user.email !== 'ramonexecut@gmail.com') {
+         return new Response(JSON.stringify({ error: 'Você não tem permissão para cancelar esta assinatura' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+       }
+    }
+
+    console.log(`[stripe-cancel-subscription] Usuário ${user.email} cancelando:`, subscriptionId)
+    
+    // Cancela no Stripe
     const canceled = await stripe.subscriptions.del(subscriptionId)
 
-    // Atualizar registro no Supabase se informado
-    if (supabaseId) {
-      try {
-        const update: any = { status: 'canceled', cancel_at_period_end: false }
-        if (canceled.id) update.stripe_subscription_id = canceled.id
-        const { error: updateError } = await serviceClient
-          .from('subscriptions')
-          .update(update)
-          .eq('id', supabaseId)
+    // Atualizar registro no Supabase
+    const { error: updateError } = await serviceClient
+      .from('subscriptions')
+      .update({ status: 'canceled', cancel_at_period_end: false, updated_at: new Date().toISOString() })
+      .eq('id', supabaseId)
 
         if (updateError) console.warn('[stripe-cancel-subscription] Erro ao atualizar Supabase:', updateError.message)
         else console.log('[stripe-cancel-subscription] Subscription atualizada no Supabase:', supabaseId)
