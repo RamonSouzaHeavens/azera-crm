@@ -73,9 +73,18 @@ export default function Iridescence({
 
   useEffect(() => {
     if (!ctnDom.current) return;
-    const ctn = ctnDom.current;
-    const renderer = new Renderer();
-    const gl = renderer.gl;
+    let renderer: Renderer;
+    let gl: WebGLRenderingContext;
+
+    try {
+      renderer = new Renderer();
+      if (!renderer.gl) throw new Error('WebGL context not found');
+      gl = renderer.gl;
+    } catch (e) {
+      console.warn('WebGL not supported, disabling background effect:', e);
+      return;
+    }
+
     gl.clearColor(1, 1, 1, 1);
 
     // Estilizar o canvas para ocupar 100% do container com blur
@@ -92,6 +101,7 @@ export default function Iridescence({
     let program: Program;
 
     function resize() {
+      if (!renderer || !gl.canvas) return;
       const scale = 1;
       renderer.setSize(ctn.offsetWidth * scale, ctn.offsetHeight * scale);
       if (program) {
@@ -126,8 +136,10 @@ export default function Iridescence({
 
     function update(t: number) {
       animateId = requestAnimationFrame(update);
-      program.uniforms.uTime.value = t * 0.001;
-      renderer.render({ scene: mesh });
+      if (program && renderer) {
+        program.uniforms.uTime.value = t * 0.001;
+        renderer.render({ scene: mesh });
+      }
     }
     animateId = requestAnimationFrame(update);
     ctn.appendChild(gl.canvas);
