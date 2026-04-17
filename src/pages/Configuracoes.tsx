@@ -11,6 +11,7 @@ import { ExpenseManager } from '../components/ExpenseManager'
 import { SubscriptionCard } from '../components/SubscriptionCard'
 
 import { useTranslation } from 'react-i18next'
+import { HeavensSettings } from '../components/config/HeavensSettings'
 
 // ====================================================================
 // Página NOVA — Configurações (HUD Heavens) com estrutura reescrita
@@ -19,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 // - Fetches estáveis; .maybeSingle() no company_settings
 // ====================================================================
 
-type TabId = 'perfil' | 'empresa' | 'seguranca' | 'documentos_legais' | 'financeiro'
+type TabId = 'perfil' | 'empresa' | 'seguranca' | 'documentos_legais' | 'financeiro' | 'heavens'
 
 type PerfilForm = {
   full_name: string
@@ -48,7 +49,7 @@ export default function ConfiguracoesNova() {
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const tabParam = params.get('tab') as TabId
-    if (tabParam && ['perfil', 'empresa', 'seguranca', 'documentos_legais', 'financeiro'].includes(tabParam)) {
+    if (tabParam && ['perfil', 'empresa', 'seguranca', 'documentos_legais', 'financeiro', 'heavens'].includes(tabParam)) {
       setTab(tabParam)
     }
   }, [location.search])
@@ -502,6 +503,7 @@ export default function ConfiguracoesNova() {
     { id: 'financeiro', label: t('settings.tabs.financial'), icon: DollarSign, ring: 'ring-emerald-500/30', ownerOnly: true },
     { id: 'seguranca', label: t('settings.tabs.security'), icon: Shield, ring: 'ring-emerald-500/30' },
     { id: 'documentos_legais', label: t('settings.tabs.documents'), icon: FileText, ring: 'ring-blue-500/30' },
+    { id: 'heavens', label: 'Heavens AI', icon: ArrowLeftRight, ring: 'ring-indigo-500/30', ownerOnly: true },
   ]
 
   // Filtra tabs baseado em permissões
@@ -876,6 +878,12 @@ export default function ConfiguracoesNova() {
                       </div>
                     </a>
                   </div>
+                </section>
+              )}
+
+              {tab === 'heavens' && (
+                <section className="space-y-8">
+                  <HeavensSettings />
                 </section>
               )}
             </div>

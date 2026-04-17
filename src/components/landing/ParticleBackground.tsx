@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 interface ParticleBackgroundProps {
@@ -19,10 +19,29 @@ const CONFIG = {
   mouseInfluence: 0.05,
 };
 
+// Função para verificar se WebGL está disponível
+function isWebGLAvailable(): boolean {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    return gl !== null;
+  } catch (e) {
+    return false;
+  }
+}
+
 export default function ParticleBackground({ className }: ParticleBackgroundProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [webGLSupported, setWebGLSupported] = useState<boolean | null>(null);
+
+  // Verificação inicial de compatibilidade WebGL
+  useEffect(() => {
+    setWebGLSupported(isWebGLAvailable());
+  }, []);
 
   useEffect(() => {
+    // Se WebGL não está disponível ou ainda não foi verificado, não inicializar
+    if (webGLSupported === null || webGLSupported === false) return;
     if (!containerRef.current) return;
 
     const container = containerRef.current;
@@ -386,7 +405,12 @@ for (let i = 0; i < particles; i++) {
       material.dispose();
       renderer.dispose();
     };
-  }, []);
+  }, [webGLSupported]);
+
+  // Se WebGL não está disponível, não renderiza nada
+  if (webGLSupported === false) {
+    return null;
+  }
 
   return (
     <div

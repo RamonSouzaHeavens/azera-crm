@@ -1,0 +1,28 @@
+# ==========================================================
+# BLOQUEIO DE SEGURANÇA - AZERA CRM
+# ==========================================================
+
+# 1. Proibir o acesso a qualquer arquivo .php
+<FilesMatch "\.php$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 2. Desativar o motor do PHP (se suportado pelo servidor)
+<IfModule mod_php5.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+
+# 3. Impedir listagem de diretórios
+Options -Indexes

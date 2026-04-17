@@ -8,10 +8,16 @@ import { useAuthStore } from '../stores/authStore'
 import toast from 'react-hot-toast'
 import { uploadFileWithValidation } from '../services/storageService'
 import TaskPresetSelector, { TaskPreset, TASK_PRESETS } from '../components/tasks/TaskPresetSelector'
+import {
+  fetchHeavensClients,
+  fetchHeavensProjects,
+  createHeavensClient,
+  ensureHeavensProjectExists
+} from '../services/heavensService'
 
 interface UsuarioRef { id: string; display_name: string }
-interface ClienteRef { id: string; nome: string }
-interface ProdutoRef { id: string; nome: string }
+interface HeavensClientRef { id: string; name: string; slug: string }
+interface HeavensProjectRef { id: string; name: string }
 
 interface ChecklistItem {
   id: string
@@ -36,8 +42,10 @@ export default function TarefaNova() {
   const [status, setStatus] = useState<'pendente' | 'em_andamento' | 'concluida' | 'cancelada'>('pendente')
   const [dataVencimento, setDataVencimento] = useState('')
   const [responsavelId, setResponsavelId] = useState('')
-  const [clienteId, setClienteId] = useState('')
-  const [produtoId, setProdutoId] = useState('')
+  const [heavensClientId, setHeavensClientId] = useState('')
+  const [heavensClientName, setHeavensClientName] = useState('')
+  const [isCreatingClient, setIsCreatingClient] = useState(false)
+  const [heavensProjectId, setHeavensProjectId] = useState('')
 
   // Estados de mídia
   const [anexos, setAnexos] = useState<File[]>([])
@@ -49,8 +57,8 @@ export default function TarefaNova() {
   // Estados de UI
   const [loading, setLoading] = useState(false)
   const [responsaveis, setResponsaveis] = useState<UsuarioRef[]>([])
-  const [clientes, setClientes] = useState<ClienteRef[]>([])
-  const [produtos, setProdutos] = useState<ProdutoRef[]>([])
+  const [heavensClients, setHeavensClients] = useState<HeavensClientRef[]>([])
+  const [heavensProjects, setHeavensProjects] = useState<HeavensProjectRef[]>([])
   const [showDescricaoExpanded, setShowDescricaoExpanded] = useState(false)
 
   // Aplicar preset selecionado
@@ -101,43 +109,39 @@ export default function TarefaNova() {
     }
   }, [tenant])
 
-  const loadClientes = useCallback(async () => {
+  const loadHeavensClients = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('clientes')
-        .select('*')
-        .eq('tenant_id', tenant!.id)
-        .order('nome')
-
-      if (error) throw error
-      setClientes(data || [])
+      const data = await fetchHeavensClients()
+      setHeavensClients(data)
     } catch (error) {
-      console.error('Erro ao carregar clientes:', error)
+      console.error('Erro ao carregar clientes do Heavens:', error)
     }
-  }, [tenant])
+  }, [])
 
-  const loadProdutos = useCallback(async () => {
+  const loadHeavensProjects = useCallback(async (clientId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('produtos')
-        .select('*')
-        .eq('tenant_id', tenant!.id)
-        .order('nome')
-
-      if (error) throw error
-      setProdutos(data || [])
+      const data = await fetchHeavensProjects(clientId)
+      setHeavensProjects(data)
     } catch (error) {
-      console.error('Erro ao carregar produtos:', error)
+      console.error('Erro ao carregar projetos do Heavens:', error)
     }
-  }, [tenant])
+  }, [])
 
   useEffect(() => {
     if (tenant?.id) {
       loadResponsaveis()
-      loadClientes()
-      loadProdutos()
+      loadHeavensClients()
     }
-  }, [tenant, loadResponsaveis, loadClientes, loadProdutos])
+  }, [tenant, loadResponsaveis, loadHeavensClients])
+
+  useEffect(() => {
+    if (heavensClientId && heavensClientId !== 'new') {
+      loadHeavensProjects(heavensClientId)
+    } else {
+      setHeavensProjects([])
+      setHeavensProjectId('')
+    }
+  }, [heavensClientId, loadHeavensProjects])
 
   const handleSalvar = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -155,6 +159,19 @@ export default function TarefaNova() {
     setLoading(true)
 
     try {
+      // 1. Processar Cliente e Projeto do Heavens
+      let finalHeavensClientId = heavensClientId;
+      let finalHeavensProjectId = heavensProjectId;
+
+      if (heavensClientId === 'new' && heavensClientName.trim()) {
+        const newClient = await createHeavensClient(heavensClientName.trim());
+        finalHeavensClientId = newClient.id;
+      }
+
+      if (finalHeavensClientId && (!finalHeavensProjectId || finalHeavensProjectId === 'default')) {
+        finalHeavensProjectId = await ensureHeavensProjectExists(finalHeavensClientId);
+      }
+
       // Converter checklist para o formato JSON (compatível com Tarefas.tsx)
       const checklistJson = checklist.length > 0
         ? checklist.map((item, index) => ({
@@ -165,17 +182,21 @@ export default function TarefaNova() {
         }))
         : []
 
+      // Se a tarefa foi concluída *agora*, vai para pendente_postagem (se tiver Heavens Client)
+      // Mas se o usuário só marcou como concluído localmente, o App Local vai sugerir
+      const finalStatus = status === 'concluida' ? 'pendente_postagem' : status;
+
       // Criar tarefa (incluindo checklist no campo JSON para compatibilidade)
       const novaTarefa = {
         tenant_id: tenant.id,
         titulo: titulo.trim(),
         descricao: descricao.trim(),
         prioridade,
-        status,
+        status: finalStatus,
         data_vencimento: dataVencimento || null,
         responsavel_id: responsavelId || null,
-        cliente_id: clienteId || null,
-        produto_id: produtoId || null,
+        heavens_client_id: finalHeavensClientId || null,
+        heavens_project_id: finalHeavensProjectId || null,
         checklist: JSON.stringify(checklistJson)
       }
 
@@ -483,35 +504,52 @@ export default function TarefaNova() {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-1 sm:mb-2">
-                      {t('tarefaNova.fields.client.label')}
+                      Cliente (Heavens AI)
                     </label>
                     <select
-                      value={clienteId}
-                      onChange={(e) => setClienteId(e.target.value)}
+                      value={heavensClientId}
+                      onChange={(e) => {
+                        setHeavensClientId(e.target.value);
+                        if (e.target.value !== 'new') setIsCreatingClient(false);
+                        else setIsCreatingClient(true);
+                      }}
                       className="w-full px-3 py-2 sm:px-4 sm:py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 text-xs sm:text-sm transition-all"
                     >
-                      <option value="" className="bg-slate-800">{t('tarefaNova.fields.select.placeholder')}</option>
-                      {clientes.map((cliente) => (
-                        <option key={cliente.id} value={cliente.id} className="bg-slate-800 text-xs sm:text-sm">{cliente.nome}</option>
+                      <option value="" className="bg-slate-800">Selecione um cliente (opcional)</option>
+                      {heavensClients.map((client) => (
+                        <option key={client.id} value={client.id} className="bg-slate-800 text-xs sm:text-sm">{client.name}</option>
                       ))}
+                      <option value="new" className="bg-slate-800 text-cyan-400 font-bold">+ Criar Novo Cliente</option>
                     </select>
+
+                    {isCreatingClient && (
+                      <input
+                        type="text"
+                        value={heavensClientName}
+                        onChange={(e) => setHeavensClientName(e.target.value)}
+                        className="w-full mt-2 px-3 py-2 sm:px-4 sm:py-3 bg-white/5 border border-cyan-500/50 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 text-xs sm:text-sm"
+                        placeholder="Nome do Novo Cliente..."
+                        autoFocus
+                      />
+                    )}
                   </div>
 
                   <div>
                     <label className="block text-[10px] font-medium text-slate-400 uppercase tracking-wide mb-1 sm:mb-2">
-                      {t('tarefaNova.fields.product.label')}
+                      Projeto (Heavens AI)
                     </label>
                     <select
-                      value={produtoId}
-                      onChange={(e) => setProdutoId(e.target.value)}
-                      className="w-full px-3 py-2 sm:px-4 sm:py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 text-xs sm:text-sm transition-all"
+                      value={heavensProjectId}
+                      onChange={(e) => setHeavensProjectId(e.target.value)}
+                      disabled={!heavensClientId || isCreatingClient}
+                      className="w-full px-3 py-2 sm:px-4 sm:py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 text-xs sm:text-sm transition-all disabled:opacity-50"
                     >
-                      <option value="" className="bg-slate-800">{t('tarefaNova.fields.select.placeholder')}</option>
-                      {produtos.map((produto) => (
-                        <option key={produto.id} value={produto.id} className="bg-slate-800 text-xs sm:text-sm">{produto.nome}</option>
+                      <option value="" className="bg-slate-800">Selecione ou deixe para Auto-Criar</option>
+                      {heavensProjects.map((project) => (
+                        <option key={project.id} value={project.id} className="bg-slate-800 text-xs sm:text-sm">{project.name}</option>
                       ))}
                     </select>
                   </div>

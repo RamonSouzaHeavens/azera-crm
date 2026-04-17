@@ -17,6 +17,7 @@ import { TaskAttachments } from '../components/team/TaskAttachments'
 import { loadTaskStages, createTaskStage, updateTaskStage, deleteTaskStage } from '../services/taskPipelineService'
 import { getTeamOverview } from '../services/equipeService'
 import { checkAndUnlockAchievements } from '../services/achievementService'
+import { HeavensFilaModal } from '../components/tasks/HeavensFilaModal'
 
 // =====================
 // Tipos
@@ -52,6 +53,11 @@ interface Tarefa {
   updated_at: string
   process_id: string | null
 
+  // Novos campos Heavens AI
+  heavens_client_id?: string | null
+  heavens_project_id?: string | null
+  heavens_demand_id?: string | null
+
   // Campos opcionais/calculados
   tempo_gasto_minutos?: number | null
   estimativa_minutos?: number | null
@@ -86,6 +92,7 @@ const STATUS_MAP: Record<string, { labelKey: string; bg: string; text: string; r
   em_andamento: { labelKey: 'tasks.status.inProgress', bg: 'bg-cyan-500/10', text: 'text-cyan-700 dark:text-cyan-200', ring: 'ring-cyan-500/30', dot: 'bg-cyan-400' },
   bloqueada: { labelKey: 'tasks.status.blocked', bg: 'bg-rose-500/10', text: 'text-rose-700 dark:text-rose-200', ring: 'ring-rose-500/30', dot: 'bg-rose-400' },
   concluida: { labelKey: 'tasks.status.completed', bg: 'bg-emerald-500/10', text: 'text-emerald-700 dark:text-emerald-200', ring: 'ring-emerald-500/30', dot: 'bg-emerald-400' },
+  pendente_postagem: { labelKey: 'Fila de Postagem', bg: 'bg-orange-500/10', text: 'text-orange-700 dark:text-orange-200', ring: 'ring-orange-500/30', dot: 'bg-orange-400' },
 }
 
 // Fallback para status customizados que não estão no mapa
@@ -135,6 +142,7 @@ export default function Tarefas() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [showChecklist, setShowChecklist] = useState(true)
   const [showCustomResponsavel, setShowCustomResponsavel] = useState(false)
+  const [showHeavensFila, setShowHeavensFila] = useState(false)
 
   // Task Stages (Kanban)
   const [taskStages, setTaskStages] = useState<Array<{ id?: string; key: string, label: string, color: string }>>([
@@ -271,6 +279,7 @@ export default function Tarefas() {
           cliente_id,produto_id,responsavel_id,responsavel_nome,
           data_vencimento,process_id,tempo_gasto_minutos,
           created_at,updated_at, checklist, estimativa_minutos,
+          heavens_client_id, heavens_project_id, heavens_demand_id,
           cliente:clientes(id, nome),
           produto:produtos(id, nome),
           equipe:equipes(id, nome)
@@ -618,6 +627,20 @@ export default function Tarefas() {
               </div>
             </div>
 
+            {/* Fila de Postagem Banner */}
+            {tarefas.some(t => t.status === 'pendente_postagem') && (
+              <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-orange-500/10 to-orange-600/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 flex items-center justify-between shadow-lg shadow-orange-500/5 cursor-pointer backdrop-blur-md hover:bg-orange-500/20 transition-all font-medium"
+                onClick={() => setShowHeavensFila(true)}>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center animate-pulse">
+                    <Check className="w-5 h-5 text-orange-500" />
+                  </div>
+                  <span>Você tem {tarefas.filter(t => t.status === 'pendente_postagem').length} tarefa(s) pronta(s) na <strong>Fila de Postagem do Heavens AI</strong></span>
+                </div>
+                <button className="px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-sm shadow">Ver Fila</button>
+              </div>
+            )}
+
             {/* Painel de Filtros Expandido */}
             {filtersOpen && (
               <div className="p-4 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in slide-in-from-top-2">
@@ -773,6 +796,14 @@ export default function Tarefas() {
           )}
         </div>
       </div>
+
+      {showHeavensFila && (
+        <HeavensFilaModal 
+          tarefasPêndentes={tarefas.filter(t => t.status === 'pendente_postagem')} 
+          onClose={() => setShowHeavensFila(false)}
+          onTaskAction={(id, updates) => handleUpdateTask(id, updates)}
+        />
+      )}
 
       {/* =====================
           Overlay: Fechar ao clicar fora

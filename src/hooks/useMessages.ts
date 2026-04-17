@@ -85,15 +85,24 @@ export function useMessages(conversationId: string | null) {
           }
 
           setMessages((prev) => {
-            // Remover otimista duplicada (pending)
+            // Remover otimista duplicada (pending) - comparando conteúdo de forma robusta
             const cleaned = prev.filter(
-              m => !(m.status === 'pending' && m.direction === newMsg.direction && m.content === newMsg.content)
+              m => !(
+                m.status === 'pending' && 
+                m.direction === newMsg.direction && 
+                (m.content?.trim() === newMsg.content?.trim())
+              )
             )
 
-            // Verificar se mensagem já existe por ID ou external_message_id
+            // Verificar se mensagem já existe por ID, ID externo ou Conteúdo + Direção
             const exists = cleaned.some(m => {
               if (m.id === newMsg.id) return true
               if (newMsg.external_message_id && m.external_message_id === newMsg.external_message_id) return true
+              
+              // Se tiver o mesmo conteúdo e direção, e tiver sido enviada nos últimos 5 segundos
+              const isRecent = Math.abs(new Date(m.created_at).getTime() - new Date(newMsg.created_at).getTime()) < 5000
+              if (isRecent && m.direction === newMsg.direction && m.content?.trim() === newMsg.content?.trim()) return true
+              
               return false
             })
 
