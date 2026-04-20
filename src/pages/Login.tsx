@@ -99,8 +99,7 @@ export const Login = () => {
   const handleLogin = async (data: LoginData) => {
     setIsLoggingIn(true)
 
-    // Delay de 3 segundos para o efeito visual
-    await new Promise(resolve => setTimeout(resolve, 3000))
+    // Removido o delay artificial de 3 segundos que causava a impressão de lentidão/erro no login
 
     try {
       console.log('🔐 Tentando fazer login...');
